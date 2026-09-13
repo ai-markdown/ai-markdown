@@ -4,11 +4,11 @@ const chinese = Astro.props.chinese === true;
 const copy: Record<string, string> = {
   "All examples": "全部示例",
   "Examples": "示例",
-  "Explore live React, Vue and Mantine examples without leaving AI Markdown.": "在 AI Markdown 站内体验 React、Vue 与 Mantine 示例。",
-  "Try Markdown, explore streaming, and adjust component options in the live catalog.": "编辑 Markdown、体验流式渲染，并在交互目录中调整组件选项。",
+  "Explore live React, Vue and Mantine examples without leaving AI Markdown.": "在站内直接体验 React、Vue 与 Mantine 的示例。",
+  "Try Markdown, explore streaming, and adjust component options in the live catalog.": "编辑 Markdown、体验流式效果，实时调整组件参数。示例名称和 Storybook 控件目前使用英语。",
   "Open in new tab ↗": "在新标签页打开 ↗",
-  "Example framework": "示例框架",
-  "Interactive AI Markdown Storybook examples": "AI Markdown Storybook 交互示例"
+  "Example framework": "选择框架",
+  "Interactive AI Markdown Storybook examples": "Storybook 交互示例"
 };
 const t = (value: string) => chinese ? (copy[value] ?? value) : value;
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');

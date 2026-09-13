@@ -55,6 +55,8 @@ const streaming = ref(true);
 
 初始内容直接显示，后续确认的追加按字素簇呈现。生产端结束后仍可能有积压文本；返回的 streaming 状态在呈现排空后才结束。光标默认开启，等待第一个字符时应用可显示自己的占位。
 
+<span id="build-a-custom-wrapper-with-a-live-getter"></span>
+
 ## 自定义包装器
 
 在 setup 中调用 `useSmoothStream`，传入返回最新配置值的 getter。应用 ref 应在 getter 内读取 `.value`，不要捕获初始化对象。返回的 content 和 streaming 是只读 computed ref，渲染函数使用 `.value`，模板可解包顶层 ref。

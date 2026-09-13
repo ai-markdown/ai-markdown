@@ -26,4 +26,4 @@ React 从 `@ai-markdown/react/plugins` 导入，Vue 从 `@ai-markdown/vue` 导�
 
 基础适配器呈现代码文本，不执行 JavaScript、Vue 模板或 MDX。Mantine 为 React 添加高亮和 Mermaid；自定义渲染器由应用负责。
 
-数学支持常见美元符号货币与公式区分，但歧义文本没有无限保证。流式内容应累积到同一渲染器。清洗和最终 URL 转换是两道独立策略，见 [URL 与 HTML](url-sanitization.md)。
+解析器可以区分常见的美元金额与公式写法；存在歧义的输入仍需结合具体内容测试。流式文本应持续累积并传给同一个渲染器。HTML 清洗与最终 URL 转换分别执行，见 [URL 过滤](url-sanitization.md)。

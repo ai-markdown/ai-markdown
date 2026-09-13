@@ -10,15 +10,15 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 {home ? (
   <section class="brand-hero" aria-labelledby="_top">
     <div class="hero-copy">
-      <p class="eyebrow">{chinese ? "开源 · REACT + VUE" : "OPEN SOURCE \u00b7 REACT + VUE"}</p>
-      <h1 id="_top" data-page-title>{chinese ? "为 AI 而生，" : "Markdown for AI,"}<br /><span>{chinese ? "为流式呈现而设计。" : "built for the stream."}</span></h1>
-      <p class="hero-tagline">{chinese ? "从第一个字符到最后一条脚注。" : "From the first token to the final footnote."}</p>
-      <p class="hero-description">{chinese ? "丰富内容、增量渲染与多语言排版，为你的界面提供共享基础。" : "Rich content, incremental streaming and thoughtful multilingual typography. One shared foundation for your interface."}</p>
+      <p class="eyebrow">{chinese ? "开源 · REACT / VUE MARKDOWN" : "OPEN SOURCE \u00b7 REACT + VUE"}</p>
+      <h1 id="_top" data-page-title>{chinese ? "让 AI 回答，" : "Markdown for AI,"}<br /><span>{chinese ? "边生成边呈现" : "built for the stream."}</span></h1>
+      <p class="hero-tagline">{chinese ? "为 React 和 Vue 应用呈现持续生成的 Markdown。" : "From the first token to the final footnote."}</p>
+      <p class="hero-description">{chinese ? "从流式文本到数学公式与中文排版，再通过 Mantine 或自定义组件接入代码高亮。" : "Rich content, incremental streaming and thoughtful multilingual typography. One shared foundation for your interface."}</p>
       <div class="hero-actions">
         <a class="get-started" href={`${localizedBase}docs/guides/getting-started/`}>{chinese ? "快速开始 " : "Get started "}<span aria-hidden="true">↗</span></a>
-        <a class="read-docs" href={`${localizedBase}docs/`}>{chinese ? "阅读文档 " : "Read the docs "}<span aria-hidden="true">→</span></a>
+        <a class="read-docs" href={`${localizedBase}docs/`}>{chinese ? "查看文档 " : "Read the docs "}<span aria-hidden="true">→</span></a>
       </div>
-      <p class="hero-topics">{chinese ? "流式渲染 " : "STREAMING "}<span>/</span>{chinese ? " 数学公式 " : " MATH "}<span>/</span>{chinese ? " 多语言" : " MULTILINGUAL"}</p>
+      <p class="hero-topics">{chinese ? "流式渲染 " : "STREAMING "}<span>/</span>{chinese ? " 数学公式 " : " MATH "}<span>/</span>{chinese ? " 中文排版" : " MULTILINGUAL"}</p>
     </div>
     <div class="hero-art">
       <img src={`${base}brand/organization-mark.png`} width="460" height="460" alt={chinese ? "AI Markdown 折纸 m 标志" : "AI Markdown folded-paper m logo"} fetchpriority="high" />

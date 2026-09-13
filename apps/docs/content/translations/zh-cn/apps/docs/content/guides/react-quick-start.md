@@ -1,6 +1,6 @@
 # React 快速开始
 
-使用 React 与 React DOM 19。服务端和构建环境要求 Node `^20.19.0 || >=22.12.0`，共享 core 与 engine 会作为依赖自动安装。
+使用 React 和 React DOM 19。服务端与构建环境需要 Node `^20.19.0 || >=22.12.0`。core 与 engine 作为依赖自动解析，无需单独安装。
 
 ## 安装
 
@@ -20,8 +20,10 @@ export function Answer() {
 }
 ```
 
-持续把解码后的文本累积为完整字符串，再更新 `content`。`streaming` 表示生产端是否仍在生成；增量解析另有开关，默认启用。RSC 应用应设置客户端边界，并按照宿主框架要求导入全局 CSS。
+将完整的当前字符串作为 `content` 传入，把解码后的网络数据持续追加到应用状态中。`streaming` 描述生成端的状态；增量解析在客户端默认开启。在 React Server Components 应用中，请在客户端边界内使用，并按照宿主框架的规范导入全局 CSS。
 
-代码围栏默认呈现文本；语法高亮和 Mermaid 可使用 Mantine 或自定义组件。
+本适配器中代码围栏仅作为代码文本渲染。语法高亮与 Mermaid 图表需要使用 Mantine 或自定义组件。React 专属的 CSS 变量和 Hooks 不适用于 Vue。
 
-继续阅读[流式聊天](streaming-chat-example.md)、[自定义渲染](custom-components.md)或 [SSR](react-ssr.md)。
+## 下一步
+
+[流式对话示例](streaming-chat-example.md)、[自定义渲染](custom-components.md)、[服务端渲染与水合](react-ssr.md)，或查看 [React 参考](../reference/react.md)。

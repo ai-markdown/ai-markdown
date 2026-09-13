@@ -169,11 +169,54 @@ test('current integration peer snippets match the Mantine manifest', () => {
   for (const path of [
     ['apps', 'docs', 'content', 'reference', 'react-mantine.md'],
     ['apps', 'docs', 'content', 'guides', 'extending-via-subpackage.md'],
+    ['apps', 'docs', 'content', 'translations', 'zh-cn', 'apps', 'docs', 'content', 'reference', 'react-mantine.md'],
+    [
+      'apps',
+      'docs',
+      'content',
+      'translations',
+      'zh-cn',
+      'apps',
+      'docs',
+      'content',
+      'guides',
+      'extending-via-subpackage.md',
+    ],
   ]) {
     const ranges = [...read(resolve('.'), ...path).matchAll(/"@ai-markdown\/react":\s*"([^"]+)"/g)].map(
       ([, range]) => range
     );
     assert.ok(ranges.length > 0, path.join('/'));
     for (const range of ranges) assert.equal(range, expected, path.join('/'));
+  }
+});
+
+test('Chinese current snippets follow candidate and stable versions while translated history stays fixed', () => {
+  const root = fixture();
+  try {
+    const translated = join(root, 'apps', 'docs', 'content', 'translations', 'zh-cn', 'apps', 'docs', 'content');
+    const currentPaths = [
+      'guides/index.md',
+      'guides/getting-started.md',
+      'guides/extending-via-subpackage.md',
+      'reference/react.md',
+      'reference/vue.md',
+      'reference/react-mantine.md',
+    ];
+    const historicalPaths = ['guides/release-highlights.md', 'guides/migrating-to-v2.md', 'guides/architecture.md'];
+    for (const file of [...currentPaths, ...historicalPaths]) {
+      mkdirSync(join(translated, file.split('/')[0]), { recursive: true });
+      writeFileSync(join(translated, file), document('^3.0.0', '3.0.0'));
+    }
+    for (const [version, range] of [
+      ['3.1.0-rc.1', '3.1.0-rc.1'],
+      ['3.1.0', '^3.1.0'],
+    ]) {
+      run(root, version);
+      for (const file of currentPaths) assert.equal(read(translated, file), document(range, version), file);
+      for (const file of historicalPaths) assert.equal(read(translated, file), document('^3.0.0', '3.0.0'), file);
+    }
+  } finally {
+    rmSync(root, { recursive: true, force: true });
   }
 });

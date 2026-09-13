@@ -1,10 +1,20 @@
-# Vue 定制与样式
+# Vue 自定义渲染与样式定制
 
-仅修改颜色、间距或外观时，优先使用 CSS、class 与 style。需要改变 HTML 元素的呈现行为时，使用 `components` 映射或同名元素插槽。
+控制视觉外观优先使用 CSS，构建可复用的 Vue 渲染器使用 `components` 映射，局部覆盖特定标签则使用具名元素插槽。这些机制属于 Vue 原生体系；React 的 `customComponents`、排版变体（typography variants）与上下文 Hooks 属于不同的接口契约。
 
-## 元素组件与插槽
+<span id="start-with-the-wrapper"></span>
 
-元素插槽优先于 components 中同名项。插槽上下文提供 node、properties、已经转换的 children、streaming 和 metadata。映射组件接收清洗后的元素属性以及 node、streaming、metadata，子内容通过默认插槽传递。
+## 从外层容器开始
+
+导入 `@ai-markdown/vue/styles.css` 可以获得基础表格/代码块布局以及光标动画。直接在 `AIMarkdown` 上设置 `class` 或 `style` 可以控制根容器的样式，这些属性会自动透传到外层容器。该外层容器为光标建立了相对定位（relative positioning）上下文；改变其 `position` 属性可能会影响光标几何测量与定位计算。
+
+当应用程序自身已具备完整视觉样式规范时，该基础样式表为可选引入。KaTeX 的样式表需要独立引入。React 的 `--aim-*` 设计变量变量体系并非 Vue 的样式 API。
+
+<span id="map-an-element-to-a-vue-component"></span>
+
+## 将 HTML 元素映射到 Vue 组件
+
+以下完整的渲染函数示例演示了如何替换链接元素，同时保留转换后的子节点：
 
 ```ts
 import { defineComponent, h } from 'vue';
@@ -27,16 +37,39 @@ export default defineComponent({
 });
 ```
 
-保留传入的 children 与必要属性，否则会丢失语义、链接和可访问性。node 是渲染用的 HAST 节点，不要修改共享解析结果。
+被映射的组件会接收清洗后的标准 HTML 属性，外加 `node`、`streaming` 和 `metadata`。请显式声明你所使用的上下文 props，避免它们作为未声明的透传属性意外掉落到最终生成的 DOM 元素上。默认插槽（default slot）包含了已完成转换的 Vue 子节点；请谨慎且有目的地透传相关属性。
 
-## 元数据与光标
+<span id="override-an-element-with-a-scoped-slot"></span>
 
-metadata 可向自定义元素传递应用数据。它不自动产生业务权限或安全保证。Vue 不提供 React 的元数据 Hooks。
+## 使用作用域插槽覆盖元素
 
-cursor 插槽接收 `{ streaming: true }`，用于替换测量光标壳内部的内容；它不是普通元素插槽上下文。通过 `streamingCursor=false` 关闭光标。平滑组件的 waiting 插槽没有参数，用于等待前序片段时的占位。
+对于包含任意 VNode 子节点的情况，使用渲染函数插槽可以避免将子 VNode 误当作模板字符串拼接：
 
-## 样式与安全
+```ts
+import { defineComponent, h } from 'vue';
+import AIMarkdown, { type MarkdownElementContext } from '@ai-markdown/vue';
 
-导入 `@ai-markdown/vue/styles.css`；数学另需 KaTeX CSS。React typography 变量与 Mantine 组件不是 Vue API。自定义组件是受信任的应用代码，其输出不会重新经过 Markdown 清洗器；它创建的 URL 也需要应用策略。
+export default defineComponent({
+  setup() {
+    return () =>
+      h(
+        AIMarkdown,
+        { content: '**Hello**', metadata: 'Answer preview' },
+        {
+          strong: ({ children, metadata }: MarkdownElementContext) =>
+            h('strong', { title: String(metadata ?? '') }, children),
+        }
+      );
+  },
+});
+```
 
-完整属性与上下文类型见 [Vue API 参考](../reference/vue.md)。
+同名的元素插槽优先级高于 `components` 映射配置中的对应条目。`metadata` 是由应用程序掌控并直接透传给映射组件和元素插槽的数据；它不是从 Markdown 文本内容中解析出来的。
+
+<span id="keep-output-policy-explicit"></span>
+
+## 保持明确的输出策略
+
+Markdown 文本不会被当作 Vue 模板进行二次解析编译。即使开发者放宽了 HTML 清洗规则，适配器也会主动拒绝事件监听属性（如 `onClick`）和底层 DOM 插入属性。自定义组件和插槽均被视为受信任的应用程序代码，因此其自身的渲染输出安全性完全由组件实现方负责。
+
+关于共享清洗器与最终 URL 校验策略的详细说明，请参阅 [URL 清洗规范](url-sanitization.md)；关于 Vue 全部配置项接口，请参阅 [Vue Props 参考](../reference/vue.md#component-props)。在使用过程中请保持清洗规则 schema 与配置映射对象不可变（immutable）；当配置含义发生变更时，应通过替换整个新对象来进行更新。

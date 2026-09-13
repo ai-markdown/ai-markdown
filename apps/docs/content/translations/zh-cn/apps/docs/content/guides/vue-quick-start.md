@@ -1,6 +1,6 @@
 # Vue 快速开始
 
-使用 Vue `^3.5.0`。服务端和构建环境要求 Node `^20.19.0 || >=22.12.0`。Vue 3.5 的 `useId()` 用于服务端与水合身份一致性。
+使用 Vue `^3.5.0`。服务端与构建环境需要 Node `^20.19.0 || >=22.12.0`。Vue 3.5 提供了用于服务端与水合标识对齐的 `useId()` API。
 
 ## 安装
 
@@ -25,8 +25,10 @@ const content = ref('# Answer\n\n**Markdown**, $x^2$ and 中文.');
 </template>
 ```
 
-传入完整累积字符串。应用负责网络分帧、取消和重试。基础 CSS 提供代码块、表格布局与光标动画；KaTeX CSS 需单独导入。
+将累积的完整字符串作为 `content` 传入。由应用负责数据分帧、请求取消与重试。基础样式文件提供代码块、表格样式和光标动画；KaTeX CSS 需单独引入。
 
-Vue 使用 `components` 与具名插槽，不使用 React Hooks、`blockMemo` 或 Mantine。Nuxt 专用打包、KeepAlive/Suspense 组合需要额外集成验证。
+Vue 适配器使用 `components` 选项和具名元素插槽进行定制。它不提供 React 上下文 Hooks、`blockMemo` 属性、React 排版变体或 Mantine 集成。Nuxt 特定的打包方式以及与 KeepAlive / Suspense 的组合需要单独的集成支持。
 
-继续阅读[流式渲染](vue-streaming.md)、[定制](vue-customization.md)或 [SSR 与生命周期](vue-ssr.md)。
+## 下一步
+
+[流式渲染](vue-streaming.md)、[自定义渲染](vue-customization.md)、[服务端渲染与生命周期](vue-ssr.md)，或查看 [Vue 参考](../reference/vue.md)。

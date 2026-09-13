@@ -1,6 +1,6 @@
 # Mantine 快速开始
 
-Mantine 是 React 集成，使用 React 19 和 Mantine 9。服务端和构建环境要求 Node `^20.19.0 || >=22.12.0`。同时安装 React 适配器及 UI peers。
+使用 React 19、Mantine 9 与 highlight.js `^11.11.2`。请将 React 适配器与 Mantine 集成一同升级。服务端与构建环境需要 Node `^20.19.0 || >=22.12.0`。此包为 React 集成；Vue 请使用其独立适配器。
 
 ## 安装
 
@@ -35,6 +35,8 @@ export function Answer() {
 }
 ```
 
-保留示例中的 Provider 和样式导入顺序。组件默认从 Mantine 获取颜色模式，并添加代码高亮、JSON 显示格式化和 Mermaid。它不适用于 Vue。
+两个 Provider 和样式表的导入都是必须的基础配置。数学公式需要引入 KaTeX CSS。请保持 `adapter` 对象的引用稳定。替换 `pre` 元素渲染器会将代码格式化、复制按钮、语法高亮和 Mermaid 图表行为转由自定义组件处理。
 
-继续阅读[代码块与图表](mantine-code-blocks.md)、[Mantine 参考](../reference/react-mantine.md)与 [React 流式指南](smooth-streaming.md)。
+## 下一步
+
+[代码块与图表](mantine-code-blocks.md)、[主题配置](../reference/react-mantine.md#configuration)，或查看 [Mantine 参考](../reference/react-mantine.md)。

@@ -99,12 +99,25 @@ for (const dir of packageDirs) {
 // as written. Add a guide here only when its install or peer snippet is
 // meant to move with every train version.
 const GUIDES_DIR = join(ROOT, 'apps', 'docs', 'content', 'guides');
+const TRANSLATED_CONTENT_DIR = join(
+  ROOT,
+  'apps',
+  'docs',
+  'content',
+  'translations',
+  'zh-cn',
+  'apps',
+  'docs',
+  'content'
+);
 const TRACKING_GUIDES = ['index.md', 'extending-via-subpackage.md', 'getting-started.md'];
 const readmePaths = [
   join(ROOT, 'README.md'),
   ...packageDirs.map((dir) => join(PACKAGES_DIR, dir, 'README.md')),
   ...TRACKING_GUIDES.map((name) => join(GUIDES_DIR, name)),
   ...['react', 'vue', 'react-mantine'].map((name) => join(ROOT, 'apps', 'docs', 'content', 'reference', `${name}.md`)),
+  ...TRACKING_GUIDES.map((name) => join(TRANSLATED_CONTENT_DIR, 'guides', name)),
+  ...['react', 'vue', 'react-mantine'].map((name) => join(TRANSLATED_CONTENT_DIR, 'reference', `${name}.md`)),
 ];
 const VERSION = String.raw`\d+\.\d+\.\d+(?:-[\w.]+)?`;
 const peerRange = newVersion.includes('-') ? newVersion : `^${newVersion}`;
