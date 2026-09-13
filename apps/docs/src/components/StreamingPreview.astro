@@ -1,0 +1,125 @@
+---
+const { chinese = false } = Astro.props;
+---
+
+<streaming-preview data-pause={chinese ? '暂停演示' : 'Pause demo'} data-play={chinese ? '播放演示' : 'Play demo'}>
+  <div class="preview-content"><div class="preview-source"><slot /></div></div>
+  <button type="button" hidden>{chinese ? '暂停演示' : 'Pause demo'}</button>
+</streaming-preview>
+
+<script>
+  class StreamingPreview extends HTMLElement {
+    connectedCallback() {
+      const source = this.querySelector<HTMLElement>('.preview-source')!;
+      const content = this.querySelector<HTMLElement>('.preview-content')!;
+      const button = this.querySelector<HTMLButtonElement>('button')!;
+      const visual = source.cloneNode(true) as HTMLElement;
+      visual.className = 'preview-animation';
+      visual.setAttribute('aria-hidden', 'true');
+      const walker = document.createTreeWalker(visual, NodeFilter.SHOW_TEXT);
+      const nodes: Text[] = [];
+      while (walker.nextNode()) nodes.push(walker.currentNode as Text);
+      const chars: HTMLSpanElement[] = [];
+      const segmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
+      for (const node of nodes) {
+        if (!node.textContent?.trim()) continue;
+        const fragment = document.createDocumentFragment();
+        for (const { segment } of segmenter.segment(node.textContent)) {
+          const char = document.createElement('span');
+          char.textContent = segment;
+          char.className = 'preview-char';
+          chars.push(char);
+          fragment.append(char);
+        }
+        node.replaceWith(fragment);
+      }
+      content.append(visual);
+      this.classList.add('enhanced');
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
+      let index = 0;
+      let paused = false;
+      let visible = false;
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const clear = () => { clearTimeout(timer); timer = undefined; };
+      const paint = () => {
+        chars.forEach((char, i) => {
+          char.classList.toggle('shown', i < index);
+          char.classList.toggle('caret', i === index - 1 && index < chars.length);
+        });
+      };
+      const schedule = () => {
+        clear();
+        button.hidden = motion.matches;
+        button.textContent = paused ? this.dataset.play! : this.dataset.pause!;
+        if (motion.matches) {
+          index = chars.length;
+          paint();
+          return;
+        }
+        if (paused || !visible || document.hidden) return;
+        timer = setTimeout(() => {
+          index = index === chars.length ? 0 : index + 1;
+          paint();
+          schedule();
+        }, index === chars.length ? 2600 : index === 0 ? 650 : 55);
+      };
+      const toggle = () => { paused = !paused; schedule(); };
+      const observer = new IntersectionObserver(([entry]) => {
+        visible = entry.isIntersecting;
+        schedule();
+      }, { threshold: 0.15 });
+      button.addEventListener('click', toggle);
+      document.addEventListener('visibilitychange', schedule);
+      motion.addEventListener('change', schedule);
+      observer.observe(this);
+      paint();
+      schedule();
+      this.cleanup = () => {
+        clear();
+        observer.disconnect();
+        button.removeEventListener('click', toggle);
+        document.removeEventListener('visibilitychange', schedule);
+        motion.removeEventListener('change', schedule);
+        visual.remove();
+        this.classList.remove('enhanced');
+        button.hidden = true;
+      };
+    }
+    cleanup?: () => void;
+    disconnectedCallback() { this.cleanup?.(); }
+  }
+  if (!customElements.get('streaming-preview')) customElements.define('streaming-preview', StreamingPreview);
+</script>
+
+<style is:global>
+streaming-preview { display: block; }
+streaming-preview .preview-content { display: grid; }
+streaming-preview .preview-source,
+streaming-preview .preview-animation { grid-area: 1 / 1; min-width: 0; }
+streaming-preview.enhanced .preview-source { opacity: 0; pointer-events: none; }
+streaming-preview .preview-char { visibility: hidden; position: relative; }
+streaming-preview .preview-char.shown { visibility: visible; }
+streaming-preview .preview-char.caret::after {
+  content: '';
+  position: absolute;
+  inset-inline-start: 100%;
+  top: 0.1em;
+  width: 0.13em;
+  height: 1em;
+  background: var(--sl-color-text-accent);
+}
+streaming-preview button {
+  margin-top: 1rem;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--sl-color-hairline-light);
+  border-radius: 0.3rem;
+  background: transparent;
+  color: var(--sl-color-text-accent);
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+}
+streaming-preview button:hover { background: var(--sl-color-bg); }
+streaming-preview button:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 3px; }
+streaming-preview button[hidden] { display: none; }
+</style>

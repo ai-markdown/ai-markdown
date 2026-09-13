@@ -1,6 +1,7 @@
 ---
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
 import { Code } from '@astrojs/starlight/components';
+import StreamingPreview from './StreamingPreview.astro';
 const chinese = Astro.props.chinese === true;
 const copy: Record<string, string> = {
   "AI Markdown — Markdown for streaming interfaces": "AI Markdown — 适用于流式界面的 Markdown 渲染库",
@@ -83,9 +84,11 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
         <Code code={example} lang="tsx" />
         <div class="rendered-example">
           <span class="output-label">{t("Rendered message")}</span>
+          <StreamingPreview chinese={chinese}>
           <h3>{t("From tokens to thoughtful answers.")}</h3>
-          <p>{t("A clear answer, with ")}<strong>{t("rich formatting")}</strong>{t(" and room for every language.")}<span class="stream-cursor" aria-hidden="true"></span></p>
+          <p>{t("A clear answer, with ")}<strong>{t("rich formatting")}</strong>{t(" and room for every language.")}</p>
           <div class="multilingual-sample"><span lang="en">Hello, world.</span><span lang="zh-Hans">你好，世界。</span><span lang="ja">こんにちは、世界。</span></div>
+          </StreamingPreview>
           <div class="format-labels"><span>Markdown</span><span>GFM</span><span>LaTeX</span><span>CJK</span></div>
         </div>
       </div>
@@ -182,14 +185,6 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
 .rendered-example h3 {
   font-size: 1.2rem;
   margin-block: 1rem 0.5rem;
-}
-.stream-cursor {
-  display: inline-block;
-  height: 1em;
-  width: 0.4em;
-  margin-inline-start: 0.2em;
-  vertical-align: -0.1em;
-  background: var(--sl-color-text-accent);
 }
 .format-labels {
   display: flex;
