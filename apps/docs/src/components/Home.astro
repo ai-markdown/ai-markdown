@@ -85,11 +85,11 @@ defineProps<{ text: string; streaming: boolean }>();
       <div class="example-panel">
         <Tabs syncKey="home-framework">
           <TabItem label="React">
-            <Code code={reactExample} lang="tsx" title="Message.tsx" />
+            <Code code={reactExample} lang="tsx" />
             <div class="setup-note"><p>{chinese ? "父组件传入当前完整文本和生成状态。安装依赖与框架配置见快速开始。" : "Pass the accumulated text and producer state from your parent component. See the quick start for dependencies and framework setup."}</p><a href={`${docs}guides/react-quick-start/`}>{chinese ? "接入 React →" : "Set up React →"}</a></div>
           </TabItem>
           <TabItem label="Vue">
-            <Code code={vueExample} lang="vue" title="Message.vue" />
+            <Code code={vueExample} lang="vue" />
             <div class="setup-note"><p>{chinese ? "父组件传入当前完整文本和生成状态。Vue 默认显示流式光标。" : "Pass the accumulated text and producer state from your parent component. Vue shows the streaming cursor by default."}</p><a href={`${docs}guides/vue-quick-start/`}>{chinese ? "接入 Vue →" : "Set up Vue →"}</a></div>
           </TabItem>
         </Tabs>
@@ -146,13 +146,23 @@ defineProps<{ text: string; streaming: boolean }>();
   min-width: 0;
   overflow: hidden;
   border: 1px solid var(--home-border);
-  border-radius: 1rem;
+  border-radius: 0.875rem;
   background: var(--sl-color-bg-nav);
-  box-shadow: 0 18px 55px -30px #062a354d;
+  box-shadow: 0 8px 28px -16px #062a3533;
 }
 .example-panel :global(.expressive-code) { margin: 0; }
 .example-panel :global(.expressive-code pre) { border: 0; border-radius: 0; }
-.example-panel :global(.tablist-wrapper) { padding-inline: 1rem; }
+.example-panel :global(.tablist-wrapper) { padding: 1rem 1.25rem; border-bottom: 1px solid var(--home-border); background: var(--sl-color-bg); }
+.example-panel :global([role='tablist']) { display: inline-flex; gap: 0.25rem; margin: 0; padding: 0.25rem; border: 1px solid var(--home-border); border-radius: 0.7rem; background: var(--sl-color-bg-nav); }
+.example-panel :global(.tab) { margin: 0; }
+.example-panel :global([role='tab']) { box-shadow: none; display: flex; align-items: center; justify-content: center; gap: 0.5rem; min-width: 6.5rem; padding: 0.45rem 1rem; border: 1px solid transparent; border-radius: 0.45rem; text-decoration: none; color: var(--sl-color-gray-2); font-size: 0.875rem; font-weight: 600; line-height: 1.5; }
+.example-panel :global([role='tab']::before) { content: ''; width: 0.45rem; height: 0.45rem; border-radius: 50%; background: #149eca; }
+.example-panel :global(.tab:nth-child(2) [role='tab']::before) { background: #42b883; }
+.example-panel :global([role='tab'][aria-selected='true']) { color: var(--sl-color-text); background: var(--sl-color-bg); border-color: var(--home-border); box-shadow: 0 1px 3px #0000000d; }
+.example-panel :global([role='tab']:hover) { color: var(--sl-color-text); }
+.example-panel :global(.expressive-code .frame) { border: 0; border-radius: 0; box-shadow: none; }
+.example-panel :global(.expressive-code .frame pre) { padding-block: 1.25rem; }
+.example-panel :global(.expressive-code .frame .header) { display: none; }
 .example-panel :global([role='tabpanel']) { margin-top: 0; }
 .setup-note { padding: 1rem 1.25rem; border-top: 1px solid var(--home-border); }
 .setup-note p { margin: 0 0 0.5rem; font-size: 0.875rem; }
