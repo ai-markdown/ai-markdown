@@ -5,6 +5,7 @@ const { entry, locale } = Astro.locals.starlightRoute;
 const chinese = locale === 'zh-cn';
 const localizedBase = `${import.meta.env.BASE_URL.replace(/\/?$/, '/')}${chinese ? 'zh-cn/' : ''}`;
 const home = entry.data.template === 'splash' && Boolean(entry.data.hero) && entry.id !== '404';
+const hero = entry.data.hero;
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 ---
 
@@ -12,31 +13,28 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
   <section class="brand-hero" aria-labelledby="_top">
     <div class="hero-copy">
       <p class="eyebrow">{chinese ? "开源 · REACT + VUE" : "OPEN SOURCE \u00b7 REACT + VUE"}</p>
-      <h1 id="_top" data-page-title>{chinese ? "让 AI 回答，" : "Markdown for AI,"}<br /><span>{chinese ? "边生成边呈现" : "built for the stream."}</span></h1>
-      <p class="hero-tagline">{chinese ? "为 React 和 Vue 应用呈现持续生成的 Markdown。" : "From the first token to the final footnote."}</p>
-      <p class="hero-description">{chinese ? "支持 GFM、数学公式与中文排版。用自己的组件定制界面，或接入 Mantine 的代码高亮与图表。" : "Render streaming responses in React and Vue with GFM, math and multilingual text. Bring your own components, or add Mantine for code highlighting and diagrams."}</p>
+      <h1 id="_top" data-page-title>{(hero?.title ?? entry.data.title).split('\n').map((line, index) => <Fragment>{index > 0 && <br />}<span class:list={{ accent: index > 0 }}>{line}</span></Fragment>)}</h1>
+      <p class="hero-description">{hero?.tagline}</p>
       <div class="hero-actions">
-        <a class="get-started" href={`${localizedBase}docs/guides/getting-started/`}>{chinese ? "快速开始 " : "Get started "}<span aria-hidden="true">↗</span></a>
-        <a class="read-docs" href={`${localizedBase}examples/`}>{chinese ? "体验交互示例 " : "Try the examples "}<span aria-hidden="true">→</span></a>
+        {hero?.actions.map((action, index) => <a class={index === 0 ? 'get-started' : 'read-docs'} href={action.link}>{action.text}<span aria-hidden="true">→</span></a>)}
       </div>
       <p class="hero-topics">{chinese ? "流式渲染 " : "STREAMING "}<span>/</span>{chinese ? " 数学公式 " : " MATH "}<span>/</span>{chinese ? " 中文排版" : " MULTILINGUAL"}</p>
     </div>
     <div class="hero-demo">
-      <div class="demo-heading"><span><img src={`${base}brand/organization-mark.png`} width="28" height="28" alt="" /> AI Markdown</span><span>{chinese ? "流式演示" : "Streaming preview"}</span></div>
+      <div class="demo-heading"><span><img src={`${base}brand/organization-mark.png`} width="28" height="28" alt="" /> AI Markdown</span><span>{chinese ? "流式效果示意" : "Streaming illustration"}</span></div>
       <div class="demo-message">
-        <p class="demo-prompt">{chinese ? "把这个想法，写成清晰的回答。" : "Turn this idea into a clear answer."}</p>
+        <p class="demo-prompt">{chinese ? "把这个想法写成清晰的回答。" : "Turn this idea into a clear answer."}</p>
         <StreamingPreview chinese={chinese}>
-          <h2>{chinese ? "好的回答，逐渐成形。" : "A good answer takes shape."}</h2>
+          <p class="demo-title">{chinese ? "好的回答，逐渐成形。" : "A good answer takes shape."}</p>
           <p>{chinese ? "从第一句话开始，让内容保持" : "From the first sentence, keep your answer "}<strong>{chinese ? "清晰、有条理" : "clear and structured"}</strong>{chinese ? "。" : "."}</p>
           <ul>
             <li>{chinese ? "用标题与列表组织思路" : "Give ideas structure with headings and lists"}</li>
             <li>{chinese ? "用自己的组件呈现代码与链接" : "Make code and links fit your interface"}</li>
             <li>{chinese ? "自然呈现中文、English 与日本語" : "Make room for English, 中文 and 日本語"}</li>
           </ul>
-          <p class="demo-code"><code>{"content={text}"}</code><span>{chinese ? "持续追加，同一条消息。" : "Keep appending. One message."}</span></p>
         </StreamingPreview>
       </div>
-      <a class="demo-link" href={`${localizedBase}examples/`}>{chinese ? "在 Playground 试试你的 Markdown" : "Try your Markdown in the playground"}<span aria-hidden="true">↗</span></a>
+      <a class="demo-link" href={`${localizedBase}examples/`}>{chinese ? "打开交互示例，试试你的 Markdown" : "Try your Markdown in the playground"}<span aria-hidden="true">→</span></a>
     </div>
   </section>
 ) : <DefaultHero />}
@@ -44,7 +42,7 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 <style>
 .brand-hero {
   display: grid;
-  grid-template-columns: 1.05fr 1fr;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
   align-items: center;
   gap: 2.5rem;
   margin-block: 1.5rem 2rem;
@@ -62,19 +60,13 @@ const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 }
 h1 {
   color: #f6f8f7;
-  font-size: clamp(2.35rem, 4.8vw, 4rem);
+  font-size: clamp(2.35rem, 4.8vw, 3.25rem);
   line-height: 1.1;
   letter-spacing: -0.055em;
   font-weight: 650;
 }
-h1 span {
+h1 .accent {
   color: #a4dfcb;
-}
-.hero-tagline {
-  font-size: 1.2rem;
-  font-weight: 500;
-  margin-top: 1.75rem;
-  color: #e2eee9;
 }
 .hero-description {
   font-size: 1rem;
@@ -126,6 +118,7 @@ h1 span {
 .hero-topics span {
   color: #52798b;
 }
+.hero-copy { min-width: 0; }
 .hero-demo {
   min-width: 0;
   border: 1px solid #476577;
@@ -157,9 +150,10 @@ h1 span {
   color: #d1e2e8;
   font-size: 0.875rem;
 }
-.demo-message h2 {
+.demo-message .demo-title {
   color: #f6f8f7;
   font-size: 1.4rem;
+  font-weight: 600;
   line-height: 1.4;
   letter-spacing: -0.025em;
   margin: 0 0 1rem;
@@ -167,12 +161,13 @@ h1 span {
 .demo-message p, .demo-message li { font-size: 0.9375rem; line-height: 1.8; }
 .demo-message strong { color: #a4dfcb; }
 .demo-message ul { padding-inline-start: 1.25rem; margin-block: 1rem; }
-.demo-code { display: flex; flex-wrap: wrap; gap: 0.5rem 0.75rem; align-items: center; color: #bad2dd; }
-.demo-code code { background: #0a2035; color: #a4dfcb; border-radius: 0.3rem; padding: 0.2rem 0.45rem; }
 .demo-link { display: flex; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-top: 1px solid #476577; color: #a4dfcb; font-size: 0.875rem; text-decoration: none; }
 .demo-link:hover { background: #1e4054; }
 .hero-demo :global(streaming-preview button) { color: #bad2dd; border-color: #476577; background: #102c40; }
 .hero-demo :global(.preview-char.caret::after) { background: #a4dfcb; }
+.hero-demo :global(streaming-preview button:hover) { background: #1e4054; }
+.hero-demo :global(streaming-preview button:focus-visible) { outline: 2px solid #a4dfcb; outline-offset: 3px; }
+h1:lang(zh-CN) { letter-spacing: 0; }
 .hero-actions a:focus-visible, .demo-link:focus-visible { outline: 2px solid #a4dfcb; outline-offset: -3px; }
 @media (max-width: 50rem) {
   .brand-hero {

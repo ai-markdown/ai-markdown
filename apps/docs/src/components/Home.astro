@@ -1,12 +1,11 @@
 ---
 import StarlightPage from '@astrojs/starlight/components/StarlightPage.astro';
-import { Code } from '@astrojs/starlight/components';
+import { Code, Tabs, TabItem } from '@astrojs/starlight/components';
 const chinese = Astro.props.chinese === true;
 const copy: Record<string, string> = {
   "AI Markdown — Markdown for streaming interfaces": "AI Markdown — 适用于流式界面的 Markdown 渲染库",
   "Render rich Markdown in React and Vue. Built for streaming AI responses, with a shared engine and flexible framework integrations.": "在 React 和 Vue 中渲染 Markdown。支持流式内容追加，可通过 Mantine 或自定义组件接入代码高亮，支持数学公式与中文排版。",
-  "Markdown for AI, built for the stream.": "让 AI 回答，边生成边呈现",
-  "From the first token to the final response. Rich Markdown for React and Vue, built on one shared engine.": "从第一个字符到完整回答。在 React 与 Vue 中渲染 Markdown，共享同一套解析逻辑。",
+  "Render streaming Markdown in React and Vue. GFM, math and multilingual text, with your own components or Mantine for code highlighting and diagrams.": "在 React 和 Vue 中呈现持续生成的 Markdown。支持 GFM、数学公式与中文排版，可用自己的组件或 Mantine 接入代码高亮与图表。",
   "Get started": "快速开始",
   "Try the examples": "体验交互示例",
   "01 / FROM TEXT TO INTERFACE": "01 / 从文本到界面",
@@ -27,10 +26,15 @@ const copy: Record<string, string> = {
 const t = (value: string) => chinese ? (copy[value] ?? value) : value;
 const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 const docs = `${base}${chinese ? 'zh-cn/' : ''}docs/`;
-const example = `import AIMarkdown, { AIMarkdownStreamingCursor } from '@ai-markdown/react';
+const reactExample = `import AIMarkdown, {
+  AIMarkdownStreamingCursor,
+} from '@ai-markdown/react';
 import '@ai-markdown/react/typography/default.css';
+import 'katex/dist/katex.min.css';
 
-export function Message({ text, streaming }: { text: string; streaming: boolean }) {
+type Props = { text: string; streaming: boolean };
+
+export function Message({ text, streaming }: Props) {
   return (
     <AIMarkdown
       content={text}
@@ -39,6 +43,18 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
     />
   );
 }`;
+const vueExample = `<script setup lang="ts">
+import AIMarkdown from '@ai-markdown/vue';
+import '@ai-markdown/vue/styles.css';
+import 'katex/dist/katex.min.css';
+
+defineProps<{ text: string; streaming: boolean }>();
+</script>
+
+<template>
+  <AIMarkdown :content="text" :streaming="streaming" />
+</template>`;
+
 ---
 
 <StarlightPage frontmatter={{
@@ -50,8 +66,8 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
   pagination: false,
   pagefind: false,
   hero: {
-    title: t("Markdown for AI, built for the stream."),
-    tagline: t("From the first token to the final response. Rich Markdown for React and Vue, built on one shared engine."),
+    title: chinese ? "让 AI 回答，\n边生成边呈现" : "Markdown for AI,\nbuilt for the stream.",
+    tagline: t("Render streaming Markdown in React and Vue. GFM, math and multilingual text, with your own components or Mantine for code highlighting and diagrams."),
     actions: [
       { text: t("Get started"), link: `${docs}guides/getting-started/`, icon: 'right-arrow' },
       { text: t("Try the examples"), link: `${base}${chinese ? 'zh-cn/' : ''}examples/`, variant: 'minimal' },
@@ -67,9 +83,16 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
         <a href={`${docs}guides/streaming-input/`}>{t("Explore streaming \u2192")}</a>
       </div>
       <div class="example-panel">
-        <div class="panel-label"><span>React</span><span>Message.tsx</span></div>
-        <Code code={example} lang="tsx" />
-        <div class="setup-note"><p>{chinese ? "示例展示 React 接入方式。安装依赖、样式配置和完整代码见快速开始。" : "This example uses React. Follow the quick start for installation, required styles and the complete setup."}</p><a href={`${docs}guides/react-quick-start/`}>{chinese ? "接入 React →" : "Set up React →"}</a></div>
+        <Tabs syncKey="home-framework">
+          <TabItem label="React">
+            <Code code={reactExample} lang="tsx" title="Message.tsx" />
+            <div class="setup-note"><p>{chinese ? "父组件传入当前完整文本和生成状态。安装依赖与框架配置见快速开始。" : "Pass the accumulated text and producer state from your parent component. See the quick start for dependencies and framework setup."}</p><a href={`${docs}guides/react-quick-start/`}>{chinese ? "接入 React →" : "Set up React →"}</a></div>
+          </TabItem>
+          <TabItem label="Vue">
+            <Code code={vueExample} lang="vue" title="Message.vue" />
+            <div class="setup-note"><p>{chinese ? "父组件传入当前完整文本和生成状态。Vue 默认显示流式光标。" : "Pass the accumulated text and producer state from your parent component. Vue shows the streaming cursor by default."}</p><a href={`${docs}guides/vue-quick-start/`}>{chinese ? "接入 Vue →" : "Set up Vue →"}</a></div>
+          </TabItem>
+        </Tabs>
       </div>
     </section>
 
@@ -79,7 +102,7 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
       <div class="framework-grid">
         <a href={`${docs}guides/react-quick-start/`} class="framework-card"><span class="card-number">@ai-markdown/react</span><h3>React</h3><p>{t("Components, hooks and custom renderers that fit your application.")}</p><span class="card-link">{t("React quick start \u2192")}</span></a>
         <a href={`${docs}guides/vue-quick-start/`} class="framework-card"><span class="card-number">@ai-markdown/vue</span><h3>Vue</h3><p>{t("Reactive props, scoped slots and composables for Vue applications.")}</p><span class="card-link">{t("Vue quick start \u2192")}</span></a>
-        <a href={`${docs}guides/react-mantine-quick-start/`} class="framework-card"><span class="card-number">@ai-markdown/react-mantine</span><h3>Mantine</h3><p>{t("Theme-aware typography, highlighted code and Mermaid diagrams.")}</p><span class="card-link">{t("Mantine quick start \u2192")}</span></a>
+        <a href={`${docs}guides/react-mantine-quick-start/`} class="framework-card"><span class="card-number">@ai-markdown/react-mantine</span><h3>Mantine <small>{chinese ? "React 集成" : "for React"}</small></h3><p>{t("Theme-aware typography, highlighted code and Mermaid diagrams.")}</p><span class="card-link">{t("Mantine quick start \u2192")}</span></a>
       </div>
     </section>
 
@@ -93,33 +116,20 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
       </div>
     </section>
 
-    <section class="closing-cta" aria-labelledby="closing-title"><div><p class="eyebrow">{chinese ? "从一条消息开始" : "START WITH ONE MESSAGE"}</p><h2 id="closing-title">{chinese ? "让下一条回答，呈现得更好。" : "Give your next answer a better home."}</h2></div><a href={`${docs}guides/getting-started/`}>{chinese ? "选择框架，开始接入 →" : "Choose your framework →"}</a></section>
-    <footer class="home-footer"><span>{t("ai-markdown \u00b7 From the first token to the final footnote.")}</span><a href="https://github.com/ai-markdown">{t("Meet the project \u2197")}</a></footer>
+    <section class="closing-cta" aria-labelledby="closing-title"><div><p class="eyebrow">{chinese ? "从一条消息开始" : "START WITH ONE MESSAGE"}</p><h2 id="closing-title">{chinese ? "让下一条回答，呈现得更好。" : "Give your next answer a better home."}</h2></div><a href="#framework-title">{chinese ? "选择框架，开始接入 →" : "Choose your framework →"}</a></section>
+    <footer class="home-footer"><span>{t("ai-markdown \u00b7 From the first token to the final footnote.")}</span><a href="https://github.com/ai-markdown/ai-markdown">{t("Meet the project \u2197")}</a></footer>
   </div>
 </StarlightPage>
 
 <style>
+.home-content { --home-border: var(--sl-color-hairline-light); }
+.home-content a { color: var(--sl-color-text-accent); }
 .home-content a:focus-visible { outline: 2px solid var(--sl-color-text-accent); outline-offset: 4px; }
-.home-content a {
-  color: var(--sl-color-text-accent);
-}
-.home-content {
-  --home-border: var(--sl-color-hairline-light);
-}
-.home-content section {
-  margin-block: 5rem;
-}
-.showcase {
-  display: grid;
-  grid-template-columns: 0.85fr 1.15fr;
-  gap: 3rem;
-  align-items: center;
-}
+.home-content section { margin-block: 4.5rem; }
 .home-content .eyebrow {
   color: var(--sl-color-text-accent);
-  font-size: 0.875rem;
-  font-weight: 600;
-  letter-spacing: 0.07em;
+  font: 600 0.75rem var(--sl-font-mono);
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 .home-content h2 {
@@ -128,150 +138,44 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
   line-height: 1.2;
   letter-spacing: -0.03em;
 }
-.home-content p {
-  margin-block: 1rem;
-  color: var(--sl-color-gray-2);
-  line-height: 1.75;
-}
-.section-intro > a {
-  display: inline-block;
-  margin-top: 1.25rem;
-  font-weight: 600;
-  text-decoration: none;
-}
+.home-content p { margin-block: 1rem; color: var(--sl-color-gray-2); line-height: 1.75; }
+.showcase { display: grid; grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); gap: 3.5rem; align-items: center; }
+.section-intro { border-inline-start: 2px solid var(--sl-color-accent); padding-inline-start: 1.5rem; }
+.section-intro > a { display: inline-block; margin-top: 1.25rem; font-weight: 600; text-decoration: none; }
 .example-panel {
+  min-width: 0;
   overflow: hidden;
   border: 1px solid var(--home-border);
   border-radius: 1rem;
   background: var(--sl-color-bg-nav);
+  box-shadow: 0 18px 55px -30px #062a354d;
 }
-.panel-label {
-  display: flex;
-  justify-content: space-between;
-  padding: 0.875rem 1.25rem;
-  font-family: var(--sl-font-mono);
-  font-size: 0.875rem;
-  border-bottom: 1px solid var(--home-border);
-}
-.example-panel :global(.expressive-code) {
-  margin: 0;
-}
-.example-panel :global(.expressive-code pre) {
-  border: 0;
-  border-radius: 0;
-}
-.framework-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1rem;
-  margin-top: 2rem;
-}
+.example-panel :global(.expressive-code) { margin: 0; }
+.example-panel :global(.expressive-code pre) { border: 0; border-radius: 0; }
+.example-panel :global(.tablist-wrapper) { padding-inline: 1rem; }
+.example-panel :global([role='tabpanel']) { margin-top: 0; }
+.setup-note { padding: 1rem 1.25rem; border-top: 1px solid var(--home-border); }
+.setup-note p { margin: 0 0 0.5rem; font-size: 0.875rem; }
+.setup-note a { font-size: 0.875rem; font-weight: 600; }
+.framework-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1rem; margin-top: 2rem; }
 .framework-card {
   display: flex;
   flex-direction: column;
   padding: 1.75rem;
   border: 1px solid var(--home-border);
+  border-top: 3px solid var(--sl-color-accent);
   border-radius: 0.75rem;
   text-decoration: none;
-  color: var(--sl-color-text);
+  transition: border-color 150ms ease, background 150ms ease;
 }
-.framework-card:hover {
-  border-color: var(--sl-color-text-accent);
-  background: var(--sl-color-bg-nav);
-}
-.card-number {
-  font-family: var(--sl-font-mono);
-  font-size: 0.8125rem;
-  color: var(--sl-color-gray-2);
-}
-.framework-card h3 {
-  font-size: 1.75rem;
-  margin-block: 1.5rem 0;
-}
-.framework-card p {
-  flex: 1;
-}
-.card-link {
-  color: var(--sl-color-text-accent);
-  font-weight: 600;
-  margin-top: 1rem;
-}
-.home-footer {
-  display: flex;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding-block: 2rem;
-  border-top: 1px solid var(--home-border);
-  font-size: 0.875rem;
-  color: var(--sl-color-gray-2);
-}
-@media (max-width: 50rem) {
-  .showcase,
-  .framework-grid {
-    grid-template-columns: 1fr;
-    gap: 1.5rem;
-  }
-  .home-content section {
-    margin-block: 3rem;
-  }
-}
-
-.home-content section {
-  margin-block: 4.5rem;
-}
-.home-content .eyebrow {
-  font-family: var(--sl-font-mono);
-  font-size: 0.75rem;
-  letter-spacing: 0.1em;
-}
-.showcase {
-  grid-template-columns: 0.8fr 1.2fr;
-  gap: 3.5rem;
-}
-.section-intro {
-  border-inline-start: 2px solid var(--sl-color-accent);
-  padding-inline-start: 1.5rem;
-}
-.example-panel {
-  box-shadow: 0 18px 55px -30px #062a354d;
-}
-.panel-label {
-  background: var(--sl-color-accent-low);
-}
-.framework-card {
-  border-radius: 0.75rem;
-  border-top: 3px solid var(--sl-color-accent);
-  transition:
-    border-color 150ms ease,
-    background 150ms ease;
-}
-.framework-card:nth-child(2) {
-  border-top-color: #42b883;
-}
-.framework-card:nth-child(3) {
-  border-top-color: #339af0;
-}
-.framework-card .card-number {
-  font-size: 0.75rem;
-  overflow-wrap: anywhere;
-}
-.framework-card h3 {
-  margin-top: 1rem;
-}
-.home-footer {
-  font-family: var(--sl-font-mono);
-  font-size: 0.75rem;
-}
-@media (max-width: 50rem) {
-  .showcase {
-    grid-template-columns: 1fr;
-    gap: 2rem;
-  }
-}
-.setup-note { padding: 1rem 1.25rem; border-top: 1px solid var(--home-border); }
-.setup-note p { margin: 0 0 0.5rem; font-size: 0.875rem; }
-.setup-note a { font-size: 0.875rem; font-weight: 600; }
+.framework-card:hover { border-color: var(--sl-color-text-accent); background: var(--sl-color-bg-nav); }
+.framework-card:nth-child(2) { border-top-color: #42b883; }
+.framework-card:nth-child(3) { border-top-color: #339af0; }
+.card-number { font: 0.75rem var(--sl-font-mono); color: var(--sl-color-gray-2); overflow-wrap: anywhere; }
+.framework-card h3 { font-size: 1.75rem; margin-block: 1rem 0; }
+.framework-card h3 small { display: block; margin-top: 0.25rem; color: var(--sl-color-gray-2); font-size: 0.875rem; font-weight: 400; }
+.framework-card p { flex: 1; }
+.card-link { color: var(--sl-color-text-accent); font-weight: 600; margin-top: 1rem; }
 .task-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2rem; margin-top: 2rem; }
 .task-grid article { border-top: 1px solid var(--home-border); padding-top: 1.5rem; }
 .task-label { color: var(--sl-color-text-accent); font: 0.75rem var(--sl-font-mono); }
@@ -280,10 +184,12 @@ export function Message({ text, streaming }: { text: string; streaming: boolean 
 .closing-cta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2rem; padding: clamp(1.5rem, 4vw, 3rem); border-radius: 1rem; background: var(--sl-color-accent-low); }
 .closing-cta h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); max-width: 27rem; }
 .closing-cta > a { font-weight: 600; text-decoration: none; }
-@media (max-width: 50rem) { .task-grid { grid-template-columns: 1fr; gap: 1.5rem; } }
-@media (prefers-reduced-motion: reduce) {
-  .framework-card {
-    transition: none;
-  }
+.home-footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 1rem; padding-block: 2rem; border-top: 1px solid var(--home-border); color: var(--sl-color-gray-2); font: 0.75rem var(--sl-font-mono); }
+.home-content:lang(zh-CN) h2 { letter-spacing: 0; }
+@media (max-width: 50rem) {
+  .showcase, .framework-grid, .task-grid { grid-template-columns: 1fr; gap: 1.5rem; }
+  .showcase { gap: 2rem; }
+  .home-content section { margin-block: 3rem; }
 }
+@media (prefers-reduced-motion: reduce) { .framework-card { transition: none; } }
 </style>
