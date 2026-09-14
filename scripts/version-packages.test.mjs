@@ -43,6 +43,7 @@ function fixture(version = '3.0.0') {
   mkdirSync(guides, { recursive: true });
   for (const name of [
     'index.md',
+    'api-conventions.md',
     'extending-via-subpackage.md',
     'release-highlights.md',
     'migrating-to-v2.md',
@@ -78,13 +79,14 @@ test('the READMEs and the allowlisted guides follow the train version; historica
       ['apps', 'docs', 'content', 'reference', 'react.md'],
       ['apps', 'docs', 'content', 'reference', 'vue.md'],
       ['apps', 'docs', 'content', 'reference', 'react-mantine.md'],
-      ['apps', 'docs', 'content', 'guides', 'index.md'],
       ['apps', 'docs', 'content', 'guides', 'getting-started.md'],
       ['apps', 'docs', 'content', 'guides', 'extending-via-subpackage.md'],
     ])
       assert.equal(read(root, ...file), rewritten, file.join('/'));
     const historical = document('^3.0.0', '3.0.0');
     for (const name of [
+      'index.md',
+      'api-conventions.md',
       'release-highlights.md',
       'migrating-to-v2.md',
       'framework-transition.md',
@@ -130,7 +132,7 @@ test('the allowlist names the guides that carry a current-release snippet in thi
   const source = readFileSync(resolve('scripts', 'version-packages.mjs'), 'utf8');
   const [, list] = source.match(/const TRACKING_GUIDES = \[([^\]]*)\]/);
   const listed = [...list.matchAll(/'([^']+)'/g)].map(([, name]) => name);
-  assert.deepEqual(listed.sort(), ['extending-via-subpackage.md', 'getting-started.md', 'index.md']);
+  assert.deepEqual(listed.sort(), ['extending-via-subpackage.md', 'getting-started.md']);
   for (const name of listed)
     assert.match(read(resolve('apps', 'docs', 'content', 'guides'), name), /@ai-markdown\/react/);
 });
@@ -196,14 +198,19 @@ test('Chinese current snippets follow candidate and stable versions while transl
   try {
     const translated = join(root, 'apps', 'docs', 'content', 'translations', 'zh-cn', 'apps', 'docs', 'content');
     const currentPaths = [
-      'guides/index.md',
       'guides/getting-started.md',
       'guides/extending-via-subpackage.md',
       'reference/react.md',
       'reference/vue.md',
       'reference/react-mantine.md',
     ];
-    const historicalPaths = ['guides/release-highlights.md', 'guides/migrating-to-v2.md', 'guides/architecture.md'];
+    const historicalPaths = [
+      'guides/index.md',
+      'guides/api-conventions.md',
+      'guides/release-highlights.md',
+      'guides/migrating-to-v2.md',
+      'guides/architecture.md',
+    ];
     for (const file of [...currentPaths, ...historicalPaths]) {
       mkdirSync(join(translated, file.split('/')[0]), { recursive: true });
       writeFileSync(join(translated, file), document('^3.0.0', '3.0.0'));

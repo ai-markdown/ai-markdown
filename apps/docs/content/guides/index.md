@@ -1,94 +1,127 @@
-# Guide directory
+# Find a guide
 
-Start with the [documentation overview](../index.md) to choose an adapter, or [Getting started](getting-started.md) for installation and stylesheet requirements. The pages below are organized by task; React hooks and typography APIs do not apply to Vue.
+Choose a task below, or start with [installation](getting-started.md) if this is your first visit. Framework-specific guides are marked React, Vue or Mantine; shared parsing guides apply to all three.
 
 ## Choose your adapter
 
-| Application              | First render                                        | Next task                                                                              |
-| ------------------------ | --------------------------------------------------- | -------------------------------------------------------------------------------------- |
-| React                    | [React setup](react-quick-start.md)                 | [Streaming chat](streaming-chat-example.md), [custom components](custom-components.md) |
-| Vue                      | [Vue setup](vue-quick-start.md)                     | [Streaming](vue-streaming.md), [custom rendering](vue-customization.md)                |
-| React with Mantine       | [Mantine setup](react-mantine-quick-start.md)       | [Code blocks and diagrams](mantine-code-blocks.md)                                     |
-| Framework adapter author | [Build a framework adapter](building-an-adapter.md) | [Core and engine contracts](api/core-engine-contracts.md)                              |
+| Application              | First render                                        | Next task                                                                              | Reference                                                                                    |
+| ------------------------ | --------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| React                    | [React quick start](react-quick-start.md)           | [Streaming chat](streaming-chat-example.md), [custom components](custom-components.md) | [React components](../reference/react.md)                                                    |
+| Vue                      | [Vue quick start](vue-quick-start.md)               | [Streaming](vue-streaming.md), [custom rendering](vue-customization.md)                | [Vue API](../reference/vue.md)                                                               |
+| React with Mantine       | [Mantine quick start](react-mantine-quick-start.md) | [Code blocks and diagrams](mantine-code-blocks.md)                                     | [Mantine API](../reference/react-mantine.md)                                                 |
+| Framework adapter author | [Build a framework adapter](building-an-adapter.md) | [Core and engine contracts](api/core-engine-contracts.md)                              | [Core](../../../../packages/core/README.md), [Engine](../../../../packages/engine/README.md) |
 
-## By scenario (start here)
+Once the first render works, [Configure rendering](configuration.md) explains which layer to change: parsing options shared by React and Vue, or the component and styling APIs that differ per adapter.
 
-| Task                                                      | Guide                                                     |
-| --------------------------------------------------------- | --------------------------------------------------------- |
-| Understand accumulated input, completion and cancellation | [Streaming input](streaming-input.md)                     |
-| Split a logical document into sections                    | [Documents and references](documents-and-references.md)   |
-| Understand what incremental parsing saves                 | [Rendering and performance](rendering-and-performance.md) |
-| Try your own Markdown                                     | [Examples and Playgrounds](../examples.md)                |
-| Transform the source before parsing                       | [Content preprocessors](content-preprocessors.md)         |
-| Configure URL and HTML policies                           | [URL sanitization](url-sanitization.md)                   |
-| Render CJK text                                           | [CJK typography](cjk-typography.md)                       |
-| Upgrade from the old package scope                        | [Package migration](framework-transition.md)              |
-| See versioned changes                                     | [Release highlights](release-highlights.md)               |
+<span id="by-scenario-start-here"></span>
 
-## Full topic index
+## Streaming
 
-The sidebar lists the framework tutorials and API references. For repository work, use [development commands](development-commands.md), [core testing](core-testing.md), [soak coverage](soak-coverage.md), [Storybook development](storybook.md), [documentation and deployment](documentation-site.md), and [releasing](releasing.md).
+| Task                                                         | Guide                                                         | Applies to |
+| ------------------------------------------------------------ | ------------------------------------------------------------- | ---------- |
+| Understand accumulated input, completion and cancellation    | [Streaming input](streaming-input.md)                         | All        |
+| Build a chat view that renders tokens as they arrive         | [React streaming chat](streaming-chat-example.md)             | React      |
+| Smooth out bursty token delivery                             | [React smooth streaming](smooth-streaming.md)                 | React      |
+| Show a cursor at the streaming edge                          | [React streaming cursor](streaming-cursor.md)                 | React      |
+| Stream into a Vue component                                  | [Vue streaming](vue-streaming.md)                             | Vue        |
+| Split a logical document into sections that share references | [Documents and references](documents-and-references.md)       | All        |
+| Coordinate footnotes and links across React chunks           | [React documents and references](cross-chunk-coordination.md) | React      |
+| Coordinate footnotes and links across Vue chunks             | [Vue documents and references](vue-documents.md)              | Vue        |
 
-Historical [1.x-to-2.x migration](migrating-to-v2.md) and [benchmark measurements](benchmark.md) describe their named versions, not today's installation requirements.
+## Content and styling
 
-## A note on stability
+| Task                                               | Guide                                                    | Applies to |
+| -------------------------------------------------- | -------------------------------------------------------- | ---------- |
+| Choose which layer to configure                    | [Configure rendering](configuration.md)                  | All        |
+| Check which Markdown syntax renders                | [Markdown features](markdown-features.md)                | All        |
+| Render CJK and mixed-language text                 | [CJK typography](cjk-typography.md)                      | All        |
+| Transform the source before parsing                | [Content preprocessors](content-preprocessors.md)        | All        |
+| Configure URL and HTML policies                    | [URL sanitization](url-sanitization.md)                  | All        |
+| Replace rendered elements with your own components | [React custom components](custom-components.md)          | React      |
+| Swap the typography container                      | [React custom typography](custom-typography.md)          | React      |
+| Theme spacing, colors and fonts with CSS variables | [React CSS tokens](design-tokens.md)                     | React      |
+| Customize rendering and styles in Vue              | [Vue custom rendering and styling](vue-customization.md) | Vue        |
+| Try your own Markdown in the browser               | [Examples and playgrounds](../examples.md)               | All        |
 
-Public APIs follow semantic versioning from 3.0.0. Upgrade the release-train packages together. The table below describes the stable React API policy; earlier prereleases may have different contracts. Vue has a separate public prop/type surface documented in its [reference](../reference/vue.md).
+## Integrations and performance
 
-| Surface                                                                                                              | Stability under minor versions                                                      |
-| -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| Component props (`AIMarkdownProps`, `MantineAIMarkdownProps`)                                                        | Stable. Additions are non-breaking; renames/removals require a major bump           |
-| Hook signatures (the five narrow hooks, `useAIMarkdown`, `useDocumentRegistry`, `useStableValue`, `useStableRecord`) | Stable                                                                              |
-| Flat prop **names** and **roles** (incl. the sealed plugin names)                                                    | Stable                                                                              |
-| Flat prop **default values**                                                                                         | May shift under minor bumps as defaults evolve — override what you need locked      |
-| CSS custom property **names** (e.g. `--aim-spacing-md`)                                                              | Stable                                                                              |
-| CSS custom property **default values**                                                                               | May shift under minor bumps as the visual design evolves                            |
-| `UrlTransform`, `SanitizeSchema` types                                                                               | Track upstream `react-markdown` / `rehype-sanitize`; may change with their majors   |
-| `Registry` interface                                                                                                 | Stable read-only surface; mutator methods are intentionally not exported            |
-| Internal byte-for-byte HTML output                                                                                   | Not stable — prefer semantic assertions for application tests; use semantic queries |
-| Everything exported by `@ai-markdown/engine`                                                                         | Stable documented public contracts from 3.0.0 — see below                           |
+| Task                                             | Guide                                                           | Applies to |
+| ------------------------------------------------ | --------------------------------------------------------------- | ---------- |
+| Render code blocks and diagrams with Mantine     | [Mantine code blocks and diagrams](mantine-code-blocks.md)      | Mantine    |
+| Server-render and hydrate                        | [React SSR and hydration](react-ssr.md)                         | React      |
+| Server-render and manage the component lifecycle | [Vue SSR and lifecycle](vue-ssr.md)                             | Vue        |
+| Understand what incremental parsing saves        | [Rendering and performance](rendering-and-performance.md)       | All        |
+| Keep re-renders cheap while streaming            | [React streaming and performance](streaming-and-performance.md) | React      |
 
-**On the shared packages.** `@ai-markdown/core` owns framework-independent sessions, planning, contributions and smooth coordination; `@ai-markdown/engine` owns parsing, tree algorithms and registry primitives. Both are public packages with explicit exports. Installing `@ai-markdown/react` or `@ai-markdown/vue` resolves both as exact-version dependencies. Adapter authors can use them directly, keeping the five release-train packages (engine, core, react, vue and react-mantine) aligned at the same exact train version. Breaking changes to their documented public contracts require a new major version; the React package supplies the component and hook API used in the application guides.
+## API reference
 
-When in doubt, pin your overrides explicitly rather than relying on defaults.
+| Need                                   | Page                                                |
+| -------------------------------------- | --------------------------------------------------- |
+| Every React prop with defaults         | [React props reference](api/react-props.md)         |
+| Hooks and providers                    | [React hooks and providers](api/react-hooks.md)     |
+| Metadata passed to custom components   | [React metadata context](metadata-context.md)       |
+| Generic component and prop types       | [React TypeScript generics](typescript-generics.md) |
+| Vue props, slots and exports           | [Vue API](../reference/vue.md)                      |
+| Mantine props and configuration        | [Mantine API](../reference/react-mantine.md)        |
+| What stays stable under minor versions | [API conventions and stability](api-conventions.md) |
 
----
+## Troubleshooting and upgrades
 
-## Conventions used in this guide
+| Task                                  | Guide                                                   |
+| ------------------------------------- | ------------------------------------------------------- |
+| Fix a symptom across adapters         | [Troubleshooting](troubleshooting.md)                   |
+| Upgrade from the old package scope    | [Package migration](framework-transition.md)            |
+| Upgrade a 1.x installation to 2.0     | [Migrating from 1.x to 2.0](migrating-to-v2.md)         |
+| See versioned changes                 | [Release highlights](release-highlights.md)             |
+| Decide what to pin or assert in tests | [Stability policy](api-conventions.md#stability-policy) |
 
-- **Code blocks** are labeled by purpose. Complete recipes include their required imports; smaller fragments assume the surrounding application values, and wrapper templates use explicitly named placeholder modules. Install the package peers and import required CSS before using them.
-- **Footguns** sections, where present, collect anti-patterns and stability traps. For symptoms and fixes across adapters, see [Troubleshooting](troubleshooting.md).
-- `// ✅` and `// ⚠️` callouts mark recommended vs anti-pattern code lines.
-- Where a behavior is shared by `@ai-markdown/react` and `@ai-markdown/react-mantine`, the example uses `AIMarkdown` (React adapter); apply identically to `MantineAIMarkdown`.
+The 1.x-to-2.x migration page and the [July 2026 benchmark](benchmark.md) describe their named versions, not today's installation requirements.
 
----
+## Build an integration
 
-## Reporting issues with these docs
+| Task                               | Guide                                                                                                                                                                  |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build a framework adapter          | [Build a framework adapter](building-an-adapter.md)                                                                                                                    |
+| Rely on the shared packages        | [Core and engine contracts](api/core-engine-contracts.md)                                                                                                              |
+| Ship a React design-system package | [Build a React integration](extending-via-subpackage.md)                                                                                                               |
+| Read the package APIs              | [Core](../../../../packages/core/README.md), [Engine](../../../../packages/engine/README.md), [highlight plugin](../../../../packages/remark-mark-highlight/README.md) |
 
-If you find a documented API that doesn't behave as described, or a customization recipe that breaks at a version boundary, please open an issue with:
+<span id="full-topic-index"></span>
 
-- the document name and section,
-- the exact package version (`@ai-markdown/react@x.y.z` …),
-- a minimal reproduction,
-- the observed vs expected behavior.
+## Contributing
 
-Issue tracker: <https://github.com/ai-markdown/ai-markdown/issues>
+| Task                                         | Guide                                                                                            |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Run checks, tests and builds                 | [Development commands](development-commands.md)                                                  |
+| Learn which package owns which file          | [Architecture overview](architecture.md)                                                         |
+| Edit or deploy this site                     | [Documentation site](documentation-site.md)                                                      |
+| Develop the Storybook examples               | [Interactive examples](storybook.md)                                                             |
+| Measure a change                             | [Benchmarking](benchmarking.md)                                                                  |
+| Validate core contracts and state sequences  | [Core testing](core-testing.md)                                                                  |
+| Decide whether a change needs a soak         | [Soak coverage map](soak-coverage.md)                                                            |
+| Cut a release                                | [Releasing](releasing.md)                                                                        |
+| Keep a guide aligned with the implementation | [Reading the implementation](api-conventions.md#reading-the-implementation-alongside-the-guides) |
 
-## Reading the implementation alongside the guides
+<span id="release-maintenance"></span>
 
-Follow a value through its owner before changing its documentation. Public props are resolved in the React adapter; syntax and incremental algorithms belong to engine; pipeline sessions, plans and contribution orchestration belong to shared core; React providers, effects, and cached element construction belong to the React adapter; Mantine owns its code presentation and group defaults. An export in engine is not automatically a supported React API.
+Release maintenance: [published-artifact verification](releasing.md#repeatable-published-artifact-verification). The [3.0 release acceptance record](releasing-3.0.md) is an archive of that release.
 
-| Question                                   | Implementation to inspect                                | Guide to keep aligned                      |
-| ------------------------------------------ | -------------------------------------------------------- | ------------------------------------------ |
-| What does an omitted prop do?              | React prop resolver and the wrapper's parameter defaults | Package props reference, migration guide   |
-| When can an old parse or block be reused?  | Incremental advance, block planner, MarkdownContent      | Architecture, streaming and performance    |
-| Which chunk owns a reference?              | Document registry and consuming placeholder              | Cross-chunk coordination, URL sanitization |
-| What text is displayed or copied?          | Engine preprocessor chain and Mantine code renderer      | Content preprocessors, Mantine reference   |
-| When is a streamed result complete?        | Transport state, smooth controller, document queue       | Chat example, smooth streaming             |
-| What proves an optimization was exercised? | Coverage map, oracle tests, soak manifests               | Soak coverage, experimental record         |
+## Moved sections
 
-When contributing documentation, retain useful examples and historical measurements, but identify their version and scope. Verify current API names, defaults, relative links, and commands against this checkout. A successful build establishes that package artifacts compile; it does not by itself validate every prose claim or performance estimate.
+The following sections used to live on this page. Their content is unchanged.
 
-## Release maintenance
+<span id="a-note-on-stability"></span>
 
-- [Published-artifact verification](releasing.md#repeatable-published-artifact-verification)
+**A note on stability** is now the [stability policy](api-conventions.md#stability-policy) and the [shared packages](api-conventions.md#shared-packages) section.
+
+<span id="conventions-used-in-this-guide"></span>
+
+**Conventions used in this guide** is now [conventions used in the guides](api-conventions.md#conventions-used-in-the-guides).
+
+<span id="reporting-issues-with-these-docs"></span>
+
+**Reporting issues with these docs** is now [reporting issues with these docs](api-conventions.md#reporting-issues-with-these-docs).
+
+<span id="reading-the-implementation-alongside-the-guides"></span>
+
+**Reading the implementation alongside the guides** is now [reading the implementation alongside the guides](api-conventions.md#reading-the-implementation-alongside-the-guides).

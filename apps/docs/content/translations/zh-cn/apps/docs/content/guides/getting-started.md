@@ -1,4 +1,20 @@
-# 包与环境要求
+# 安装与选择框架
+
+先选择适合应用的适配器，再按对应的快速开始完成接入。每篇快速开始都包含安装命令、所需样式和完整的首次渲染示例。
+
+## 从你的框架开始
+
+| 应用                     | 对应指南                                         |
+| ------------------------ | ------------------------------------------------ |
+| React 19，使用自己的 UI  | [React 快速开始](react-quick-start.md)           |
+| Vue 3.5，使用自己的 UI   | [Vue 快速开始](vue-quick-start.md)               |
+| React 19，使用 Mantine 9 | [Mantine 快速开始](react-mantine-quick-start.md) |
+
+通常只需安装一个框架适配器及其对等依赖，Core 和 Engine 会自动安装。如果 React 应用需要 Mantine 的排版、代码高亮和图表展示，再选择 Mantine 集成。
+
+首次渲染成功后，继续阅读 [React 流式聊天](streaming-chat-example.md)或 [Vue 流式输出](vue-streaming.md)。下面的内容用于查询包的职责、兼容范围和已有项目的安装要求。
+
+## 当前版本
 
 AI Markdown 支持在 React 19 或 Vue 3.5 中渲染累积的 Markdown 内容。两个适配器共享底层解析引擎和协调逻辑；组件、定制方式和生命周期 API 遵循各自框架。
 

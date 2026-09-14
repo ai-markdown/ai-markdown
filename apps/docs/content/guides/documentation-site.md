@@ -1,6 +1,6 @@
 # Documentation site
 
-The independent documentation site uses [Astro Starlight](https://starlight.astro.build/getting-started/) in the private `apps/docs` workspace. React and Vue have separate API entries; Mantine is a React integration. Shared concepts and Core / Engine contracts have their own navigation groups. English keeps unprefixed URLs; Simplified Chinese uses `/zh-cn/`.
+The independent documentation site uses [Astro Starlight](https://starlight.astro.build/getting-started/) in the private `apps/docs` workspace. React and Vue have separate API entries; Mantine is a React integration. Application guides are organized by reader task; API reference, integration development and contributor material have separate navigation groups. English keeps unprefixed URLs; Simplified Chinese uses `/zh-cn/`.
 
 ## Run and build
 
@@ -26,9 +26,9 @@ No renderer package build is required. The site renders documentation and code e
 - `apps/docs/scripts/content.mjs` maps these sources to routes and generates Starlight frontmatter with an edit link to the canonical file. The adapter references declare their former README paths as source aliases, so existing README links and fragments still resolve to the full site reference.
 - `apps/docs/src/content/docs/` is generated and ignored by Git. Do not edit it. Development watches canonical sources and regenerates changed pages, including additions and deletions.
 
-The sidebar separates shared Concepts from React, Vue and Mantine (React) tutorials. Advanced material, contributor workflows and versioned release history have separate groups. Put a guide under the framework whose APIs it uses; do not label React hooks or typography recipes as shared capabilities.
+The sidebar groups application guides by task and labels framework-specific APIs explicitly. Keep API reference, integration-author guides and contributor workflows separate from onboarding. Do not label React hooks or typography recipes as shared capabilities.
 
-New top-level guides and API guides are included automatically. Add their navigation entries in `apps/docs/astro.config.mjs`. Internal planning/review directories are excluded. Retained release history is identified by version and is separate from current integration guidance.
+New top-level guides and API guides are included automatically. Add their navigation entries in `apps/docs/scripts/navigation.mjs`. Internal planning/review directories are excluded. Retained release history is identified by version and is separate from current integration guidance.
 
 ## Keep current versions accurate
 
@@ -111,3 +111,9 @@ gh run list --repo ai-markdown/ai-markdown.github.io --workflow publish.yml --li
 ```
 
 Wait for that run to succeed. Compare `/source-commit.txt` on the organization root with the intended source commit, then open the changed documentation pages. Verify `/ai-markdown/source-commit.txt` and the corresponding pages independently for the project mirror. Check Examples and its embedded Storybook as part of the assembled site; a docs-only local build does not establish that the catalog is deployed.
+
+## Navigation and reading paths
+
+`apps/docs/scripts/navigation.mjs` owns the bilingual sidebar labels and the previous/next links for framework tutorials. Organize application guides by reader task: getting started, streaming, content and styling, integrations and performance, then API reference. Keep integration-author and contributor material in their own groups. Add each canonical topic exactly once; translated routes use the same structure.
+
+`apps/docs/scripts/content.mjs` generates localized reading-path links with the deployment base. Keep framework quick starts pointed at their own streaming or integration guide, rather than the next framework in sidebar order. `navigation.test.mjs` checks topic coverage and framework paths in English and Chinese at both root and project URLs.

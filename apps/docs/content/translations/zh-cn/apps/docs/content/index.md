@@ -1,35 +1,54 @@
-# AI Markdown
+# 介绍
 
-在 React 和 Vue 中渲染 Markdown，支持持续返回的内容。先从对应框架的基础配置开始，再根据具体任务查阅对应指南。两个适配器共享底层解析和文档协调逻辑；组件结构、样式方案和生命周期 API 则各自遵循宿主框架。
+AI Markdown 用于在 React 和 Vue 中渲染 Markdown，也支持逐步返回的 AI 回答。它提供 GFM、数学公式与中日韩混排能力，并支持流式输出、自定义组件和共享引用。
+
+先把一条消息渲染出来，再按需要添加平滑输出、样式定制或文档协调。
+
+<span id="choose-your-framework"></span>
 
 ## 选择你的框架
 
-| 你的应用             | 从这里开始                                              | 提供的能力                                  |
-| -------------------- | ------------------------------------------------------- | ------------------------------------------- |
-| React 19             | [React 快速开始](guides/react-quick-start.md)           | 组件、Hooks 与可自定义的元素渲染器          |
-| Vue 3.5              | [Vue 快速开始](guides/vue-quick-start.md)               | 组件、作用域插槽与 setup 组合式函数         |
-| React 配合 Mantine 9 | [Mantine 快速开始](guides/react-mantine-quick-start.md) | 支持主题排版、语法高亮代码块与 Mermaid 图表 |
+| 你的应用             | 从这里开始                                              | 包含的配置                    |
+| -------------------- | ------------------------------------------------------- | ----------------------------- |
+| React 19             | [React 快速开始](guides/react-quick-start.md)           | 安装、样式与可运行的组件      |
+| Vue 3.5              | [Vue 快速开始](guides/vue-quick-start.md)               | 安装、样式与可运行的 Vue 组件 |
+| React 配合 Mantine 9 | [Mantine 快速开始](guides/react-mantine-quick-start.md) | 主题 Provider、代码高亮与图表 |
 
-[对比包和环境要求](guides/getting-started.md)。当 React 应用使用 Mantine 设计系统时，选择 Mantine 集成包。适配器开发者可以直接使用 core 和 engine；业务应用通常只需安装所选的框架适配器及其对等依赖。
+不确定该安装哪个包？先看[安装与选择框架](guides/getting-started.md)。想直接体验？[打开交互示例](examples:)。
+
+<span id="build-a-streaming-experience"></span>
 
 ## 构建流式体验
 
-对于常见的对话消息，将收到的文本累积到单个字符串中并传给一个渲染器。仅在单个逻辑文档确实需要由多个渲染器分块展示时，才使用文档协调功能。它负责跨片段解析共享引用与脚注，不会拼接被切断在组件边界两侧的语法结构。
+对于一条聊天回答，把收到的文本追加到同一个字符串中，再把当前完整字符串交给一个渲染器。应用负责网络连接，AI Markdown 负责内容呈现。
 
-1. 阅读[流式输入](guides/streaming-input.md)，了解数据源、完成状态与取消语义。
-2. 参考 [React 聊天示例](guides/streaming-chat-example.md)或 [Vue 流式指南](guides/vue-streaming.md)。
-3. 当页面排版需要独立的展示块时，引入[文档与引用](guides/documents-and-references.md)。
+1. **接收文本：**了解[输入、完成状态与取消](guides/streaming-input.md)。
+2. **呈现回答：**参考 [React 聊天示例](guides/streaming-chat-example.md)或 [Vue 流式指南](guides/vue-streaming.md)。
+3. **调整节奏：**添加 [React 平滑输出](guides/smooth-streaming.md)或 [Vue 平滑组件](guides/vue-streaming.md)。
 
-[打开交互示例](examples:)浏览目录，或选择 [Playground](examples.md#playgrounds-try-your-own-markdown) 测试自定义 Markdown。二者均在站内直接使用 Storybook 运行。
+只有将同一逻辑文档拆成多个展示区块时，才需要[文档协调](guides/documents-and-references.md)。普通聊天消息不需要这一步，也不要把网络数据包当作独立的 Markdown 组件。
 
 <span id="customize-rendering"></span>
+<span id="定制你的渲染器"></span>
 
-## 定制你的渲染器
+## 接入应用的样式与交互
 
-先从 [React 自定义组件](guides/custom-components.md)、[Vue 组件与插槽](guides/vue-customization.md)或 [Mantine 配置](reference/react-mantine.md#configuration)开始。查阅[指南目录](guides/index.md)获取预处理、URL 策略、排版与元数据的详细介绍。
+| 你想做什么          | 接着看                                                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| 替换渲染元素        | [React 自定义组件](guides/custom-components.md)或 [Vue 组件与样式](guides/vue-customization.md)                                               |
+| 调整排版            | [React 排版](guides/custom-typography.md)、[Vue 样式](guides/vue-customization.md)或 [Mantine 配置](reference/react-mantine.md#configuration) |
+| 处理中日韩混排      | [中日韩排版](guides/cjk-typography.md)                                                                                                        |
+| 控制链接与原始 HTML | [URL 与 HTML 策略](guides/url-sanitization.md)                                                                                                |
+| 使用服务端渲染      | [React SSR](guides/react-ssr.md)或 [Vue SSR](guides/vue-ssr.md)                                                                               |
+
+基础适配器把代码围栏渲染为代码文本。代码语法高亮与 Mermaid 图表需要 Mantine 集成或自定义组件。
 
 <span id="build-an-adapter"></span>
+<span id="go-deeper"></span>
+<span id="深入底层"></span>
 
-## 深入底层
+## 找到需要的说明
 
-[渲染与性能](guides/rendering-and-performance.md)区分了共享解析与框架渲染的不同开销。[核心与引擎契约](guides/api/core-engine-contracts.md)介绍了适配器的职责划分与生命周期。贡献者命令和维护历史记录在侧边栏中单独分组，方便随时查阅而不影响普通开发配置。
+先看[配置总览](guides/configuration.md)选择需要调整的部分，再按场景查阅[任务指南](guides/index.md)，或在 [React](reference/react.md)、[Vue](reference/vue.md)、[Mantine](reference/react-mantine.md) 参考中查询具体 API。遇到问题时，先看[常见问题排查](guides/troubleshooting.md)。
+
+适配器开发者可以继续阅读 [Core 与 Engine 契约](guides/api/core-engine-contracts.md)。开发命令、内部架构和发布档案集中在“参与贡献”中，使用组件前无需先读这些内容。

@@ -1221,7 +1221,7 @@ Mantine 围绕 core 提供排版、额外样式、pre 渲染器以及行为组�
 
 ### 5. 兼容性遵循公开接口契约
 
-公开属性与 hook 名称遵循 semver 契约。视觉默认值、精确 HTML 序列化结果、内部注册表细节以及 3.0 之前的引擎导出符号具有更窄的保证范围。在选择要在集成层中锁定的内容或在应用测试中进行断言时，请查阅[稳定性说明](index.md#a-note-on-stability)。
+公开属性与 hook 名称遵循 semver 契约。视觉默认值、精确 HTML 序列化结果、内部注册表细节以及 3.0 之前的引擎导出符号具有更窄的保证范围。在选择要在集成层中锁定的内容或在应用测试中进行断言时，请查阅[稳定性说明](api-conventions.md#stability-policy)。
 
 <span id="whats-been-intentionally-deferred"></span>
 

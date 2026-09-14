@@ -1194,7 +1194,7 @@ Keep historical sample counts and mutation results attached to their original co
 
 ### 5. Compatibility follows the public surface
 
-Public prop and hook names have a semver contract. Visual default values, exact HTML serialization, internal registry details, and pre-3.0 engine exports have narrower guarantees. Read [the stability table](index.md#a-note-on-stability) when choosing what to pin in an integration or assert in an application test.
+Public prop and hook names have a semver contract. Visual default values, exact HTML serialization, internal registry details, and pre-3.0 engine exports have narrower guarantees. Read [the stability table](api-conventions.md#stability-policy) when choosing what to pin in an integration or assert in an application test.
 
 ## What's been intentionally deferred
 

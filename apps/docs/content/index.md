@@ -1,35 +1,49 @@
-# AI Markdown
+# Introduction
 
-Render Markdown in React and Vue, including responses that arrive over time. Start with your framework's setup, then follow the guide for the task you need. Both adapters share parsing and document coordination; their components, styling and lifecycle APIs remain framework-specific.
+AI Markdown renders Markdown in React and Vue, including AI responses that arrive a little at a time. It supports GFM, math and mixed-language text, with controls for streaming, custom components and shared references.
+
+Start by rendering one message. Add smooth output, custom styling or document coordination when your application needs them.
 
 ## Choose your framework
 
-| Your application     | Start here                                                 | What it provides                                              |
-| -------------------- | ---------------------------------------------------------- | ------------------------------------------------------------- |
-| React 19             | [React quick start](guides/react-quick-start.md)           | Components, hooks and customizable element renderers          |
-| Vue 3.5              | [Vue quick start](guides/vue-quick-start.md)               | Components, scoped slots and setup composables                |
-| React with Mantine 9 | [Mantine quick start](guides/react-mantine-quick-start.md) | Theme-aware typography, highlighted code and Mermaid diagrams |
+| Your application     | Start here                                                 | Included setup                                 |
+| -------------------- | ---------------------------------------------------------- | ---------------------------------------------- |
+| React 19             | [React quick start](guides/react-quick-start.md)           | Installation, CSS and a working component      |
+| Vue 3.5              | [Vue quick start](guides/vue-quick-start.md)               | Installation, CSS and a working Vue component  |
+| React with Mantine 9 | [Mantine quick start](guides/react-mantine-quick-start.md) | Theme providers, highlighted code and diagrams |
 
-[Compare package and setup requirements](guides/getting-started.md). Choose Mantine when your React application uses that design system. Core and engine are available directly for adapter authors; applications normally install their framework adapter and its peers.
+Not sure which package to install? Start with [installation and framework selection](guides/getting-started.md). Want to try it first? [Open the interactive examples](examples:).
 
 ## Build a streaming experience
 
-For a typical chat message, accumulate incoming text into one string and update one renderer. Use document coordination only when one logical document is intentionally displayed by multiple renderers. It resolves shared references and footnotes; it does not join syntax split across component boundaries.
+For a chat response, append incoming text to one string and pass the complete current string to one renderer. The application handles the network connection; AI Markdown handles the rendered content.
 
-1. Read [Streaming input](guides/streaming-input.md) for source, completion and cancellation semantics.
-2. Follow the [React chat recipe](guides/streaming-chat-example.md) or [Vue streaming guide](guides/vue-streaming.md).
-3. Add [document coordination](guides/documents-and-references.md) when the layout requires independent sections.
+1. **Receive text:** understand [input, completion and cancellation](guides/streaming-input.md).
+2. **Render a response:** follow the [React chat recipe](guides/streaming-chat-example.md) or [Vue streaming guide](guides/vue-streaming.md).
+3. **Control the pace:** add [React smooth streaming](guides/smooth-streaming.md) or the [Vue smooth component](guides/vue-streaming.md).
 
-[Open Examples](examples:) to explore the catalogs, or choose a [Playground](examples.md#playgrounds-try-your-own-markdown) to try your own Markdown. Both use Storybook within the website.
+[Document coordination](guides/documents-and-references.md) is for one logical document deliberately displayed in multiple sections. A normal chat message does not need it; network packets are not separate Markdown components.
 
 <span id="customize-rendering"></span>
+<span id="customize-your-renderer"></span>
 
-## Customize your renderer
+## Make it fit your application
 
-Start with [React custom components](guides/custom-components.md), [Vue components and slots](guides/vue-customization.md), or [Mantine configuration](reference/react-mantine.md#configuration). Use the [guide directory](guides/index.md) for preprocessing, URL policies, typography and metadata.
+| You want to…                  | Read next                                                                                                                                                       |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Change rendered elements      | [React custom components](guides/custom-components.md) or [Vue components and styles](guides/vue-customization.md)                                              |
+| Adjust typography             | [React typography](guides/custom-typography.md), [Vue styles](guides/vue-customization.md) or [Mantine configuration](reference/react-mantine.md#configuration) |
+| Handle mixed-language content | [CJK typography](guides/cjk-typography.md)                                                                                                                      |
+| Control links and raw HTML    | [URL and HTML policies](guides/url-sanitization.md)                                                                                                             |
+| Use server rendering          | [React SSR](guides/react-ssr.md) or [Vue SSR](guides/vue-ssr.md)                                                                                                |
+
+The base adapters render code fences as code text. Syntax highlighting and Mermaid rendering require the Mantine integration or custom components.
 
 <span id="build-an-adapter"></span>
+<span id="go-deeper"></span>
 
-## Go deeper
+## Find the right level of detail
 
-[Rendering and performance](guides/rendering-and-performance.md) separates shared parsing from framework-specific rendering costs. [Core and engine contracts](guides/api/core-engine-contracts.md) cover adapter ownership and lifecycle. Contributor commands and historical records have their own sidebar groups so they stay available without interrupting application setup.
+Start with [configuration](guides/configuration.md) to choose the right setting. Use [Find a guide](guides/index.md) for a task, or the [React](reference/react.md), [Vue](reference/vue.md) and [Mantine](reference/react-mantine.md) references for an exact API. If something does not work, start with [troubleshooting](guides/troubleshooting.md).
+
+Adapter authors can continue to [Core and Engine contracts](guides/api/core-engine-contracts.md). Development commands, architecture and release archives live under **Contributing**; they are not prerequisites for using the library.

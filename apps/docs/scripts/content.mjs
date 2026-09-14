@@ -1,3 +1,6 @@
+import { env } from 'node:process';
+import { readingNavigation } from './navigation.mjs';
+import { normalizeBase } from './links.mjs';
 import { locales } from '../src/i18n/config.mjs';
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, relative, resolve } from 'node:path';
@@ -54,12 +57,15 @@ export function pages() {
 export function syncContent() {
   const entries = pages();
   const expected = new Set();
-  for (const { source, slug } of entries) {
+  for (const { source, slug, locale } of entries) {
     const raw = readFileSync(resolve(root, source), 'utf8');
     const heading = raw.match(/^# (.+)\r?\n/);
     if (!heading) throw new Error(`Expected a leading H1 in ${source}`);
     const title = heading[1].replace(/`/g, '');
-    const text = `---\ntitle: ${JSON.stringify(title)}\nslug: ${JSON.stringify(slug)}\neditUrl: ${JSON.stringify(`${repo}/edit/main/${source}`)}\n---\n${raw.slice(heading[0].length)}`;
+    const navigation = Object.entries(readingNavigation(slug, locale, normalizeBase(env.DOCS_BASE)))
+      .map(([key, value]) => `${key}: ${JSON.stringify(value)}\n`)
+      .join('');
+    const text = `---\ntitle: ${JSON.stringify(title)}\n${navigation}slug: ${JSON.stringify(slug)}\neditUrl: ${JSON.stringify(`${repo}/edit/main/${source}`)}\n---\n${raw.slice(heading[0].length)}`;
     const target = resolve(generated, `${slug || 'index'}.md`);
     expected.add(target);
     mkdirSync(dirname(target), { recursive: true });

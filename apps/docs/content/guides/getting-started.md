@@ -1,4 +1,20 @@
-# Packages and requirements
+# Installation
+
+Choose the adapter for your application, then follow its quick start. Each quick start includes the install command, required CSS and a complete first render.
+
+## Start with your framework
+
+| Application               | Follow this guide                                   |
+| ------------------------- | --------------------------------------------------- |
+| React 19 with your own UI | [React quick start](react-quick-start.md)           |
+| Vue 3.5 with your own UI  | [Vue quick start](vue-quick-start.md)               |
+| React 19 with Mantine 9   | [Mantine quick start](react-mantine-quick-start.md) |
+
+You normally install one framework adapter and its peer dependencies. Core and engine are installed automatically. Choose Mantine when your React application needs that integration's typography, code highlighting and diagrams.
+
+Once the first render works, continue to [React streaming chat](streaming-chat-example.md) or [Vue streaming](vue-streaming.md). The rest of this page is a reference for package selection, compatibility and existing installations.
+
+## Current release
 
 ai-markdown renders accumulated Markdown in React 19 or Vue 3.5. Both adapters use the same parsing engine and shared orchestration; their components, customization and lifecycle APIs follow their host framework. This guide targets the `3.0.1` package train. For a stable release, install without a dist-tag to select `latest`. Pin an exact version and retain your lockfile for reproducible integrations; prerelease testing requires an explicit candidate version.
 

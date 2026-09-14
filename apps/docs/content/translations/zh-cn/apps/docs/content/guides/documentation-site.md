@@ -1,6 +1,6 @@
 # 文档站点
 
-独立的文档站点在私有的 `apps/docs` 工作区中使用 [Astro Starlight](https://starlight.astro.build/getting-started/) 构建。React 和 Vue 拥有独立的 API 入口；Mantine 属于 React 集成。共享概念与 Core / Engine 契约拥有各自独立的导航分组。英文保持无前缀的 URL；简体中文使用 `/zh-cn/`。
+独立的文档站点在私有的 `apps/docs` 工作区中使用 [Astro Starlight](https://starlight.astro.build/getting-started/) 构建。React 和 Vue 拥有独立的 API 入口；Mantine 属于 React 集成。应用指南按读者任务组织，API 参考、集成开发和贡献者资料分别分组。英文保持无前缀的 URL；简体中文使用 `/zh-cn/`。
 
 <span id="run-and-build"></span>
 
@@ -30,9 +30,9 @@ pnpm preview:docs  # Serve the production build locally
 - `apps/docs/scripts/content.mjs` 将这些源文件映射为路由，并生成带有规范文件编辑链接的 Starlight frontmatter。适配器参考文档将其旧的 README 路径声明为源别名，以便原有的 README 链接和锚点仍能解析到完整的站点参考文档。
 - `apps/docs/src/content/docs/` 是由脚本生成并被 Git 忽略的目录。请勿手动编辑。开发模式会监视规范源文件，并重新生成发生变动的页面，包括文件的添加与删除。
 
-侧边栏将共享的概念与 React、Vue 和 Mantine (React) 教程区分开。进阶内容、贡献者工作流与各版本历史单独成组。请将指南归入其所使用 API 的框架分类下；切勿将 React Hook 或排版方案归标为共享能力。
+侧边栏按任务组织应用指南，并明确标注框架专用 API。API 参考、集成开发与贡献者工作流独立分组，不放在入门路径中。不要将 React Hook 或排版方案标为共享能力。
 
-新增的顶层指南与 API 指南会自动包含进来。在 `apps/docs/astro.config.mjs` 中添加对应的导航条目。内部规划与审查目录会被排除在外。保留的发布历史按版本划分，与当前的集成指南相互独立。
+新增的顶层指南与 API 指南会自动包含进来。在 `apps/docs/scripts/navigation.mjs` 中添加对应的导航条目。内部规划与审查目录会被排除在外。保留的发布历史按版本划分，与当前的集成指南相互独立。
 
 <span id="keep-current-versions-accurate"></span>
 
@@ -127,3 +127,9 @@ gh run list --repo ai-markdown/ai-markdown.github.io --workflow publish.yml --li
 ```
 
 等待该运行成功完成。将组织根站点上的 `/source-commit.txt` 与预期的源码提交进行比对，然后打开修改后的文档页面。对于项目镜像站点，独立验证 `/ai-markdown/source-commit.txt` 及对应页面。检查示例页面及其嵌入的 Storybook，确认其作为组合站点的一部分正常工作；仅在本地进行文档构建并不能保证组件目录已成功部署。
+
+## 导航与阅读路径
+
+`apps/docs/scripts/navigation.mjs` 统一管理中英文侧边栏名称，以及框架教程的上一页、下一页链接。应用指南按读者任务组织：开始使用、流式体验、内容与样式、集成与性能、API 参考。集成开发者与贡献者资料分别分组。每个主题只列一次，翻译页面沿用相同结构。
+
+`apps/docs/scripts/content.mjs` 根据语言和部署前缀生成阅读路径。框架快速开始的下一页应指向对应的流式或集成教程，不要直接跳到另一个框架。`navigation.test.mjs` 检查目录覆盖，以及根域名和仓库子路径下的中英文阅读顺序。

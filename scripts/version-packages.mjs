@@ -110,7 +110,7 @@ const TRANSLATED_CONTENT_DIR = join(
   'docs',
   'content'
 );
-const TRACKING_GUIDES = ['index.md', 'extending-via-subpackage.md', 'getting-started.md'];
+const TRACKING_GUIDES = ['extending-via-subpackage.md', 'getting-started.md'];
 const readmePaths = [
   join(ROOT, 'README.md'),
   ...packageDirs.map((dir) => join(PACKAGES_DIR, dir, 'README.md')),
