@@ -761,7 +761,14 @@ split (LF, CRLF, CR), in `fuzzGenerators.ts` (`taskReclaimedArb`,
 - first content is spent by anything that is not that paragraph: `- #
 first` / blank / `  [x] a`, `- - child` / blank / `  [x] a`, a fence,
   indented code (`-     [x] a`, five columns), and by a nested container
-  opened on the marker line; `- [x] a [x]` releases only the first box.
+  opened on the marker line; `- [x] a [x]` releases only the first box;
+- an EMPTY marker line never certifies (`-` / `  [x] a`): micromark makes
+  it a task item at the document start or after a heading, but a
+  paragraph whose `[x]` is a link reference when an indented code block
+  precedes it (v3.1.0 release soak, seed 202609405, shrunk to
+  `\tcode` / blank / `-` / `  [x] after` + late `[x]: /late`). The
+  tracker does not model the preceding block precisely enough, so the
+  item's first content counts as consumed and the box keeps its taint.
 
 Unknown branches — the tracker keeps the ordinary taint and proves
 nothing until a root sync point (a confirmed blank line followed by a

@@ -97,9 +97,12 @@ const CASES: DecisionCase[] = [
     checked: [true],
   },
   {
+    // micromark makes this a task item here, but a paragraph when an
+    // indented code block precedes it (release soak seed 202609405), so an
+    // empty marker line never certifies: the taint stays.
     name: 'empty marker line, first content next',
     source: '-\n  [x] a\n\noutside\n\n',
-    xTaint: 0,
+    xTaint: 1,
     unknown: false,
     checked: [true],
   },

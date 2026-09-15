@@ -386,7 +386,15 @@ function pushItem(t: TaskContext, m: MarkerParse, start: number): void {
     size: m.size,
     ordered: m.ordered,
     marker: m.marker,
-    firstContent: m.blankRest && !m.emptyRest ? 'consumed' : 'unseen',
+    // A marker line with nothing after the marker never certifies a box.
+    // micromark does not always make such a line a list item: after an
+    // indented code block, `-\n  [x] after` is a paragraph whose `[x]` is
+    // a link reference (v3.1.0 release soak, seed 202609405), while at the
+    // document start or after a heading it is a list item with a task
+    // checkbox. The tracker does not model the preceding block precisely
+    // enough to tell the two apart, so the first content is treated as
+    // consumed and the box keeps its reference taint (an over-block).
+    firstContent: m.blankRest ? 'consumed' : 'unseen',
     initialBlank: m.blankRest,
     furtherBlank: false,
   });

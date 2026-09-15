@@ -462,6 +462,16 @@ describe('splice equivalence — fuzz-found regressions', () => {
     // fence and the footer's positions rebased by the tail delta. These
     // splice, and must keep splicing.
     ['f30-footnote-open-fence-tab', '[^a]: b\n\n\t```\n\n<b>x</b>\n\np\n', [1], 0],
+    // v3.1.0 release soak (seed 202609405): after an indented code block an
+    // empty marker line `-` followed by `  [x] ...` is a paragraph in
+    // micromark, not a task item, so a late `[x]:` definition turns the box
+    // into a link; the tracker had certified it as a checkbox.
+    [
+      'soak-empty-marker-after-indented-code',
+      '\tcode indented by tab\n\tsecond code line\n\n-\n  [x] after an empty marker\n\nfoo line\n\u3000\n\u3000\nbar joins the paragraph\n\nplain prose keeps flowing here\n\nplain prose keeps flowing here\n\n[x]: /late\n',
+      [1, 4, 4, 4, 4, 4, 4, 4],
+      0,
+    ],
     ['f30-footnote-open-fence-spaces-defaults', '[^a]: b\n\n    ```\n\n<b>x</b>\n\np\n', [4, 4, 4, 1], 1],
     ['f30-footnote-open-math', '[^a]: b\n\n\t$$\n\n<b>x</b>\n\np\n', [3, 30], 2],
     ['f30-footnote-open-fence-container-closer', '[^a]: b\n\n\t```\n\n[^c]: d\n\n<b>x</b>\n\np\n', [1], 0],
