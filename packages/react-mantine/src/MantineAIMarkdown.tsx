@@ -6,7 +6,8 @@
  * - {@link MantineAIMDefaultExtraStyles} as the extra styles wrapper
  * - {@link MantineAIMPreCode} as the default `<pre>` component (with syntax
  *   highlighting via Mantine's CodeHighlight and mermaid diagram support)
- * - Automatic color scheme detection via Mantine's `useComputedColorScheme`
+ * - Automatic color scheme detection from Mantine's provider, with `auto`
+ *   resolved against the system preference on the first client frame
  *
  * @module MantineAIMarkdown
  */
@@ -27,7 +28,7 @@ import MantineAIMarkdownTypography from './components/typography/MantineTypograp
 import MantineAIMDefaultExtraStyles from './components/extra-styles/DefaultExtraStyles';
 import { MantineAIMarkdownMetadata, MantineCodeBlockOptions } from './defs';
 import MantineAIMPreCode from './components/customized/PreCode';
-import { useComputedColorScheme } from '@mantine/core';
+import { useMantineComputedColorScheme } from './hooks/useMantineComputedColorScheme';
 
 /**
  * Props for the {@link MantineAIMarkdown} component.
@@ -131,7 +132,7 @@ const DefaultCustomComponents: AIMarkdownCustomComponents = {
  *
  * Merges caller-provided `customComponents` with the Mantine defaults (the caller's
  * overrides take precedence). Automatically resolves the color scheme from Mantine's
- * `useComputedColorScheme` when no explicit `colorScheme` prop is provided.
+ * provider (`useMantineComputedColorScheme`) when no explicit `colorScheme` prop is provided.
  *
  * @typeParam TMetadata - Metadata type.
  */
@@ -149,7 +150,7 @@ const MantineAIMarkdownComponent = <TMetadata extends MantineAIMarkdownMetadata 
     return stableCustomComponents ? { ...DefaultCustomComponents, ...stableCustomComponents } : DefaultCustomComponents;
   }, [stableCustomComponents]);
 
-  const computedColorScheme = useComputedColorScheme('light');
+  const computedColorScheme = useMantineComputedColorScheme();
 
   // Mantine's stability firewall: `codeBlock` is terminated here (it feeds
   // the behaviors Provider below, not the core prop surface).

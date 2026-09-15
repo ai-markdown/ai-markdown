@@ -10,7 +10,7 @@ const meta: Meta = {
     docs: {
       description: {
         component:
-          'An orphan footnote definition has no reader yet. preserveOrphanReferences determines whether its footer remains visible. Vue defaults to false and configures this policy per renderer; it does not copy the React provider override API. Compare both policies on identical source, then add the missing citation. The fixture is deliberately split to model an unfinished document.',
+          'An orphan footnote definition has no reader yet. preserveOrphanReferences determines whether its footer remains visible. A standalone Vue renderer defaults to false; inside AIMarkdownDocuments the wrapper prop of the same name (default true) wins over each chunk prop, as in React. Compare both policies on identical standalone renderers, then add the missing citation. The fixture is deliberately split to model an unfinished document.',
       },
     },
   },

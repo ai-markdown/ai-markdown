@@ -3,7 +3,13 @@ export { AIMarkdownStreamingCursor } from './cursor';
 export { AIMarkdownDocuments } from './documents';
 export { AIMarkdownSmoothStream, useSmoothStream, useDocumentSmoothStream } from './smooth';
 export type { SmoothStreamInput, DocumentSmoothStreamInput } from './smooth';
-export type { AIMarkdownProps, MarkdownComponents, MarkdownElementContext, MarkdownElementSlot } from './types';
+export type {
+  AIMarkdownProps,
+  AIMarkdownDocumentsProps,
+  MarkdownComponents,
+  MarkdownElementContext,
+  MarkdownElementSlot,
+} from './types';
 export {
   defaultEnginePlugins,
   highlight,

@@ -33,7 +33,7 @@ export default defineComponent({
 });
 ```
 
-Mapped components receive sanitized attributes plus `node`, `streaming` and `metadata`. Declare the context props you consume so they do not accidentally fall through as DOM attributes. The default slot contains converted Vue children; forward attributes deliberately.
+Mapped components receive sanitized attributes. The context values `node`, `streaming` and `metadata` are opt-in: the renderer passes each one only to a component that declares it as a prop, so an undeclared context value never falls through to the DOM as an attribute. The default slot contains converted Vue children; forward attributes deliberately.
 
 ## Override an element with a scoped slot
 

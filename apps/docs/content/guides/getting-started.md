@@ -69,7 +69,7 @@ Follow the [Mantine quick start](react-mantine-quick-start.md) for installation,
 | Smooth a source                | `AIMarkdownSmoothStream`, hooks accepting current option objects  | `AIMarkdownSmoothStream`, setup composables accepting live getters                    |
 | Customize smooth waiting UI    | `waiting` prop                                                    | `waiting` slot                                                                        |
 | Share references               | React `AIMarkdownDocuments` with explicit `documentId`            | Vue `AIMarkdownDocuments` with explicit `document-id`                                 |
-| Retain orphan references       | Renderer prop and document-provider policy                        | Per-renderer `preserveOrphanReferences` (default `false`)                             |
+| Retain orphan references       | Renderer prop and document-provider policy                        | Renderer prop (default `false`) and `AIMarkdownDocuments` policy (default `true`)     |
 | Toggle rendered block cache    | `blockMemo` prop                                                  | No `blockMemo` prop                                                                   |
 
 Both adapters enable incremental parsing by default on the client. Both accept `enginePlugins`, `contentPreprocessors`, `sanitizeSchema` and `urlTransform`, but share only the documented contracts, not every prop or default. Keep plugin arrays and policy objects stable until configuration changes. Selecting plugins replaces the enabled set; it does not append arbitrary remark plugins.

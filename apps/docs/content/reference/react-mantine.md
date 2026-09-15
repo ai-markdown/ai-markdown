@@ -12,7 +12,7 @@ Parsing, URL policy, metadata, and cross-chunk references remain engine/React ad
 - **Syntax highlighting** -- code blocks render via `@mantine/code-highlight` (powered by highlight.js), with language-labelled tabs, expand/collapse, and optional auto-detection for unlabelled blocks
 - **Mermaid diagrams** -- fenced `mermaid` code blocks render as interactive SVG diagrams with dark/light theme support, source toggle, copy, and open-in-new-window
 - **JSON pretty-print** -- fenced `json` code blocks are validated and formatted with 2-space indent while retaining numeric tokens, duplicate keys, and key order; string values that are themselves JSON documents (an object or array — the tool-call transcript shape) are expanded too, primitive-looking strings (`"true"`, `"123"`) are left as written
-- **Automatic color scheme** -- detects Mantine's computed color scheme (`useComputedColorScheme`) and forwards it to the core renderer when no explicit `colorScheme` prop is supplied
+- **Automatic color scheme** -- follows the active `MantineProvider`; under `auto` the system preference is read on the first client frame (server output is light), and the result is forwarded to the core renderer when no explicit `colorScheme` prop is supplied
 - **Mantine-scoped CSS** -- extra-styles wrapper overrides Mantine spacing/font-size custom properties to use relative `em` units, giving consistent scaling at any base font size
 
 All React adapter features (GFM, LaTeX math, CJK support, streaming, metadata context, content preprocessors, custom components, cross-chunk coordination via `<AIMarkdownDocuments>`) are inherited unchanged from `@ai-markdown/react`. See the [React reference](react.md) for the base API.
@@ -30,14 +30,14 @@ All React adapter features (GFM, LaTeX math, CJK support, streaming, metadata co
 
 ## Compatibility
 
-|                |                                                                                                        |
-| -------------- | ------------------------------------------------------------------------------------------------------ |
-| Mantine        | `@mantine/core` ^9 and `@mantine/code-highlight` ^9 (peer dependencies)                                |
-| highlight.js   | ^11.11.2 (peer; loaded on demand for auto-detection, otherwise via your adapter)                       |
-| React          | ^19.0.0                                                                                                |
-| Node           | `^20.19.0 \|\| >=22.12.0` (`engines.node`)                                                             |
-| Module formats | ESM and CJS with types; the compiled stylesheet is exported as `@ai-markdown/react-mantine/styles.css` |
-| React adapter  | [Peer range below](#peer-dependencies); upgrade both packages together                                 |
+|                |                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Mantine        | `@mantine/core` ^9 and `@mantine/code-highlight` ^9 (peer dependencies)                                                               |
+| highlight.js   | ^11.11.2 (optional peer; never imported by the package — used by your adapter, and by auto-detection through `codeBlock.highlightJs`) |
+| React          | ^19.0.0                                                                                                                               |
+| Node           | `^20.19.0 \|\| >=22.12.0` (`engines.node`)                                                                                            |
+| Module formats | ESM and CJS with types; the compiled stylesheet is exported as `@ai-markdown/react-mantine/styles.css`                                |
+| React adapter  | [Peer range below](#peer-dependencies); upgrade both packages together                                                                |
 
 ## Installation
 
@@ -72,6 +72,8 @@ Mantine uses the React adapter and does not depend directly on shared core. Vue 
   "highlight.js": "^11.11.2"
 }
 ```
+
+`highlight.js` is declared optional (`peerDependenciesMeta`). The package contains no import of it, so a build without it succeeds; install it for Mantine's highlight.js adapter and for language auto-detection, which takes the instance or a loader through `codeBlock.highlightJs`.
 
 ### CSS Dependencies
 
@@ -128,7 +130,7 @@ function StreamingChat({ content, isStreaming }: { content: string; isStreaming:
 
 | Prop               | Type                               | Default                          | Description                                                                                                                                                                                       |
 | ------------------ | ---------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `colorScheme`      | `AIMarkdownColorScheme`            | Auto-detected                    | Color scheme. When omitted, defaults to Mantine's computed color scheme via `useComputedColorScheme('light')`.                                                                                    |
+| `colorScheme`      | `AIMarkdownColorScheme`            | Auto-detected                    | Color scheme. When omitted, follows the `MantineProvider`: its `light`/`dark`, or under `auto` the system preference (light on the server).                                                       |
 | `customComponents` | `AIMarkdownCustomComponents`       | Mantine defaults                 | Component overrides, merged with Mantine's built-in `<pre>` handler. Caller overrides take precedence -- including `pre` here disables Mantine's code-block features.                             |
 | `Typography`       | `AIMarkdownTypographyComponent`    | `MantineAIMarkdownTypography`    | Typography wrapper component.                                                                                                                                                                     |
 | `ExtraStyles`      | `AIMarkdownExtraStylesComponent`   | `MantineAIMDefaultExtraStyles`   | Extra style wrapper rendered between typography and content.                                                                                                                                      |
@@ -140,15 +142,17 @@ The `codeBlock` prop transports a partial behavior group. An absent or null grou
 
 ### `codeBlock` (`Partial<MantineCodeBlockOptions>`)
 
-| Field                       | Type      | Default | Behavior                                                                                 |
-| --------------------------- | --------- | ------- | ---------------------------------------------------------------------------------------- |
-| `defaultExpanded`           | `boolean` | `true`  | Initial expanded state; false starts long blocks collapsed with an expand action         |
-| `autoDetectUnknownLanguage` | `boolean` | `false` | Guess an unannotated block's language with highlight.js                                  |
-| `formatJson`                | `boolean` | `true`  | Format valid JSON for display while preserving numeric tokens, duplicate keys, and order |
-| `expandNestedJson`          | `boolean` | `true`  | While formatting, expand string values that contain JSON objects or arrays               |
-| `highlightIntervalMs`       | `number`  | `50`    | Coalesce appended code display updates during streaming; zero displays every update      |
+| Field                       | Type                               | Default | Behavior                                                                                                                                                                                                                                                                        |
+| --------------------------- | ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `defaultExpanded`           | `boolean`                          | `true`  | Initial expanded state; false starts long blocks collapsed with an expand action                                                                                                                                                                                                |
+| `autoDetectUnknownLanguage` | `boolean`                          | `false` | Guess an unannotated block's language with highlight.js; needs `highlightJs`, otherwise inert (one warning)                                                                                                                                                                     |
+| `highlightJs`               | `MantineHighlightJsSource \| null` | `null`  | The highlight.js instance auto-detection runs with (the one passed to `createHighlightJsAdapter`, or a `highlight.js/lib/core` instance with your languages), or a loader such as `() => import('highlight.js')`. Keep a loader at module scope: the group is compared by value |
+| `formatJson`                | `boolean`                          | `true`  | Format valid JSON for display while preserving numeric tokens, duplicate keys, and order                                                                                                                                                                                        |
+| `expandNestedJson`          | `boolean`                          | `true`  | While formatting, expand string values that contain JSON objects or arrays                                                                                                                                                                                                      |
+| `highlightIntervalMs`       | `number`                           | `50`    | Coalesce appended code display updates during streaming; zero displays every update                                                                                                                                                                                             |
+| `mermaidIntervalMs`         | `number`                           | `300`   | Shortest time between two mermaid render attempts of one block while streaming; the final source renders once streaming ends; zero attempts every update                                                                                                                        |
 
-Explicit undefined fields retain their shipped defaults. The highlight interval must be finite and non-negative; invalid values fall back to 50 ms. Do not assume that null is a supported value for individual fields merely because null at the group boundary counts as absent.
+Explicit undefined fields retain their shipped defaults. Both intervals must be finite and non-negative; invalid values fall back to the defaults (50 ms and 300 ms). Do not assume that null is a supported value for individual fields merely because null at the group boundary counts as absent (`highlightJs` is the one field where `null` means "none").
 
 ### Example: Collapsed Code Blocks
 
@@ -251,7 +255,7 @@ See [Mermaid Diagrams](../guides/mantine-code-blocks.md#mermaid-diagrams) for th
 
 1. Explicit non-null `colorScheme` prop
    (undefined uses the wrapper default; runtime null reaches the React adapter’s fallback)
-2. Mantine's `useComputedColorScheme('light')` -- the live computed scheme from the active `MantineProvider`
+2. The active `MantineProvider`'s scheme: `light` or `dark` as set, or under `auto` the system `prefers-color-scheme` query, read on the first client frame through `useSyncExternalStore` (server output is light; hydration re-renders to the client value without a mismatch). Mantine's own `useComputedColorScheme` is not used because it seeds `auto` with its default and reads the query in an effect, which committed a light frame first on dark systems.
 
 ```tsx
 // Follows Mantine's color scheme automatically
@@ -341,7 +345,7 @@ See [apps/docs/content/guides/smooth-streaming.md](https://ai-markdown.github.io
        Typography          = MantineAIMarkdownTypography      (Mantine <Typography>)
        ExtraStyles         = MantineAIMDefaultExtraStyles     (aim-mantine-extra-styles scope)
        customComponents.pre = MantineAIMPreCode               (CodeHighlight + Mermaid + JSON pretty-print)
-       colorScheme         = useComputedColorScheme('light')  (when not overridden)
+       colorScheme         = provider scheme / system query    (when not overridden)
 ```
 
 Caller-provided `Typography`, `ExtraStyles`, and `customComponents` props override the Mantine defaults at their respective slots. Inside the wrapped `<AIMarkdown>`, the rest of the render pipeline (the five per-system contexts, content preprocessors, remark/rehype plugin chain) is identical to the standalone React adapter -- see the [React architecture overview](react.md#architecture-overview).
@@ -362,6 +366,7 @@ Caller-provided `Typography`, `ExtraStyles`, and `customComponents` props overri
 - `MantineAIMarkdownProps`
 - `MantineAIMarkdownMetadata`
 - `MantineCodeBlockOptions` -- the `codeBlock` group shape
+- `MantineHighlightJsLike` / `MantineHighlightJsSource` -- what `codeBlock.highlightJs` accepts (an instance with `highlightAuto`, or a loader returning it or its module namespace)
 - `MantineBehaviorProps` -- input type of `defineMantineBehaviors`
 
 ### Constants
@@ -370,7 +375,7 @@ Caller-provided `Typography`, `ExtraStyles`, and `customComponents` props overri
 
 ### Asset helpers
 
-- `preloadMantineCodeAssets()` — starts the lazy Mermaid and auto-detection imports; idempotent, with renderer fallback if loading fails
+- `preloadMantineCodeAssets({ highlightJs? })` — starts the lazy Mermaid import, and runs the given highlight.js loader (pass the same function you give `codeBlock.highlightJs`; the cache is keyed by identity); idempotent, with renderer fallback if loading fails
 
 ### Factories
 

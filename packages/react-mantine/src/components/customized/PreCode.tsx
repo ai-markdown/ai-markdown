@@ -9,38 +9,76 @@ import { CopyButton } from '@mantine/core';
 import { prettyPrintJson } from './formatJson';
 import { createJsonCompletenessScanner } from './jsonCompleteness';
 import { useCodeFrame } from './useCodeFrame';
+import type { MantineHighlightJsLike, MantineHighlightJsSource } from '../../defs';
 export { jsonLooksComplete } from './jsonCompleteness';
 export { prettyPrintJson } from './formatJson';
 
 /**
- * highlight.js is NOT imported statically any more: the root entry carries
- * every language definition (~130 KB gzip) and the only always-on use was a
- * `getLanguage()` existence check that Mantine's own adapter already
- * performs (unknown language → plaintext). Auto-detection is the one real
- * consumer, and it loads the module on demand — only when
- * `autoDetectUnknownLanguage` is on and an unlabelled block shows up
- * (2026-08 project review, pkg-small-02: the static import defeated
- * consumers' `highlight.js/lib/core` slimming). Consumers who want it (and
- * mermaid) in the main bundle up front call `preloadMantineCodeAssets()`
- * at app start, or simply import the modules themselves.
+ * This package does not import `highlight.js` at all. The only consumer is
+ * language auto-detection, and it takes highlight.js from
+ * `codeBlock.highlightJs`: the instance the app already hands to
+ * `createHighlightJsAdapter`, or a loader such as `() => import('highlight.js')`.
+ *
+ * History: a static root import defeated consumers' `highlight.js/lib/core`
+ * slimming (2026-08 project review, pkg-small-02), so it became a lazy
+ * `import('highlight.js')`. That still left a literal specifier in the
+ * bundle: Vite (Rollup) and webpack fail the build when a literal import
+ * cannot be resolved, so the peer could not be optional and a Shiki-only app
+ * had to install highlight.js anyway. Injection also detects only among the
+ * languages the consumer registered, which is what its adapter can
+ * highlight.
  */
-let hljsAutoPromise: Promise<{ highlightAuto: (code: string) => { language?: string } }> | null = null;
-export const loadHljsForAutoDetect = () => {
-  // A rejected load (transient network failure) is NOT cached: the next
-  // attempt retries instead of leaving autodetection dead for the page.
-  hljsAutoPromise ??= import('highlight.js').then(
-    (m) => m.default,
-    (err: unknown) => {
-      hljsAutoPromise = null;
-      throw err;
-    }
+const loaderCache = new WeakMap<() => unknown, Promise<MantineHighlightJsLike>>();
+
+const isHighlightJsLike = (value: unknown): value is MantineHighlightJsLike =>
+  typeof (value as MantineHighlightJsLike | null)?.highlightAuto === 'function';
+
+/**
+ * Resolve the configured source to a highlight.js instance. Loader results
+ * are cached per loader identity so the download happens once; a rejected
+ * load (transient network failure) is NOT cached, so the next attempt
+ * retries instead of leaving auto-detection dead for the page.
+ */
+export const resolveHighlightJs = (source: MantineHighlightJsSource): Promise<MantineHighlightJsLike> => {
+  if (typeof source !== 'function') return Promise.resolve(source);
+  let promise = loaderCache.get(source);
+  if (!promise) {
+    // `Promise.resolve().then` turns a synchronous throw inside the loader
+    // into a rejection, so callers only need the rejection path.
+    promise = Promise.resolve()
+      .then(() => source())
+      .then(
+        (loaded) => {
+          const instance = isHighlightJsLike(loaded) ? loaded : (loaded as { default?: unknown }).default;
+          if (!isHighlightJsLike(instance)) {
+            throw new TypeError('codeBlock.highlightJs loader did not resolve to a highlight.js instance');
+          }
+          return instance;
+        },
+        (err: unknown) => {
+          loaderCache.delete(source);
+          throw err;
+        }
+      );
+    loaderCache.set(source, promise);
+  }
+  return promise;
+};
+
+let warnedMissingHighlightJs = false;
+/** One warning per page: the option is on but there is nothing to run it with. */
+const warnMissingHighlightJs = () => {
+  if (warnedMissingHighlightJs) return;
+  warnedMissingHighlightJs = true;
+  console.warn(
+    '[ai-markdown/react-mantine] codeBlock.autoDetectUnknownLanguage is on but codeBlock.highlightJs is not set; ' +
+      'pass your highlight.js instance or a loader such as () => import("highlight.js"). Unlabelled blocks stay "unknown".'
   );
-  return hljsAutoPromise;
 };
 
 /** Below this many characters a guess is noise; the block stays "unknown". */
 const AUTODETECT_MIN_CHARS = 32;
-/** Bounded automatic retries of a failed highlight.js module download. */
+/** Bounded automatic retries of a failed highlight.js loader call. */
 const HLJS_LOAD_RETRIES = 3;
 const HLJS_LOAD_RETRY_MS = 1500;
 
@@ -61,21 +99,27 @@ const HLJS_LOAD_RETRY_MS = 1500;
  * Returns '' while disabled, still loading, or below the minimum, so the
  * block renders as plaintext/"unknown" and upgrades in place.
  */
-function useAutoDetectedLanguage(codeText: string, enabled: boolean, streaming: boolean): string {
+function useAutoDetectedLanguage(
+  codeText: string,
+  enabled: boolean,
+  streaming: boolean,
+  highlightJs: MantineHighlightJsSource | null
+): string {
   const [detected, setDetected] = useState<{ language: string; atLength: number; finalFor: string | null } | null>(
     null
   );
-  // Bumped after a failed `import('highlight.js')` so the effect re-runs on
-  // otherwise unchanged inputs and retries the download — the mermaid
-  // renderer's counterpart. Without it a static document whose only load
-  // attempt failed stayed "unknown" for good (v2.4.2 review P2-2). Bounded.
+  // Bumped after a failed loader call so the effect re-runs on otherwise
+  // unchanged inputs and retries the download — the mermaid renderer's
+  // counterpart. Without it a static document whose only load attempt
+  // failed stayed "unknown" for good (v2.4.2 review P2-2). Bounded.
   const [loadAttempt, setLoadAttempt] = useState(0);
   const loadFailuresRef = useRef(0);
   const previousTextRef = useRef(codeText);
   useEffect(() => {
     const appended = codeText.startsWith(previousTextRef.current);
     previousTextRef.current = codeText;
-    if (!enabled) {
+    if (enabled && !highlightJs) warnMissingHighlightJs();
+    if (!enabled || !highlightJs) {
       if (detected) setDetected(null);
       return;
     }
@@ -101,7 +145,7 @@ function useAutoDetectedLanguage(codeText: string, enabled: boolean, streaming: 
     if (!due) return;
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    loadHljsForAutoDetect().then(
+    resolveHighlightJs(highlightJs).then(
       (hljs) => {
         if (cancelled) return;
         loadFailuresRef.current = 0;
@@ -112,8 +156,8 @@ function useAutoDetectedLanguage(codeText: string, enabled: boolean, streaming: 
         });
       },
       () => {
-        // Load failed — stay "unknown" and retry the download a bounded
-        // number of times (the loader does not cache rejections).
+        // Load failed — stay "unknown" and retry the loader a bounded
+        // number of times (rejections are not cached).
         if (cancelled || loadFailuresRef.current >= HLJS_LOAD_RETRIES) return;
         loadFailuresRef.current += 1;
         retryTimer = setTimeout(() => setLoadAttempt((n) => n + 1), HLJS_LOAD_RETRY_MS);
@@ -126,22 +170,25 @@ function useAutoDetectedLanguage(codeText: string, enabled: boolean, streaming: 
     // `detected` is deliberately not a dep: a completed guess must not
     // re-trigger the effect (it re-runs on the next content/streaming
     // change, which is when the schedule is re-evaluated). `loadAttempt`
-    // re-runs it after a failed module download.
+    // re-runs it after a failed loader call.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [codeText, enabled, streaming, loadAttempt]);
-  return enabled ? (detected?.language ?? '') : '';
+  }, [codeText, enabled, streaming, loadAttempt, highlightJs]);
+  return enabled && highlightJs ? (detected?.language ?? '') : '';
 }
 
 /**
- * Loads mermaid and highlight.js ahead of time. Both are imported on demand
- * by the code-block renderers (the first diagram / the first auto-detected
- * block pays the download); an app that would rather take that cost at
- * startup — a documentation page whose first screen shows a diagram, say —
- * calls this once at boot. Safe to call repeatedly; failures are swallowed
- * (the renderers will simply load lazily later).
+ * Loads mermaid ahead of time, and highlight.js too when the same
+ * `highlightJs` loader that `codeBlock.highlightJs` will use is passed (the
+ * cache is keyed by loader identity, so pass the same function). Both are
+ * otherwise loaded on demand by the code-block renderers (the first diagram
+ * / the first auto-detected block pays the download); an app that would
+ * rather take that cost at startup — a documentation page whose first screen
+ * shows a diagram, say — calls this once at boot. Safe to call repeatedly;
+ * failures are swallowed (the renderers will simply load lazily later).
  */
-export function preloadMantineCodeAssets(): Promise<void> {
-  return Promise.all([import('mermaid'), loadHljsForAutoDetect()]).then(
+export function preloadMantineCodeAssets(options?: { highlightJs?: MantineHighlightJsSource | null }): Promise<void> {
+  const highlightJs = options?.highlightJs;
+  return Promise.all([import('mermaid'), highlightJs ? resolveHighlightJs(highlightJs) : undefined]).then(
     () => undefined,
     () => undefined
   );
@@ -272,7 +319,7 @@ const SPECIAL_LANGUAGES = new Set<string>(Object.values(SpecialCodeLanguage));
  * - If the code block has an explicit language annotation, uses that language.
  * - If no language is specified and the `codeBlock` group's
  *   `autoDetectUnknownLanguage` option is enabled, uses `highlight.js`
- *   auto-detection.
+ *   auto-detection through the instance or loader in `codeBlock.highlightJs`.
  * - Mermaid code blocks (`language-mermaid`) are rendered as interactive diagrams
  *   via {@link MantineAIMMermaidCode}.
  * - JSON code blocks are formatted without rounding numeric tokens; nested expansion is optional.
@@ -293,13 +340,20 @@ const MantineAIMPreCode = memo(
   ) => {
     const { fontSize } = useAIMarkdownTheme();
     const { streaming } = useAIMarkdownState();
-    const { autoDetectUnknownLanguage, defaultExpanded, formatJson, expandNestedJson, highlightIntervalMs } =
-      useMantineCodeBlockOptions();
+    const {
+      autoDetectUnknownLanguage,
+      highlightJs,
+      defaultExpanded,
+      formatJson,
+      expandNestedJson,
+      highlightIntervalMs,
+    } = useMantineCodeBlockOptions();
 
     const detectedLanguage = useAutoDetectedLanguage(
       props.codeText,
       autoDetectUnknownLanguage && !props.existLanguage,
-      streaming
+      streaming,
+      highlightJs
     );
     // Lower-cased once for every decision below: fence languages arrive in
     // whatever case the model wrote (` ```Mermaid `, ` ```JSON `), and both

@@ -243,11 +243,11 @@ clobberPrefix = `${encodeURIComponent(shortenDocumentId(documentId))}-user-conte
 
 `@ai-markdown/react-mantine` 是一个极具代表性的轻量级官方封装层：
 
-1. 提供 `codeBlock` 专属行为配置分组（`defaultExpanded`、`autoDetectUnknownLanguage`、`formatJson`、`expandNestedJson`、`highlightIntervalMs`）——通过累加式 `AIMarkdownBehaviorsProvider` 注入，调用 `useMantineCodeBlockOptions()` 进行读取。
+1. 提供 `codeBlock` 专属行为配置分组（`defaultExpanded`、`autoDetectUnknownLanguage`、`highlightJs`、`formatJson`、`expandNestedJson`、`highlightIntervalMs`、`mermaidIntervalMs`）——通过累加式 `AIMarkdownBehaviorsProvider` 注入，调用 `useMantineCodeBlockOptions()` 进行读取。
 2. 提供 `MantineAIMarkdownTypography`（内部封装了 Mantine 官方的 `<Typography>` 组件）。
 3. 提供 `MantineAIMDefaultExtraStyles`（用于承载基于 em 的 Mantine CSS 变量局部作用域覆盖）。
 4. 将 `customComponents.pre` 覆盖为 `MantineAIMPreCode`（集成 CodeHighlight 语法高亮、Mermaid 图表以及 JSON 美化折叠）。
-5. 通过 Mantine 官方的 `useComputedColorScheme` 自动化感知系统的浅色/深色模式。
+5. 从 Mantine 的 provider（`useMantineColorScheme`）读取配色方案，`auto` 时借助 `useSyncExternalStore` 对系统查询求值，使客户端首帧即为正确配色。
 
 上述每一项扩展均完全基于 core 导出的**官方公开扩展点**构建。未借助任何内部未公开私有后门。完整实现模板请参阅 [通过子包进行功能扩展](extending-via-subpackage.md)。
 

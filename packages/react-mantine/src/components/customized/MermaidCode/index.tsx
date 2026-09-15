@@ -1,7 +1,8 @@
 'use client';
 
 import { mermaidRenderQueue } from './renderQueue';
-import { ensureMermaidInitialized } from './initialize';
+import { ensureMermaidInitialized, getMermaidMaxTextSize } from './initialize';
+import { useCodeFrame } from '../useCodeFrame';
 
 import React, { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { CodeHighlightControl, CodeHighlightTabs } from '@mantine/code-highlight';
@@ -180,6 +181,15 @@ const handleViewSVGInNewWindow = (svgElement: SVGElement | null | undefined, isD
  *   its React key — is unchanged). All per-generation state is reset so the
  *   warm-up shows the new source instead of the previous generation's stale
  *   diagram or error tab.
+ * - Render attempts are throttled by `codeBlock.mermaidIntervalMs`: the
+ *   source the render effect sees (`renderCode`) is a trailing-throttled
+ *   frame of `props.code`, so a fast stream costs at most one parse + render
+ *   per interval instead of one per idle moment. The queue alone only
+ *   merged pending attempts; with a synchronous layout per render, the
+ *   main thread was still busy back to back. The frame flushes at once on
+ *   completion and replacement, so the corrective pass always sees the final
+ *   source; the source fallback and the copy button keep the latest
+ *   `props.code`.
  *
  * ## Static contract (`streaming` stays false)
  *
@@ -194,8 +204,13 @@ const handleViewSVGInNewWindow = (svgElement: SVGElement | null | undefined, isD
 const MantineAIMMermaidCode = memo((props: { code: string }) => {
   const { colorScheme, fontSize } = useAIMarkdownTheme();
   const { streaming } = useAIMarkdownState();
-  const { defaultExpanded } = useMantineCodeBlockOptions();
+  const { defaultExpanded, mermaidIntervalMs } = useMantineCodeBlockOptions();
   const isDark = colorScheme === 'dark';
+  // The throttled source for the render effect (see "Streaming contract").
+  // Same trailing throttle as ordinary code display: appends within an
+  // interval replace one pending frame without moving its deadline; a
+  // non-streaming update, completion or replacement passes through at once.
+  const renderCode = useCodeFrame(props.code, 'mermaid', streaming, mermaidIntervalMs);
 
   const ref = useRef<HTMLPreElement>(null);
   const renderVersionRef = useRef(0);
@@ -256,7 +271,7 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
       needsCorrectiveRef.current = true;
     }
     prevStreamingRef.current = streaming;
-    if (!props.code || !ref.current || showOriginalCode) {
+    if (!renderCode || !ref.current || showOriginalCode) {
       return;
     }
 
@@ -265,7 +280,7 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
     // obligation: the identical successful render IS the verdict on the
     // final source, so the obligation is consumed, not left armed for some
     // later unrelated failure to inherit.
-    if (lastSuccessRef.current?.code === props.code && lastSuccessRef.current.isDark === isDark) {
+    if (lastSuccessRef.current?.code === renderCode && lastSuccessRef.current.isDark === isDark) {
       needsCorrectiveRef.current = false;
       return;
     }
@@ -295,7 +310,19 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
           return;
         }
         ensureMermaidInitialized(mermaid, isDark);
-        const parseResult = await mermaid.parse(props.code);
+        // Size gate before parse: `mermaid.render` would otherwise resolve
+        // with a placeholder diagram for oversized input, and this component
+        // would record that as a success. The raw length is compared; mermaid
+        // measures the text after stripping front matter and directives, so
+        // a source within a few bytes of the limit can be refused here that
+        // mermaid would still have rendered.
+        const maxTextSize = getMermaidMaxTextSize(mermaid);
+        if (renderCode.length > maxTextSize) {
+          throw new Error(
+            `Diagram source is ${renderCode.length} characters, above mermaid's maxTextSize of ${maxTextSize}.`
+          );
+        }
+        const parseResult = await mermaid.parse(renderCode);
         if (!parseResult) {
           throw new Error('Failed to parse mermaid code');
         }
@@ -316,7 +343,7 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
         // string is written into our own <pre> below either way.
         // The queue holds initialization, parsing and rendering together,
         // so another library instance cannot change the theme mid-task.
-        const rendered = await mermaid.render(generateMermaidUUID(), props.code);
+        const rendered = await mermaid.render(generateMermaidUUID(), renderCode);
         const { svg, bindFunctions, diagramType } = rendered;
         if (!ref.current || cancelled || renderVersion !== renderVersionRef.current) {
           return;
@@ -325,7 +352,7 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
         ref.current.innerHTML = svg;
         bindFunctions?.(ref.current);
         needsCorrectiveRef.current = false;
-        lastSuccessRef.current = { code: props.code, isDark };
+        lastSuccessRef.current = { code: renderCode, isDark };
         applyView({ kind: 'diagram', chartType: diagramType });
       } catch (error) {
         if (cancelled || renderVersion !== renderVersionRef.current) {
@@ -367,7 +394,7 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
     // pass: the flip to false re-runs this effect on the (unchanged) final
     // code, so the last state reflects the full diagram source.
     // `loadAttempt` re-runs it after a failed module download.
-  }, [props.code, isDark, showOriginalCode, streaming, loadAttempt]);
+  }, [renderCode, isDark, showOriginalCode, streaming, loadAttempt]);
 
   const viewSvgInNewWindow = useCallback(() => {
     handleViewSVGInNewWindow(ref.current?.querySelector('svg'), isDark);

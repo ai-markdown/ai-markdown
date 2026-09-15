@@ -32,12 +32,12 @@
 
 import type { Root as HastRoot, RootContent as HastContent } from 'hast';
 import type { Root as MdastRoot, RootContent as MdastContent } from 'mdast';
-import { attributeHastChildren } from './attributeHastChildren';
+import { attributeHastChildrenResumable, type AttributionResume } from './attributeHastChildren';
 import { rebaseTree, rebaseTreeDual, rebasePoint, countNewlines, type InjectedSegment } from './spliceCoordinates';
 import {
   TABLE_PART_TAG_RE,
   STRAY_SYNTHESIZED_END_TAG_RE,
-  hasStrayTablePart,
+  scanTableParts,
   headRoutedCaptureUnclosed,
   rawTextRegionCrossesOut,
 } from './spliceHtmlGuards';
@@ -48,6 +48,7 @@ import {
   isWrapInvisible,
   ownsTrailingLiteral,
   isTrailingLiteralText,
+  type AlignResume,
 } from './prefixAlignment';
 
 // Preserve the existing internal entry points used by the engine and its falsification suites.
@@ -57,6 +58,43 @@ export { rebaseTree, rebaseTreeDual } from './spliceCoordinates';
 export type { InjectedSegment } from './spliceCoordinates';
 export { alignPrefixCut } from './prefixAlignment';
 export { isSanitizeStrippedConstruct, isExactSanitizeStrippedConstruct } from './spliceHtmlGuards';
+
+/**
+ * What a splice frame learned about its frozen prefix, kept in engine state
+ * for the next frame. Every per-frame step of `spliceTrees` that walks the
+ * whole prefix — the prefix cut, hast attribution, the html-value guards,
+ * the alignment loop, the line count — is a left-to-right pass whose state
+ * at the previous boundary is the same in the next frame, because within an
+ * append lineage the frozen prefix is byte-identical and the spliced roots
+ * were built by this module: `mdast.children[0, mdastCount)` IS the previous
+ * `prefixMdast` and `hast.children[0, hast.align.outLen)` IS the previous
+ * aligned cut, node for node. Without this the fixed cost of a frame grew
+ * with the document (measured: 28 ms per appended token on 64,000 short
+ * paragraphs, of which the tail parse was under 1 ms).
+ *
+ * Validity is the CALLER's check (advanceIncrementalParse): the cache is
+ * used only when the previous trees are the very roots it was built for
+ * (`roots` identity — a full-parse frame produces fresh roots, so its
+ * state carries no cache) and the boundary did not move back
+ * (`boundary <= current`). A boundary that regressed or a lineage that
+ * restarted simply runs the uncached passes, which produce the same output.
+ */
+export interface SplicePrefixCache {
+  /** Boundary the passes below were run to. */
+  boundary: number;
+  /** The roots `spliceTrees` returned with this cache — identity anchors. */
+  roots: { mdast: MdastRoot; hast: HastRoot };
+  /** `countNewlines(content, boundary)`. */
+  lines: number;
+  /** `prevMdast.children[0, mdastCount)` is the frozen prefix's mdast. */
+  mdastCount: number;
+  /** `hasStrayTablePart` depth after the prefix's html values (none stray). */
+  tableDepth: number;
+  /** hast-side resume points, or null when the previous alignment rewrote
+   *  the cut's last node (the trailing-literal path) and the hast walks
+   *  must start from index 0 again. The mdast-side fields stay valid. */
+  hast: { align: AlignResume; attribution: AttributionResume } | null;
+}
 
 export interface SpliceInput {
   prevMdast: MdastRoot;
@@ -69,16 +107,23 @@ export interface SpliceInput {
   injectionPrefix: string;
   /** Coordinate mappings for injected footnote-def blocks (footer rebase). */
   injectedSegments: InjectedSegment[];
+  /** Previous frame's cache, already validated against `prevMdast` /
+   *  `prevHast` and `boundary` by the caller; null runs every pass in full. */
+  resume?: SplicePrefixCache | null;
 }
 
-export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastRoot } | null {
+export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastRoot; cache: SplicePrefixCache } | null {
   const { prevMdast, prevHast, tailMdast, tailHast, content, boundary, injectionPrefix, injectedSegments } = input;
+  const resume = input.resume ?? null;
 
   const injectedLen = injectionPrefix.length;
   const injectedLines = countNewlines(injectionPrefix);
   // Bounded count — slicing the prefix would allocate a copy of the whole
   // frozen document every frame just to count newlines (final-review R3).
-  const prefixLines = countNewlines(content, boundary);
+  // Resumed: only the bytes the boundary advanced over since the cache.
+  const prefixLines = resume
+    ? resume.lines + countNewlines(content, boundary, resume.boundary)
+    : countNewlines(content, boundary);
   const offsetDelta = boundary - injectedLen;
   const lineDelta = prefixLines - injectedLines;
 
@@ -86,14 +131,23 @@ export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastR
   // Filter semantics (no ordered-children early break): together with G4's
   // full straddle scan this keeps the cut correct-or-bailing even for
   // disordered trees a plugin-shaped mdast could present (round-2 review).
-  const prefixMdast: MdastContent[] = [];
-  for (const child of prevMdast.children) {
+  // Resumed: the first `mdastCount` children are the previous prefix by
+  // construction (see SplicePrefixCache); the filter runs over the rest.
+  const resumedMdastCount = resume ? resume.mdastCount : 0;
+  const prefixMdast: MdastContent[] = resume ? prevMdast.children.slice(0, resumedMdastCount) : [];
+  for (let i = resumedMdastCount; i < prevMdast.children.length; i++) {
+    const child = prevMdast.children[i];
     const start = child.position?.start?.offset;
     if (start !== undefined && start < boundary) prefixMdast.push(child);
   }
-  const attrs = attributeHastChildren(prevMdast, prevHast, boundary);
-  const cutRegion: HastContent[] = [];
-  for (let i = 0; i < prevHast.children.length; i++) {
+  const attribution = attributeHastChildrenResumable(prevMdast, prevHast, boundary, resume?.hast?.attribution ?? null);
+  const attrs = attribution.attrs;
+  // Resumed: `[0, outLen)` were cut last frame and every check below passed
+  // on them then, against the same nodes, neighbours and prefix; their
+  // attribution is below the cached boundary, hence below this one.
+  const cutStart = resume?.hast ? resume.hast.align.outLen : 0;
+  const cutRegion: HastContent[] = resume?.hast ? prevHast.children.slice(0, cutStart) : [];
+  for (let i = cutStart; i < prevHast.children.length; i++) {
     if (attrs[i] < boundary) {
       const node = prevHast.children[i];
       // HAST STRADDLE BAIL (campaign, 2026-08-03): an mdast-clean boundary
@@ -218,9 +272,19 @@ export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastR
   //   while the full parse — already in body — synthesizes / foster-parents
   //   them. Any such tag inside the tail's LEADING run of html blocks
   //   (comments / PIs / declarations do not switch the mode) → bail.
-  const prefixHtmlValues = prefixMdast.flatMap((c) => (c.type === 'html' ? [c.value] : []));
-  if (hasStrayTablePart(prefixHtmlValues)) return null;
-  if (rawTextRegionCrossesOut(prefixHtmlValues)) return null;
+  // Resumed: only html values the boundary advanced over are new. The
+  // cached prefix's values were scanned, in order, by the frames that
+  // froze them (a stray part or an open region would have refused the
+  // splice and left no cache); the table scan continues from the depth
+  // they left, the per-value raw-text scan needs nothing carried.
+  const newHtmlValues: string[] = [];
+  for (let i = resumedMdastCount; i < prefixMdast.length; i++) {
+    const child = prefixMdast[i];
+    if (child.type === 'html') newHtmlValues.push(child.value);
+  }
+  const tableScan = scanTableParts(newHtmlValues, resume ? resume.tableDepth : 0);
+  if (tableScan.stray) return null;
+  if (rawTextRegionCrossesOut(newHtmlValues)) return null;
   const leadingHtml: string[] = [];
   for (const child of tailMdastChildren) {
     if (isWrapInvisible(child)) continue;
@@ -236,7 +300,7 @@ export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastR
   // Align the cut region against the prefix mdast (stripped-node aware) and
   // rebuild its trailing separators. Bails null on any layout the model
   // does not cover — the caller falls back to a full parse for the frame.
-  const aligned = alignPrefixCut(prefixMdast, cutRegion, tailWrapVisible);
+  const aligned = alignPrefixCut(prefixMdast, cutRegion, tailWrapVisible, resume?.hast?.align ?? null);
   if (aligned === null) return null;
   const hastChildren = aligned.children;
   const interiorFinalLiteral = aligned.interiorFinalLiteral;
@@ -350,5 +414,29 @@ export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastR
   const hast: HastRoot = { type: 'root', children: hastChildren };
   if (hastRootPosition) hast.position = hastRootPosition;
   if (prevHast.data !== undefined) hast.data = prevHast.data;
-  return { mdast, hast };
+  // The join above only ever rewrote `hastChildren` at or past the aligned
+  // content's end (a seam text is a rebuilt separator or a trailing literal,
+  // and the literal path hands out no resume), so `[0, outLen)` of the
+  // returned hast is the aligned cut the alignment snapshot describes. The
+  // attribution state is the one after the cut's last content node — its
+  // trailing separators are position-less, so it holds at `outLen` too.
+  const cache: SplicePrefixCache = {
+    boundary,
+    roots: { mdast, hast },
+    lines: prefixLines,
+    mdastCount: prefixMdast.length,
+    tableDepth: tableScan.depth,
+    hast: aligned.resume
+      ? {
+          align: aligned.resume,
+          attribution: {
+            attrs,
+            hastIdx: aligned.resume.outLen,
+            cursor: attribution.cursor,
+            mdastIdx: attribution.mdastIdx,
+          },
+        }
+      : null,
+  };
+  return { mdast, hast, cache };
 }

@@ -255,7 +255,3 @@ export function computeFreezeBoundary(
 }
 
 export { pendingFenceCloser } from './freezeScanState';
-
-export { readSealReleaseEvaluations } from './freezeLineTransition';
-
-export { SCANNER_NAME_LISTS } from './freezeLineSyntax';

@@ -15,7 +15,8 @@ Add Mantine presentation to the React Markdown renderer: themed typography, high
 ## Compatibility
 
 - React and React DOM `^19.0.0`.
-- `@mantine/core` and `@mantine/code-highlight` `^9.0.0`; highlight.js `^11.11.2`.
+- `@mantine/core` and `@mantine/code-highlight` `^9.0.0`.
+- highlight.js `^11.11.2` is an optional peer. The package never imports it; install it for Mantine's highlight.js adapter (the Quick Start) and pass it as `codeBlock.highlightJs` for language auto-detection. An app that highlights with another adapter (Shiki) can leave it out.
 - A compatible `@ai-markdown/react` peer; upgrade the React adapter and integration together. See [the declared peer range](./package.json).
 - Node `^20.19.0 || >=22.12.0` for server/build consumers.
 - This integration is React-only. Vue applications use `@ai-markdown/vue`.
@@ -54,6 +55,15 @@ export function Answer() {
 ```
 
 Both providers and the stylesheet imports are part of this setup. KaTeX CSS is required for the math example. Keep the adapter object stable. Replacing the `pre` renderer transfers code formatting, copy, highlighting and diagram behavior to your component.
+
+Language auto-detection for unlabelled fences takes highlight.js from the `codeBlock` group, as the instance above or as a loader:
+
+```tsx
+<MantineAIMarkdown content={content} codeBlock={{ autoDetectUnknownLanguage: true, highlightJs: hljs }} />
+// or, loaded on first use: highlightJs: () => import('highlight.js')  (keep the loader at module scope)
+```
+
+Mermaid renders while streaming are throttled by `codeBlock.mermaidIntervalMs` (default 300 ms; the final source always renders once streaming ends), and input above mermaid's `maxTextSize` shows an error instead of a placeholder diagram.
 
 ## Documentation
 

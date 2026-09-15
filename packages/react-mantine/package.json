@@ -73,6 +73,11 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   },
+  "peerDependenciesMeta": {
+    "highlight.js": {
+      "optional": true
+    }
+  },
   "dependencies": {
     "mermaid": "^11.17.2"
   },

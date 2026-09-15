@@ -51,7 +51,43 @@
  * type needs one of the two protections — a version bump before `onEmpty`
  * read through `useSyncExternalStore`, or a re-resolve at effect time.
  */
-export function createDocumentScopeCache<T extends object>(create: (onEmpty: () => void) => T) {
+/** A cache of per-document scopes keyed by id. */
+export interface DocumentScopeCache<T extends object> {
+  get(id: string): T;
+}
+
+/** Strong-reference fallback for runtimes without `WeakRef` /
+ *  `FinalizationRegistry` (ES2021). The Map owns every scope it hands out,
+ *  so a render that resolves a scope and never commits leaves that scope in
+ *  the cache until a committed consumer registers into it and later runs
+ *  the release that fires `onEmpty` — there is no GC-based eviction here.
+ *  What still works: scope identity per id, and eviction by refcount
+ *  through `onEmpty`, which is the path every mounted consumer takes. The
+ *  cost is bounded by the number of distinct ids resolved without a
+ *  commit, which for a document wrapper is the number of documents whose
+ *  first chunk suspended or was discarded before mounting. */
+function createStrongScopeCache<T extends object>(create: (onEmpty: () => void) => T): DocumentScopeCache<T> {
+  const entries = new Map<string, T>();
+  return {
+    get(id: string): T {
+      const existing = entries.get(id);
+      if (existing) return existing;
+      const scope = create(() => {
+        // A release from an evicted scope must not evict its replacement.
+        if (entries.get(id) === scope) entries.delete(id);
+      });
+      entries.set(id, scope);
+      return scope;
+    },
+  };
+}
+
+export function createDocumentScopeCache<T extends object>(create: (onEmpty: () => void) => T): DocumentScopeCache<T> {
+  // Detected per cache, not per module, so a runtime that installs the
+  // globals late (or a test that removes them) is observed at mount time.
+  if (typeof WeakRef !== 'function' || typeof FinalizationRegistry !== 'function') {
+    return createStrongScopeCache(create);
+  }
   const entries = new Map<string, WeakRef<T>>();
   const collected = new FinalizationRegistry<{ id: string; ref: WeakRef<T> }>(({ id, ref }) => {
     // Collection can arrive after onEmpty and a new allocation of this id.

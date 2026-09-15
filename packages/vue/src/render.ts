@@ -29,6 +29,82 @@ const positive = (value: unknown) => {
   const n = Number(value);
   return Number.isFinite(n) && n >= 1 ? Math.trunc(n) : null;
 };
+
+/** DOM insertion sinks and Vue reserved keys. Never produced by Markdown,
+ * kept out even when an application deliberately broadens the sanitizer. */
+const SINKS = new Set(['innerHTML', 'textContent', 'outerHTML', 'ref', 'key', 'is']);
+
+/** Whether a hast property may reach `h()`. `h()` treats a `.`-prefixed key
+ * as a forced DOM property and a `^`-prefixed key as a forced attribute, so
+ * `.innerHTML` would bypass a test by exact name. hast never produces a key
+ * with either prefix, so any such key is rejected outright; the sink test
+ * then runs on the key with the prefix stripped, so the two rules stay
+ * independent of each other. Listeners are matched case-insensitively. */
+function allowedProperty(key: string, attribute: string): boolean {
+  if (key.startsWith('.') || key.startsWith('^')) return false;
+  for (const name of [key, attribute]) {
+    const bare = name.replace(/^[.^]/, '');
+    if (/^on/i.test(bare) || SINKS.has(bare)) return false;
+  }
+  return true;
+}
+
+/** Context props a mapped component receives on top of the element's own
+ * attributes. They are passed only when the component declares them. */
+const CONTEXT_KEYS = ['node', 'streaming', 'metadata'] as const;
+type ContextKey = (typeof CONTEXT_KEYS)[number];
+
+/** `null`: the component takes every attribute as a prop (a functional
+ * component with no `props` option; Vue then falls only class, style and
+ * listeners through to its root). Otherwise the set of declared prop names,
+ * collected across `props`, `extends` and `mixins` the way Vue normalizes
+ * them. An async wrapper reports its resolved component's declaration and
+ * nothing before it resolves. */
+const declaredCache = new WeakMap<object, ReadonlySet<string> | null>();
+function collectDeclared(source: unknown, into: Set<string>, seen: Set<object>): void {
+  if (!source || (typeof source !== 'object' && typeof source !== 'function') || seen.has(source)) return;
+  seen.add(source);
+  const options = source as {
+    props?: unknown;
+    extends?: unknown;
+    mixins?: unknown;
+    __asyncResolved?: unknown;
+  };
+  if (options.__asyncResolved) collectDeclared(options.__asyncResolved, into, seen);
+  const props = options.props;
+  if (Array.isArray(props)) {
+    for (const name of props) if (typeof name === 'string') into.add(name);
+  } else if (props && typeof props === 'object') {
+    for (const name of Object.keys(props)) into.add(name);
+  }
+  collectDeclared(options.extends, into, seen);
+  if (Array.isArray(options.mixins)) for (const mixin of options.mixins) collectDeclared(mixin, into, seen);
+}
+function declaredProps(component: object): ReadonlySet<string> | null {
+  let declared = declaredCache.get(component);
+  if (declared !== undefined) return declared;
+  const options = component as { props?: unknown; __asyncResolved?: unknown };
+  const functional = typeof component === 'function' && options.props === undefined;
+  if (functional) declared = null;
+  else {
+    const set = new Set<string>();
+    collectDeclared(component, set, new Set());
+    declared = set;
+  }
+  // An unresolved async wrapper is not cached: its declaration is known
+  // only once it has loaded.
+  if (!('__asyncResolved' in options) || options.__asyncResolved) declaredCache.set(component, declared);
+  return declared;
+}
+function contextProps(
+  component: object,
+  context: MarkdownElementContext
+): Partial<Pick<MarkdownElementContext, ContextKey>> {
+  const declared = declaredProps(component);
+  const out: Partial<Pick<MarkdownElementContext, ContextKey>> = {};
+  for (const key of CONTEXT_KEYS) if (declared === null || declared.has(key)) out[key] = context[key] as never;
+  return out;
+}
 const text = (node: RootContent): string =>
   node.type === 'text' ? node.value : 'children' in node ? node.children.map(text).join('') : '';
 
@@ -82,11 +158,9 @@ function convertTree(tree: Root, options: RenderOptions, keyed: boolean): VNodeC
   function element(node: Element, children: VNodeChild[], inSvg: boolean): VNodeChild {
     const properties: Record<string, unknown> = {};
     for (const [key, value] of Object.entries(node.properties)) {
-      // DOM insertion sinks and listeners never originate from Markdown,
-      // including when an application deliberately broadens the sanitizer.
-      if (/^on/i.test(key) || ['innerHTML', 'textContent', 'outerHTML', 'ref', 'key', 'is'].includes(key)) continue;
       const info = find(inSvg ? svg : html, key);
       const name = key === 'className' ? 'class' : info.attribute;
+      if (!allowedProperty(key, name)) continue;
       properties[name] = Array.isArray(value) ? value.join(info.commaSeparated ? ', ' : ' ') : value;
     }
     const context: MarkdownElementContext = {
@@ -99,12 +173,12 @@ function convertTree(tree: Root, options: RenderOptions, keyed: boolean): VNodeC
     const slot = options.slots[node.tagName];
     if (slot) return slot(context);
     const component = options.components[node.tagName];
+    // Context props go only to components that declare them. An undeclared
+    // prop is an attribute to Vue and falls through to the component's root
+    // element: SSR would emit `streaming="true"` and `[object Object]` for
+    // `node` and `metadata`.
     return component
-      ? h(
-          component,
-          { ...properties, node, streaming: options.streaming, metadata: options.metadata },
-          { default: () => children }
-        )
+      ? h(component, { ...properties, ...contextProps(component, context) }, { default: () => children })
       : h(node.tagName, properties, children);
   }
   function convert(node: RootContent, inSvg = false): VNodeChild {

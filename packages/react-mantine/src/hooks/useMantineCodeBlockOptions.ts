@@ -44,6 +44,9 @@ export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> 
     if (!Number.isFinite(resolved.highlightIntervalMs) || resolved.highlightIntervalMs < 0) {
       resolved.highlightIntervalMs = defaultMantineCodeBlockOptions.highlightIntervalMs!;
     }
+    if (!Number.isFinite(resolved.mermaidIntervalMs) || resolved.mermaidIntervalMs < 0) {
+      resolved.mermaidIntervalMs = defaultMantineCodeBlockOptions.mermaidIntervalMs!;
+    }
     return resolved;
   }, [group]);
 }

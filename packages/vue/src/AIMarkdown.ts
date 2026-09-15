@@ -1,14 +1,4 @@
-import {
-  computed,
-  defineComponent,
-  h,
-  onMounted,
-  shallowRef,
-  useId,
-  watch,
-  type DefineComponent,
-  type PropType,
-} from 'vue';
+import { computed, defineComponent, h, onMounted, shallowRef, useId, type DefineComponent, type PropType } from 'vue';
 import {
   isEnginePlugin,
   createIncrementalLatexPreprocessor,
@@ -34,7 +24,10 @@ export const markdownProps = {
   documentIndex: Number,
   streaming: Boolean,
   incrementalParse: { type: Boolean, default: true },
-  preserveOrphanReferences: Boolean,
+  // `default: undefined` keeps an absent prop distinguishable from `false`;
+  // Vue's Boolean casting would otherwise hand the wrapper's policy no
+  // chance to apply. See the resolution in setup.
+  preserveOrphanReferences: { type: Boolean, default: undefined },
   enginePlugins: { type: Array as PropType<AIMarkdownProps['enginePlugins']>, default: () => defaultEnginePlugins },
   contentPreprocessors: { type: Array as PropType<AIMarkdownProps['contentPreprocessors']>, default: () => [] },
   sanitizeSchema: {
@@ -55,7 +48,6 @@ export const AIMarkdown = defineComponent({
     const id = useId();
     const documentId = computed(() => props.documentId ?? id);
     const clobberPrefix = computed(() => `aimd-${encodeURIComponent(shortenDocumentId(documentId.value))}-`);
-    const registry = shallowRef<RegistryController | null>(null);
     // Whether a next frame can follow this one. A server render is one
     // shot, so it takes the full pipeline and retains no incremental state;
     // a client mount seeds the retained prefix from its first frame. Decided
@@ -75,24 +67,34 @@ export const AIMarkdown = defineComponent({
     const schema = stableComputed(() => props.sanitizeSchema ?? sanitizeSchema);
     const latex = createIncrementalLatexPreprocessor();
     const content = computed(() => preprocessAIMDContent(props.content, props.contentPreprocessors, latex));
-    // Acquire only after mount. Server and hydration's first render have no
-    // registry writes; discarded setup cannot leave an empty document shell.
+    // The registry is a computed over the same `documentId` that drives
+    // `clobberPrefix`, so both change in the same reactive step and no frame
+    // pairs the old registry with the new prefix. A post-mount watcher did
+    // that: one documentId switch parsed with the old registry and the new
+    // prefix, again with the new registry, and a third time once the
+    // registration watcher ran. Acquisition still starts after mount: a
+    // server render and hydration's first render write nothing to the
+    // registry, and a discarded setup cannot leave an empty document shell.
+    // The scope evicts a registry when its last chunk releases its symbol
+    // (useMarkdownChunk's registration cleanup), so nothing is released
+    // here; a chunk that never registered never acquired.
+    const mounted = shallowRef(false);
     onMounted(() => {
-      watch(
-        () => props.documentId,
-        (next) => {
-          registry.value = scope && next !== undefined ? scope.acquire(next) : null;
-        },
-        { immediate: true, flush: 'post' }
-      );
+      mounted.value = true;
     });
+    const registry = computed<RegistryController | null>(() =>
+      mounted.value && scope && props.documentId !== undefined ? scope.acquire(props.documentId) : null
+    );
     const chunk = useMarkdownChunk(() => ({
       content: content.value,
       documentId: documentId.value,
       documentIndex: props.documentIndex,
       clobberPrefix: clobberPrefix.value,
       registry: registry.value,
-      preserveOrphanReferences: props.preserveOrphanReferences ?? false,
+      // Inside a documents wrapper its policy (default true) wins over the
+      // chunk's own prop, as in React; the chunk prop applies standalone,
+      // where it defaults to false.
+      preserveOrphanReferences: scope?.preserveOrphanReferences.value ?? props.preserveOrphanReferences ?? false,
       incrementalParse: client && (props.incrementalParse ?? true),
       enginePlugins: plugins.value,
       sanitizeSchema: schema.value,

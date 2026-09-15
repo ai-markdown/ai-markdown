@@ -1,4 +1,5 @@
 import React from 'react';
+import hljs from 'highlight.js';
 import MantineAIMarkdown from '../src/index';
 import { baseMantineMeta, type MantineMeta, type MantineStory } from './_shared/meta';
 import { JSON_PAYLOAD_DOC, LONG_CODE_DOC, UNLABELED_CODE_DOC } from './_shared/fixtures';
@@ -37,12 +38,13 @@ const meta: MantineMeta = {
           '',
           '### Configuring it',
           '',
-          'Two options, delivered as the `codeBlock` behavior group:',
+          'The options shown here, delivered as the `codeBlock` behavior group:',
           '',
           '| Option | Default | Effect |',
           '| --- | --- | --- |',
           '| `defaultExpanded` | `true` | `false` starts blocks collapsed at 320px with an expand button |',
           '| `autoDetectUnknownLanguage` | `false` | `true` runs `hljs.highlightAuto()` on fences with no info string |',
+          '| `highlightJs` | `null` | The highlight.js instance (or a loader) auto-detection runs with; the package does not import highlight.js itself |',
           '',
           'The group replaces atomically — passing `codeBlock={{ defaultExpanded: false }}`',
           'leaves `autoDetectUnknownLanguage` at its shipped default rather than clearing',
@@ -167,8 +169,10 @@ export const JsonPrettyPrint: MantineStory = {
  * as unhighlighted monospace text. This is the conservative default — the
  * renderer says nothing about content it was told nothing about.
  *
- * **Right, `true`.** `hljs.highlightAuto()` gets a vote. It reads the sample
- * as Python, so the block gains a `python` tab and full token colouring.
+ * **Right, `true`.** `hljs.highlightAuto()` gets a vote, run on the instance
+ * passed as `highlightJs` (the same one the adapter uses). It reads the
+ * sample as Python, so the block gains a `python` tab and full token
+ * colouring.
  *
  * The difference is plainly visible here because the sample is unambiguous
  * Python. Auto-detection is a heuristic over the whole snippet, and it is
@@ -178,6 +182,9 @@ export const JsonPrettyPrint: MantineStory = {
  * pipeline tends to drop info strings, and leave it off when your model
  * reliably emits them.
  */
+/** Module constant: the group is compared by value and the instance must keep its identity. */
+const AUTODETECT_WITH_HLJS = { autoDetectUnknownLanguage: true, highlightJs: hljs };
+
 export const UnknownLanguageFallback: MantineStory = {
   args: {
     content: UNLABELED_CODE_DOC,
@@ -190,7 +197,7 @@ export const UnknownLanguageFallback: MantineStory = {
       leftLabel="autoDetectUnknownLanguage: false — plaintext, no tab"
       rightLabel="autoDetectUnknownLanguage: true — detected as python"
       left={<MantineAIMarkdown {...args} codeBlock={{ autoDetectUnknownLanguage: false }} />}
-      right={<MantineAIMarkdown {...args} codeBlock={{ autoDetectUnknownLanguage: true }} />}
+      right={<MantineAIMarkdown {...args} codeBlock={AUTODETECT_WITH_HLJS} />}
     />
   ),
 };

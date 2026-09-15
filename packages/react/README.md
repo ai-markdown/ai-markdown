@@ -17,6 +17,7 @@ Render accumulated Markdown in React, including streaming responses, GFM, math a
 - Node `^20.19.0 || >=22.12.0` for server/build consumers.
 - ESM and CJS with TypeScript declarations. Core and engine are exact-version dependencies; applications do not install them separately.
 - KaTeX is an optional peer. Install it directly when importing its stylesheet for math.
+- `<AIMarkdownDocuments>` uses `WeakRef` and `FinalizationRegistry` (ES2021) when the runtime provides them, so a per-document scope resolved by a render that never commits can be garbage collected. On a runtime without them the wrapper keeps strong references instead: scopes are still released when their last chunk unmounts, but a scope resolved only by an abandoned render stays cached until a chunk registers into it and later releases it.
 
 ## Installation
 

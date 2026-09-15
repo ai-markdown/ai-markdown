@@ -6,9 +6,12 @@
  */
 
 import { describe, expect, test, vi } from 'vitest';
+import isEqual from 'lodash-es/isEqual';
 
 import { buildPhantomSuffix } from '../remarkInjectPhantomDefs';
 import { advanceIncrementalParse, type IncrementalParseState } from './advanceIncrementalParse';
+import { scheduleSnapshots } from './fuzzGenerators';
+import { assertStreamEquivalence, runFull } from './spliceArbiterHarness';
 import { buildAdvanceOptions, buildCrossChunkAdvanceOptions, CATALOG } from './testPluginCatalog';
 
 const BASE = () => buildAdvanceOptions(CATALOG[0]);
@@ -135,6 +138,100 @@ describe('advanceIncrementalParse — gates', () => {
     const r = advanceIncrementalParse(prev, `${code}para two.\n`, BASE());
     expect(r.usedIncremental).toBe(true);
     expect(r.boundary).toBeGreaterThan(0);
+  });
+});
+
+describe('splice cache — retained per lineage, dropped on the full path, checked before use', () => {
+  const full = (content: string) => runFull(content, CATALOG[0]);
+  const expectFullEqual = (content: string, result: { mdast: unknown; hast: unknown }) => {
+    const expected = full(content);
+    expect(isEqual(result.mdast, expected.mdast), 'mdast').toBe(true);
+    expect(isEqual(result.hast, expected.hast), 'hast').toBe(true);
+  };
+
+  test('a full-path frame carries no cache; a splice frame records one for its own roots', () => {
+    const s1 = seed();
+    expect(s1.spliceCache).toBeNull();
+    const r2 = advanceIncrementalParse(s1, GROWN, BASE());
+    expect(r2.usedIncremental).toBe(true);
+    const cache = r2.nextState.spliceCache!;
+    expect(cache.roots.mdast).toBe(r2.mdast);
+    expect(cache.roots.hast).toBe(r2.hast);
+    expect(cache.boundary).toBe(r2.boundary);
+    expect(cache.mdastCount).toBe(r2.mdast.children.filter((c) => c.position!.start.offset! < r2.boundary).length);
+    // The next splice resumes from it and its cache moves with the boundary.
+    const r3 = advanceIncrementalParse(r2.nextState, `${GROWN}para four.\n\n`, BASE());
+    expect(r3.usedIncremental).toBe(true);
+    expect(r3.nextState.spliceCache!.boundary).toBeGreaterThanOrEqual(cache.boundary);
+    expectFullEqual(`${GROWN}para four.\n\n`, r3);
+  });
+
+  test('a non-append rewrite drops the cache, and the lineage rebuilds it', () => {
+    const r2 = advanceIncrementalParse(seed(), GROWN, BASE());
+    expect(r2.nextState.spliceCache).not.toBeNull();
+    const rewritten = GROWN.replace('one', 'ONE');
+    const r3 = advanceIncrementalParse(r2.nextState, rewritten, BASE());
+    expect(r3.usedIncremental).toBe(false);
+    expect(r3.nextState.spliceCache).toBeNull();
+    const r4 = advanceIncrementalParse(r3.nextState, `${rewritten}para four.\n\n`, BASE());
+    expect(r4.usedIncremental).toBe(true);
+    expect(r4.nextState.spliceCache).not.toBeNull();
+    expectFullEqual(`${rewritten}para four.\n\n`, r4);
+  });
+
+  test('a cache whose roots are not the previous trees is ignored, not trusted', () => {
+    const r2 = advanceIncrementalParse(seed(), GROWN, BASE());
+    // Same fields, foreign roots — as if a consumer had swapped the trees.
+    const foreign: IncrementalParseState = {
+      ...r2.nextState,
+      spliceCache: { ...r2.nextState.spliceCache!, roots: { mdast: seed().mdast, hast: seed().hast } },
+    };
+    const r3 = advanceIncrementalParse(foreign, `${GROWN}para four.\n\n`, BASE());
+    expect(r3.usedIncremental).toBe(true);
+    expectFullEqual(`${GROWN}para four.\n\n`, r3);
+  });
+
+  test('a cache built past the current boundary is ignored, not trusted', () => {
+    const r2 = advanceIncrementalParse(seed(), GROWN, BASE());
+    const ahead: IncrementalParseState = {
+      ...r2.nextState,
+      spliceCache: { ...r2.nextState.spliceCache!, boundary: r2.nextState.spliceCache!.boundary + 1 },
+    };
+    const r3 = advanceIncrementalParse(ahead, `${GROWN}para four.\n\n`, BASE());
+    expect(r3.usedIncremental).toBe(true);
+    expectFullEqual(`${GROWN}para four.\n\n`, r3);
+  });
+
+  test('the equal-content short-circuit keeps the cache with the state it belongs to', () => {
+    const r2 = advanceIncrementalParse(seed(), GROWN, BASE());
+    const r3 = advanceIncrementalParse(r2.nextState, GROWN, BASE());
+    expect(r3.nextState).toBe(r2.nextState);
+    expect(r3.nextState.spliceCache).toBe(r2.nextState.spliceCache);
+  });
+
+  test('a stream that falls back mid-way stays equal to a full parse on every frame', () => {
+    // Fallback frames in the middle of a lineage (a stray `<td>` poisons
+    // the boundary to 0 for the rest of the document) leave states without
+    // a cache; the frames around them are compared against the oracle.
+    const doc = 'para one.\n\npara two.\n\npara three.\n\n<td>x\n\npara four.\n\npara five.\n\n';
+    assertStreamEquivalence('cache fallback', scheduleSnapshots(doc, [5, 9, 3, 7]), CATALOG[0]);
+  });
+
+  test('a document with html blocks, footnotes and definitions splices cached and uncached alike', () => {
+    // The cached passes cover every prefix-wide step; drive a document
+    // that exercises each (html values for the table/raw-text guards,
+    // definitions and footnotes for the injection plan, a math block for
+    // position-less attribution) and compare every frame to the oracle.
+    const doc =
+      'intro[^n] with [ref].\n\n[^n]: note\n\n[ref]: /u\n\n<table><tr><td>a</td></tr></table>\n\n' +
+      '$$\nx^2\n$$\n\n<!-- c -->\n\n<details>\n<summary>s</summary>\n</details>\n\n' +
+      'p1\n\np2\n\np3\n\np4\n\np5\n\np6\n\n';
+    for (const config of CATALOG) {
+      const stats = assertStreamEquivalence('cache mixed', scheduleSnapshots(doc, [4]), config);
+      // Anti-vacuity floor only (the hazards above refuse a fair share of
+      // frames by design); equality is what the harness asserts per frame.
+      expect(stats.incrementalFrames).toBeGreaterThan(stats.frames / 3);
+    }
   });
 });
 

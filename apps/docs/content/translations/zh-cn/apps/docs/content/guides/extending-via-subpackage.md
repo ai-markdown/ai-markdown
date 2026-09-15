@@ -42,7 +42,7 @@
 │   ├── ExtraStyles = MantineAIMDefaultExtraStyles   ← CSS scoping for em-based tokens
 │   ├── customComponents.pre = MantineAIMPreCode     ← CodeHighlight + Mermaid + JSON pretty-print
 │   ├── codeBlock prop → AIMarkdownBehaviorsProvider ← the wrapper's behavior group
-│   └── colorScheme = Mantine's useComputedColorScheme (when not overridden)
+│   └── colorScheme = Mantine provider scheme / system query (when not overridden)
 │
 ├── defs.tsx
 │   ├── MantineCodeBlockOptions + defaultMantineCodeBlockOptions

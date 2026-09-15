@@ -183,6 +183,14 @@ export function useMarkdownChunk(input: () => ChunkInput) {
   let stopRegistration: (() => void) | undefined;
   let stopPublishing: (() => void) | undefined;
   onMounted(() => {
+    // Registration runs synchronously with the change that requires it (a
+    // new registry, a changed label set, a new index), before the render
+    // that follows. `prepared` reads the allocation: its policy differs
+    // between an unregistered and a registered chunk, so a post-flush
+    // registration made every registry switch parse twice, once without
+    // the symbol and once with it. Publication of the parsed contribution
+    // stays post-flush below; only the allocation moves ahead of the
+    // render.
     stopRegistration = watch(
       [() => input().registry, ownLabels, () => input().documentIndex],
       ([registry, labels], _old, cleanup) => {
@@ -201,7 +209,7 @@ export function useMarkdownChunk(input: () => ChunkInput) {
           allocation.value = null;
         });
       },
-      { immediate: true, flush: 'post' }
+      { immediate: true, flush: 'sync' }
     );
     stopPublishing = watchPostEffect(() => {
       const frame = prepared.value;

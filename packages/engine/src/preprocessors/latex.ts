@@ -132,6 +132,16 @@ function crossesBlankLine(text: string, from: number, to: number): boolean {
  * For these, an opening tag triggers protection of the entire paired region
  * `<tag>...</tag>` rather than just the tag itself, so dollar signs and other
  * LaTeX-looking characters inside (e.g. `<code>$x^2$</code>`) survive untouched.
+ *
+ * An opening tag whose closer has not arrived protects everything to the
+ * end of the input. That is the streaming contract, not a defect: the
+ * closer may still be on its way, and converting `$` inside the region
+ * before it lands would rewrite bytes that later turn out to be code. It
+ * also means a bare `<code>` mentioned in prose (`Use the <code> tag. Then
+ * $x^2$`) switches math off for the rest of the document. Write such a tag
+ * as inline code (`` `<code>` ``) or escape it (`&lt;code&gt;`) so it does
+ * not open a region. Documented for users in
+ * apps/docs/content/guides/content-preprocessors.md.
  */
 const LITERAL_CONTENT_TAGS = new Set(['code', 'pre', 'kbd', 'samp', 'math', 'svg']);
 const LITERAL_CONTENT_CLOSE_REGEX: Record<string, RegExp> = {
@@ -338,7 +348,9 @@ export function splitByProtectedRegions(content: string): Segment[] {
           } else {
             // Streaming: closing tag hasn't arrived yet. Protect everything
             // to the end of input so inner `$` etc. aren't mutated before
-            // the closer shows up in a later chunk.
+            // the closer shows up in a later chunk. A tag that never closes
+            // (prose mentioning `<code>`) keeps the rest of the document out
+            // of math conversion; see the LITERAL_CONTENT_TAGS doc comment.
             endIndex = content.length;
           }
         }
@@ -1351,8 +1363,13 @@ function convertSingleToDoubleDollar(text: string): string {
  *
  * Splits the input into protected regions (code blocks, inline code, HTML tags)
  * and applies the full normalization pipeline to unprotected text segments.
- * Returns the input unchanged when no LaTeX-related characters (`$`, `\[`, `\(`)
- * are detected.
+ * Returns the input unchanged when no math delimiter (`$`, `\[`, `\(`) is
+ * present anywhere in it — see {@link hasLatexTrigger} for what that means
+ * for `\text{...}` in a document without math.
+ *
+ * An opening `<code>`, `<pre>`, `<kbd>`, `<samp>`, `<math>` or `<svg>` tag
+ * with no closer protects the rest of the input from math conversion; see
+ * {@link LITERAL_CONTENT_TAGS}.
  *
  * @param str - Raw markdown string.
  * @returns The preprocessed string with normalized LaTeX delimiters.
@@ -1402,7 +1419,23 @@ export function preprocessLaTeX(str: string): string {
 //   ways because currency escaping rewrites the `$` token stream — B5):
 //   quiescence — no tail-sensitive transform engaged at slice end.
 
-/** The original whole-string early-exit predicate (shared verbatim). */
+/**
+ * The whole-string early-exit predicate, shared verbatim by the stateless
+ * entry and the incremental wrapper's monotone gate.
+ *
+ * Only the three math delimiters count. `\text{`, `\frac{` and other LaTeX
+ * commands do not: outside a delimited formula they are prose, and a
+ * document with no delimiter has no formula for them to belong to. The
+ * visible consequence is that `\text{a_b}` has its underscore escaped only
+ * once a `$`, `\[` or `\(` exists somewhere in the document — before that
+ * the whole input is returned unchanged, and the incremental wrapper
+ * transforms the prefix retroactively when the first delimiter arrives
+ * (pinned by the B4 late-trigger test in latex.incremental.test.ts). This
+ * is deliberate and kept as is: widening the trigger would rewrite prose
+ * bytes in documents that contain no math, and the byte-equivalence
+ * contract between the two entries is pinned on this exact predicate.
+ * Documented for users in apps/docs/content/guides/content-preprocessors.md.
+ */
 function hasLatexTrigger(str: string): boolean {
   return str.includes('$') || str.includes('\\[') || str.includes('\\(');
 }

@@ -56,17 +56,42 @@ export function isWrapInvisible(node: MdastContent): boolean {
  * So the guard is applied HERE instead, to the classifier's own contract.
  * See that file for what this does and does not claim.
  */
+/** Pairing-loop state at the end of the cut's CONTENT (before the trailing
+ *  separator run the trailing region discards and rebuilds), plus the
+ *  inputs it was computed over. A later frame whose cut region starts with
+ *  the same `outLen` node objects (the splice cache guarantees it: those
+ *  are the previous frame's aligned output, and the join never rewrites a
+ *  node below `outLen`) continues the loop from here instead of re-pairing
+ *  the whole frozen prefix. The loop is a left-to-right state machine over
+ *  the cut region and `visibles`, and both are identical up to that point
+ *  in the next frame, so the resumed run computes exactly what a fresh
+ *  run would — `sepBuffer` is empty and `literalCredit` is zero after every
+ *  content push on the paths that produce a snapshot. */
+export interface AlignResume {
+  /** `visibles` of the prefix this snapshot was computed over, which is
+   *  `prefixMdast.slice(0, mdastCount)` of the resuming frame. */
+  visibles: MdastContent[];
+  mdastCount: number;
+  /** Nodes `[0, outLen)` of the cut region are the resumed loop's `out`. */
+  outLen: number;
+  pairIdx: number;
+  sawContent: boolean;
+}
+
 export function alignPrefixCut(
   prefixMdast: MdastContent[],
   cutRegion: HastContent[],
-  tailWrapVisible: boolean
-): { children: HastContent[]; interiorFinalLiteral: boolean } | null {
-  const visibles = prefixMdast.filter((c) => !isWrapInvisible(c));
+  tailWrapVisible: boolean,
+  resume: AlignResume | null = null
+): { children: HastContent[]; interiorFinalLiteral: boolean; resume: AlignResume | null } | null {
+  const visibles = resume
+    ? resume.visibles.concat(prefixMdast.slice(resume.mdastCount).filter((c) => !isWrapInvisible(c)))
+    : prefixMdast.filter((c) => !isWrapInvisible(c));
 
-  const out: HastContent[] = [];
+  const out: HastContent[] = resume ? cutRegion.slice(0, resume.outLen) : [];
   let sepBuffer: HastContent[] = [];
-  let pairIdx = -1; // index into `visibles` of the child paired with the last content node
-  let sawContent = false;
+  let pairIdx = resume ? resume.pairIdx : -1; // index into `visibles` of the child paired with the last content node
+  let sawContent = resume ? resume.sawContent : false;
   // Wrap separators MERGED into pushed trailing literals (every trailing
   // '\n' on a literal is a merged separator — see the trailing-region
   // note). They count toward the NEXT gap's run length: without the
@@ -76,7 +101,8 @@ export function alignPrefixCut(
   // inflating the trailing gap count and duplicating the seam separator).
   let literalCredit = 0;
 
-  for (const node of cutRegion) {
+  for (let i = resume ? resume.outLen : 0; i < cutRegion.length; i++) {
+    const node = cutRegion[i];
     if (isSeparatorText(node)) {
       sepBuffer.push(node);
       continue;
@@ -177,6 +203,11 @@ export function alignPrefixCut(
   const trailingStripped = visibles.length - (pairIdx + 1);
   const trailingGaps = sawContent ? trailingStripped : Math.max(0, visibles.length - 1);
   const seam = visibles.length > 0 && tailWrapVisible ? 1 : 0;
+  // Loop state at the end of the cut's content — the next frame's resume
+  // point (see `AlignResume`). Captured before anything below appends to
+  // or rewrites `out`; only handed out on the plain-slot path, where the
+  // content nodes are kept verbatim.
+  const snapshot: AlignResume = { visibles, mdastCount: prefixMdast.length, outLen: out.length, pairIdx, sawContent };
 
   // Trailing-literal seam merge: when the cut ends in an html block's raw
   // trailing literal, the full parse MERGES the wrap separator into that
@@ -276,7 +307,9 @@ export function alignPrefixCut(
       if (!start || !end) return null;
       out[out.length - 1] = { type: 'text', value: body, position: { start, end } };
     }
-    return { children: out, interiorFinalLiteral: false };
+    // The cut's last node may have been rewritten above, so the next frame
+    // cannot resume past it — no snapshot on this path.
+    return { children: out, interiorFinalLiteral: false, resume: null };
   }
 
   // A trailing separator whose value is not a PLAIN '\n' carries a merged
@@ -334,7 +367,10 @@ export function alignPrefixCut(
   for (let i = 0; i < trailingGaps + seam; i++) {
     out.push({ type: 'text', value: '\n' });
   }
-  return { children: out, interiorFinalLiteral };
+  // An interior final literal is kept verbatim on this path too, but the
+  // join treats the seam after it specially; keep the resume to the plain
+  // case where nothing about the cut's end needs modelling.
+  return { children: out, interiorFinalLiteral, resume: lastIsLiteral ? null : snapshot };
 }
 
 /**

@@ -757,7 +757,7 @@ fuzz 语料库扩展揭示了其自身脚手架的脆弱性。覆盖率仪表要
 - **LaTeX 预处理器：** 带尾随文本的围栏行（` ``` not-a-closer `）不再被视为闭合标记，info 字符串中包含反引号的反引号围栏不再被视为开启标记——旧规则此前导致整篇文档后续的开启/闭合相位颠倒。
 - **字节一致性，协同模式与独立模式：** 段落中单独存在的带链接图片（`[![pic](url)][ref]`）同样通过链接占位符解包；合法的空目标（`[x]: <>`）保留 `href=""`，仅在协议拦截时移除属性（此前两者发生折叠）；解析出的脚注标记与服务端分支一样输出 `data-footnote-ref=""`；块缓存指纹不会因 URL 或标题内部的 `|` 发生冲突；包含半构建 mdast 位置的块在未缓存状态下渲染而不是消失；已释放片段符号下的贡献收集被忽略，以便注册表正常清空。
 - **Mantine：** 语言自动检测在非流式替换后重新排期（此前永久停留在 "unknown"）；JSON 美化输出门禁要求括号平衡，避免几乎每个流式片段都重复解析美化后的 JSON；流式结束时 `import('mermaid')` 失败会保留当前视图并在受控次数内重试下载，而不是显示永久渲染错误。
-- **引擎 API 说明：** `sanitizeCrossChunkUrl`（engine 入口）现在返回 `string | null`——协议拦截返回 `null`（渲染时移除属性），合法空目标返回 `''`。`@ai-react-markdown/core` 精确锁定 engine 版本；直接导入 engine 的调用方会看到放宽的类型。
+- **引擎 API 说明：** `sanitizeCrossChunkUrl`（engine 入口）现在返回 `string | null`——协议拦截返回 `null`（渲染时移除属性），合法空目标返回 `''`。`@ai-react-markdown/core` 精确锁定 engine 版本；直接导入 engine 的调用方会看到放宽的类型。（自 3.0 起已弃用：适配器改用 `resolveCrossChunkReference` 解析跨片段引用，它还会重定基 hash 链接并对最终元素做净化；`sanitizeCrossChunkUrl` 在 3.x 内保留导出。）
 - **基建 / 文档：** 统一版本发布的包 tag（`core-vX.Y.Z`）被发布工作流拒绝（这会绕过统一版本发布检查）；`qs` / `brace-expansion` 覆盖设置获得策略规定的上限；四个相关包声明 `engines.node >=20`；CRLF 行在扫描时去除 `\r`，使所有行锚定规则判定结果与 LF 一致；修复版本脚本头部、`RegistryInternal` 导出注释、remark-mark-highlight 一致性用例措辞，以及 core README 关于 `blockMemo` 输出等价性的说明（仅限独立模式）。流式游标动画名称派生自样式指纹（升至 `v2`，避免混合版本的页面解析到其他版本的关键帧）。
 
 刻意未作修改：`snap()`（内容替换）依然不触发 `onSmoothDrained`——这是既定文档契约；LaTeX 单字符 lookbehind 与货币转义逻辑保持原样（未构建出用户可见错误）。

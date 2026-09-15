@@ -1,6 +1,6 @@
 # React documents and references
 
-The examples and registry hook below use React. Vue supplies its own `AIMarkdownDocuments` and `AIMarkdown` with the same explicit document ID model, but no React registry hook or provider-level orphan override. See the [Vue guide](../reference/vue.md#multiple-chunks-in-one-document) and [package setup](getting-started.md).
+The examples and registry hook below use React. Vue supplies its own `AIMarkdownDocuments` and `AIMarkdown` with the same explicit document ID model and the same wrapper-level `preserveOrphanReferences` (both adapters resolve the wrapper value first), but no React registry hook. See the [Vue guide](../reference/vue.md#multiple-chunks-in-one-document) and [package setup](getting-started.md).
 
 A logical document can be displayed by several `<AIMarkdown>` instances: for example, independently updated answer sections with references to a shared citation list. Each instance parses its own Markdown. `<AIMarkdownDocuments>` connects their reference definitions and footnote numbering when they share an explicit, non-empty `documentId`.
 

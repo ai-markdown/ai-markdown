@@ -21,6 +21,13 @@
  * every later frame, so a corpus of unclosed docs would exercise nothing
  * but the full-parse fallback. `spliceFuzz.test.ts` asserts aggregate
  * incremental-engagement floors per family to keep this honest.
+ *
+ * Two axes joined 2026-09-15 after a byte census of the pinned corpus: it
+ * held ZERO U+0009 (`tabIndentArb`, `tabBenignArb`) and no tag name sharing
+ * a prefix with a table part, a raw-text name or a document-structure name
+ * (`tagNamePrefixArb`). Both are places where a scanner keyed on a name
+ * list or a column count can drift from micromark and parse5 without any
+ * existing family noticing.
  */
 
 import fc from 'fast-check';
@@ -131,6 +138,73 @@ const fencedCodeArb = fc
 
 /** APPROX #5 — indented-code content is still scanned for tags/refs. */
 const indentedCodeArb = fc.constantFrom('    <details>[a] scanned literal', '    [^b]: not a real def');
+
+/**
+ * Tab axis. micromark expands a tab to the next 4-column stop and so does
+ * the scanner (`computeIndent`), and most of its line regexes admit
+ * `[ \t]` — but the corpus never carried a single tab, so none of those
+ * arms had ever been exercised from fuzz. Every shape here is one where a
+ * tab DECIDES block structure rather than merely sitting in text:
+ *
+ *  - a tab after a list marker, an ordered marker, a `>` or a `#`;
+ *  - a tab-indented continuation line / nested item inside a list;
+ *  - tab-indented code (column 4 from one byte), and mixed space+tab runs
+ *    that reach column 4 only because the tab stop rounds up;
+ *  - tabs inside GFM table cells and around the pipes;
+ *  - a tab-only line, which IS a blank line to micromark;
+ *  - a tab before a fence closer: column 4, so NOT a closer — the fence
+ *    stays open until the real one, exactly like the NBSP shape in
+ *    `unicodeBlankArb`.
+ *
+ * NOT here: a tab-indented ``` line (`\t```` — indented code at root, a
+ * fence OPENER inside a footnote body). After `[^a]: body\n\n` it opens a
+ * fence inside the footnote that the next column-0 line ends unclosed, and
+ * the spliced hast keeps a stale end position for the footnote's empty code
+ * node (fresh-seed finds 20260916 / 20260917, 2000 runs; the four-space
+ * form diverges the same way, so the fence is the hazard and the tab only
+ * reached it). Pinned as `test.skip` in tabIndentAxis.test.ts; it returns
+ * to this list when that pin is green. The root-level form is covered
+ * deterministically there.
+ *
+ * The benign side keeps freezing and carries the sampling weight; the
+ * hazard side re-runs existing hazards under a tab (APPROX #5 literals in
+ * tab code, a def / footnote / def-list line whose whitespace is a tab, a
+ * task-list box after a tab — pinned to the full path by the checked-box
+ * rule in GRAMMAR-COVERAGE).
+ */
+const tabBenignArb = fc.constantFrom(
+  '-\ttab after marker\n-\tsecond item',
+  '- item\n\ttab continuation line',
+  '- a\n\t- nested by tab\n\t\tdeep continuation',
+  '1.\tordered\n2.\titems',
+  '| a\t| b |\n| -\t| - |\n|\t1\t|\t2\t|',
+  '>\tquoted with tab\n>\t\tcode inside quote',
+  '\tcode indented by tab\n\tsecond code line',
+  '  \tcode via space+tab\n \t- not a list item',
+  '#\ttab heading',
+  'para line\n\t\npara after a tab-only blank',
+  '```\ncode\n\t```\nstill inside the fence\n```',
+  '-\t-\t-',
+  'Setext title\n===\t'
+);
+const tabIndentArb = fc.oneof(
+  { weight: 3, arbitrary: tabBenignArb },
+  {
+    weight: 2,
+    arbitrary: fc.constantFrom(
+      '\t<details>[a] scanned literal',
+      '\t[^b]: not a real def',
+      '\t<td>s</td>\n\ntail para',
+      '[a]:\t/u\t"t"',
+      '[^a]:\tbody text\n\n\ttab continuation',
+      'Term line\n:\tdescription body',
+      '-\t[x] task after a tab',
+      '- [x]\ttask before a tab',
+      '- item\n\n\t<div>\n\tin tab code\n\t</div>',
+      '> q\n>\t```\n>\tfence in quote\n>\t```'
+    ),
+  }
+);
 
 const mathArb = fc.boolean().map((settled) => `$$\ne = mc^2\n${settled ? '$$' : ''}`);
 
@@ -855,8 +929,91 @@ const nonType6QuotedGtArb = fc.oneof(
   )
 );
 
+/**
+ * Tag-name prefix axis. Each name shares a PREFIX with a table part
+ * (`col`, `td`, `tr`, `caption`), a document-structure name (`head`,
+ * `html`, `body`), a no-element name (`image`, `frame`) or a raw-text /
+ * type-1 name (`pre`, `style`, `script`, `textarea`), yet is an ordinary
+ * unknown element to both grammars: not a CommonMark type-6 name (so alone
+ * on a line it is a type-7 block that ends at the blank line, and inline it
+ * is paragraph text), and not special, raw-text or void to parse5. A guard
+ * keyed on `startsWith` or on `\b` misreads them — `\b` matches before `-`,
+ * so `<td-cell>` is `<td` + boundary to `TABLE_PART_TAG_RE`. Sanitize strips
+ * the unknown element and hoists its children, so a divergence surfaces as
+ * a structure change around the name rather than as the tag itself.
+ *
+ * The self-closing forms are the poisoning side: HTML ignores the `/` on a
+ * non-void element, so `<images/>` alone on a line stays OPEN and swallows
+ * the rest of the document — inside a paragraph the synthesized `</p>`
+ * closes it again. The real `<table>` / `<td>` / `<pre>` / `<script>` mixes
+ * put the prefixed name where the real name's own hazard fires (foster
+ * parenting in a row, the stray-part poison, raw text) so the two cannot be
+ * confused by position either.
+ */
+const PREFIX_NAMES = [
+  'col-md-6',
+  'td-cell',
+  'tr-row',
+  'caption-box',
+  'header',
+  'html-x',
+  'images',
+  'framework',
+  'body-x',
+  'prefix',
+  'styled',
+  'scripted',
+  'textareas',
+] as const;
+const prefixNameArb = fc.constantFrom(...PREFIX_NAMES);
+const tagNamePrefixArb = fc.oneof(
+  {
+    weight: 4,
+    arbitrary: fc
+      .tuple(prefixNameArb, fc.constantFrom('block', 'inline', 'inline-self', 'close-only', 'attrs'))
+      .map(([name, form]) =>
+        form === 'block'
+          ? `<${name}>\ninner prose\n</${name}>`
+          : form === 'inline'
+            ? `p <${name}>x</${name}> q`
+            : form === 'inline-self'
+              ? `p <${name}/> q`
+              : form === 'close-only'
+                ? `</${name}>\ntext after a stray prefixed end tag`
+                : `<${name} class="c" data-x="a>b">\ninner prose\n</${name}>`
+      ),
+  },
+  { weight: 1, arbitrary: prefixNameArb.map((name) => `<${name}/>`) },
+  {
+    weight: 3,
+    arbitrary: fc.constantFrom(
+      '<table>\n<tr><td-cell>x</td-cell></tr>\n</table>',
+      '<table>\n<tr-row><td>x</td></tr-row>\n</table>',
+      '<table><caption-box>c</caption-box><tr><td>x</td></tr></table>',
+      '<td>s</td>\n\n<td-cell>x</td-cell>',
+      '<col-md-6>\n<col>\n</col-md-6>',
+      'p <td-cell>x</td-cell> q\n\n| a | b |\n| - | - |\n| 1 | 2 |',
+      '<tr-row/>\n\n| a | b |\n| - | - |',
+      '<pre>\n<prefix>x</prefix>\n</pre>',
+      '<prefix>\n<pre>\n</prefix>\n</pre>',
+      '<script>\nlet s = "<scripted>";\n</script>',
+      '<scripted>\n<script>x</script>\n</scripted>',
+      '<styled>\n<style>.a{}</style>\n</styled>',
+      '<textareas>\n<textarea>t</textarea>\n</textareas>',
+      '<framework>\n<iframe>\n</framework>\n</iframe>',
+      '<header>\n<h1>x</h1>\n</header>',
+      '<body-x>\n<body>\n</body>\n</body-x>',
+      '<html-x>\nx\n</html-x>\n\n<!DOCTYPE html>',
+      '<images>\n<img src="x">\n</images>'
+    ),
+  }
+);
+
 const rawHtmlArb = fc.oneof(
   { weight: 2, arbitrary: treeQuirkArb },
+  // 3: the family spans 13 names × 5 forms plus 18 mixes, and its marker
+  // has to clear the RUNS/200 floor on fresh seeds (pool 68 → 71).
+  { weight: 3, arbitrary: tagNamePrefixArb },
   { weight: 2, arbitrary: crossLineTagGarbageArb },
   // Weight tracks the pool size: each new family dilutes the others, and
   // this one carries the `quotedGtOnTagLine` meter, the first to starve
@@ -987,7 +1144,10 @@ const benignBlockArb = fc.oneof(
   { weight: 5, arbitrary: paragraphArb },
   { weight: 2, arbitrary: listArb },
   { weight: 2, arbitrary: miscBlockArb },
-  { weight: 1, arbitrary: fencedCodeArb.filter((b) => b.endsWith('```')) }
+  { weight: 1, arbitrary: fencedCodeArb.filter((b) => b.endsWith('```')) },
+  // Tabs that keep freezing: the benign family owns the engagement floor,
+  // so only the settled shapes sit here (pool 10 → 11).
+  { weight: 1, arbitrary: tabBenignArb }
 );
 
 const hazardBlockArb = fc.oneof(
@@ -999,7 +1159,10 @@ const hazardBlockArb = fc.oneof(
   { weight: 1, arbitrary: indentedCodeArb },
   { weight: 1, arbitrary: mathArb },
   { weight: 1, arbitrary: defListArb },
-  { weight: 1, arbitrary: unicodeBlankArb }
+  { weight: 1, arbitrary: unicodeBlankArb },
+  // 2 of 16: tabs compose with every other block through the separators,
+  // and the marker (any `\t`) must clear the floor on fresh seeds.
+  { weight: 2, arbitrary: tabIndentArb }
 );
 
 // --- document assembly ----------------------------------------------------------
@@ -1163,4 +1326,7 @@ export const COVERAGE_MARKERS: Record<string, RegExp> = {
   containerHeldRemnant:
     /> (?:floating |tail )?remnant|\n {2}remnant\n|> prose line|> <!-- c -->|- second item|(?:> text|item text|> p) <(?:div|iframe)>/,
   leadingBom: /^\uFEFF/,
+  tabIndent: /\t/,
+  tagNamePrefix:
+    /<\/?(?:col-md-6|td-cell|tr-row|caption-box|header|html-x|images|framework|body-x|prefix|styled|scripted|textareas)[ />]/,
 };

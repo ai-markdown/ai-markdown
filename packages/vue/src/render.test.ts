@@ -2,7 +2,7 @@ import { sanitizeSchema, createRegistry, defaultUrlTransform } from '@ai-markdow
 import type { Element, Root } from 'hast';
 import { renderTree } from './render';
 import { describe, it, expect } from 'vitest';
-import { createSSRApp, h, defineComponent, isVNode, type VNode } from 'vue';
+import { createSSRApp, h, defineComponent, isVNode, type Component, type VNode } from 'vue';
 import { renderToString } from '@vue/server-renderer';
 import { AIMarkdown, AIMarkdownDocuments, AIMarkdownSmoothStream, extendSanitizeSchema } from './index';
 
@@ -248,5 +248,169 @@ describe('top-level VNode keys', () => {
     expect(isVNode(fragment)).toBe(true);
     expect(fragment.key).toBe('block-0');
     expect((fragment.children as unknown[]).length).toBe(2);
+  });
+});
+
+describe('context props reach only components that declare them', () => {
+  const Undeclared = defineComponent({
+    setup:
+      (_props, { slots }) =>
+      () =>
+        h('p', slots.default?.()),
+  });
+  const Declared = defineComponent({
+    props: ['node', 'streaming', 'metadata'],
+    setup:
+      (props, { slots }) =>
+      () =>
+        h(
+          'p',
+          {
+            'data-tag': props.node.tagName,
+            'data-streaming': String(props.streaming),
+            'data-meta': String(props.metadata.id),
+          },
+          slots.default?.()
+        ),
+  });
+  const ObjectDeclared = defineComponent({
+    props: { streaming: Boolean },
+    setup:
+      (props, { slots }) =>
+      () =>
+        h('p', { 'data-streaming': String(props.streaming) }, slots.default?.()),
+  });
+  const Extended = defineComponent({
+    extends: { props: ['metadata'] },
+    setup:
+      (props, { slots }) =>
+      () =>
+        h('p', { 'data-meta': String((props as { metadata: { id: string } }).metadata.id) }, slots.default?.()),
+  });
+  const Functional = (props: { streaming?: boolean }, { slots }: { slots: { default?: () => VNode[] } }) =>
+    h('p', { 'data-streaming': String(props.streaming) }, slots.default?.());
+  const extra = { streaming: true, metadata: { id: 'm1' } };
+
+  it('SSR emits no stray attributes for an undeclared component and the values for a declared one', async () => {
+    const undeclared = await render('text', { ...extra, components: { p: Undeclared } });
+    expect(undeclared).toContain('<p>text</p>');
+    expect(undeclared).not.toMatch(/\bstreaming=/);
+    expect(undeclared).not.toContain('[object Object]');
+    const declared = await render('text', { ...extra, components: { p: Declared } });
+    expect(declared).toContain('<p data-tag="p" data-streaming="true" data-meta="m1">text</p>');
+    const object = await render('text', { ...extra, components: { p: ObjectDeclared } });
+    expect(object).toContain('<p data-streaming="true">text</p>');
+    expect(object).not.toContain('[object Object]');
+    const extended = await render('text', { ...extra, components: { p: Extended } });
+    expect(extended).toContain('<p data-meta="m1">text</p>');
+    expect(extended).not.toMatch(/\bstreaming=/);
+    // A functional component with no props option takes every attribute as
+    // a prop; Vue falls only class, style and listeners through.
+    const functional = await render('text', { ...extra, components: { p: Functional } });
+    expect(functional).toContain('<p data-streaming="true">text</p>');
+  });
+  it('the client VNode carries context props only for a declaring component', () => {
+    const tree: Root = {
+      type: 'root',
+      children: [
+        { type: 'element', tagName: 'p', properties: { id: 'x' }, children: [{ type: 'text', value: 'text' }] },
+      ],
+    };
+    const options = {
+      registry: null,
+      sym: null,
+      clobberPrefix: 'c-',
+      sanitizeSchema,
+      urlTransform: defaultUrlTransform,
+      slots: {},
+      streaming: true,
+      metadata: { id: 'm1' },
+    };
+    // The top-level VNode also carries its offset key; that is not a prop
+    // the component sees.
+    const props = (component: Component) => {
+      const { key: _key, ...rest } = (renderTree(tree, { ...options, components: { p: component } })[0] as VNode)
+        .props!;
+      return rest;
+    };
+    expect(Object.keys(props(Undeclared))).toEqual(['id']);
+    const declared = props(Declared);
+    expect(Object.keys(declared)).toEqual(['id', 'node', 'streaming', 'metadata']);
+    expect(declared.streaming).toBe(true);
+    expect(declared.metadata).toEqual({ id: 'm1' });
+    expect(declared.node.tagName).toBe('p');
+    expect(Object.keys(props(ObjectDeclared))).toEqual(['id', 'streaming']);
+    expect(Object.keys(props(Extended))).toEqual(['id', 'metadata']);
+    expect(Object.keys(props(Functional))).toEqual(['id', 'node', 'streaming', 'metadata']);
+  });
+});
+
+describe('DOM sink hardening', () => {
+  it('drops sink keys under the prefixes h() treats as forced props or attributes', async () => {
+    const payload = '<img src=x onerror="attack()">';
+    const tree: Root = {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'div',
+          properties: {
+            '.innerHTML': payload,
+            '^innerHTML': payload,
+            innerHTML: payload,
+            '.textContent': 'attack',
+            '.onclick': 'attack()',
+            '^onClick': 'attack()',
+            onClick: 'attack()',
+            '.is': 'attack',
+            '.dataSafe': 'attack',
+            dataSafe: 'ok',
+          },
+          children: [{ type: 'text', value: 'safe' }],
+        },
+      ],
+    };
+    const options = {
+      registry: null,
+      sym: null,
+      clobberPrefix: 'c-',
+      sanitizeSchema,
+      urlTransform: defaultUrlTransform,
+      components: {},
+      slots: {},
+      streaming: false,
+      metadata: undefined,
+    };
+    const vnode = renderTree(tree, options)[0] as VNode;
+    expect(Object.keys(vnode.props!).filter((key) => key !== 'key')).toEqual(['data-safe']);
+    const html = await renderToString(createSSRApp({ render: () => h('main', renderTree(tree, options)) }));
+    expect(html).toContain('<div data-safe="ok">safe</div>');
+    expect(html).not.toContain('attack');
+  });
+});
+
+describe('orphan definitions inside AIMarkdownDocuments', () => {
+  const inDocuments = (wrapper: Record<string, unknown>, chunk: Record<string, unknown>) =>
+    renderToString(
+      createSSRApp({
+        render: () =>
+          h(AIMarkdownDocuments, wrapper, {
+            default: () => h(AIMarkdown, { content: '[^o]: Orphan body', documentId: 'doc', ...chunk }),
+          }),
+      })
+    );
+  it('SSR renders an unreferenced definition in the footer by default, like React', async () => {
+    const html = await inDocuments({}, {});
+    expect(html).toContain('data-footnotes');
+    expect(html).toContain('Orphan body');
+    // Outside the wrapper the chunk default stays false.
+    expect(await render('[^o]: Orphan body')).not.toContain('Orphan body');
+  });
+  it('the wrapper value wins over the chunk prop, as in React', async () => {
+    expect(await inDocuments({}, { preserveOrphanReferences: false })).toContain('Orphan body');
+    expect(await inDocuments({ preserveOrphanReferences: false }, {})).not.toContain('Orphan body');
+    expect(await inDocuments({ preserveOrphanReferences: false }, { preserveOrphanReferences: true })).not.toContain(
+      'Orphan body'
+    );
   });
 });

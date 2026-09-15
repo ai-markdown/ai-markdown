@@ -87,12 +87,15 @@ export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> 
     () => ({
       defaultExpanded: group?.defaultExpanded ?? true,
       autoDetectUnknownLanguage: group?.autoDetectUnknownLanguage ?? false,
+      highlightJs: group?.highlightJs ?? null,
       formatJson: group?.formatJson ?? true,
       expandNestedJson: group?.expandNestedJson ?? true,
       highlightIntervalMs:
         Number.isFinite(group?.highlightIntervalMs) && group!.highlightIntervalMs! >= 0
           ? group!.highlightIntervalMs!
           : 50,
+      mermaidIntervalMs:
+        Number.isFinite(group?.mermaidIntervalMs) && group!.mermaidIntervalMs! >= 0 ? group!.mermaidIntervalMs! : 300,
     }),
     [group]
   );

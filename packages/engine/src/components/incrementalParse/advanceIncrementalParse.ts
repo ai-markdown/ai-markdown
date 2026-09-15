@@ -63,6 +63,7 @@ import {
   spliceTrees,
   tailMentionsTerminator,
   type CachedInjectionPlan,
+  type SplicePrefixCache,
 } from './spliceParse';
 
 /** The phantom label sets ride on the merged remark-rehype options (the
@@ -138,6 +139,13 @@ export interface IncrementalParseState {
    *  re-visits the entire frozen prefix every splice frame). Null until the
    *  first splice frame; carried verbatim across full-path append frames. */
   injectionPlan: CachedInjectionPlan | null;
+  /** Splice resume state: the prefix-wide passes of `spliceTrees` (prefix
+   *  cut, hast attribution, html-value guards, alignment, line count) as
+   *  they stood at the last splice frame's boundary, so the next splice
+   *  frame only walks what the boundary advanced over. Null after a
+   *  full-path frame (fresh roots — nothing to resume). Validated against
+   *  the trees it was built for before use; see SplicePrefixCache. */
+  spliceCache: SplicePrefixCache | null;
   /** Identity tuple of every parse input beyond `content` (G0). */
   depsKey: readonly unknown[];
 }
@@ -240,7 +248,13 @@ export function advanceIncrementalParse(
   // (where the plan walk actually runs). Non-append lineages start over.
   let injectionPlan: CachedInjectionPlan | null = appendOnly ? prev!.injectionPlan : null;
 
-  const finish = (mdast: MdastRoot, hast: HastRoot, usedIncremental: boolean, boundary: number): AdvanceResult => ({
+  const finish = (
+    mdast: MdastRoot,
+    hast: HastRoot,
+    usedIncremental: boolean,
+    boundary: number,
+    spliceCache: SplicePrefixCache | null
+  ): AdvanceResult => ({
     mdast,
     hast,
     usedIncremental,
@@ -253,13 +267,17 @@ export function advanceIncrementalParse(
       stableBoundary: freshBoundary,
       scanCheckpoint: scan.checkpoint,
       injectionPlan,
+      spliceCache,
       depsKey: options.depsKey,
     },
   });
 
+  // Fresh roots carry no splice cache: nothing about them was computed by
+  // the splice, and the next frame's identity check would refuse the old
+  // one anyway. Null makes that explicit rather than incidental.
   const fullPath = (): AdvanceResult => {
     const { mdast, hast } = runPipeline(content + phantomSuffix, options);
-    return finish(mdast, hast, false, 0);
+    return finish(mdast, hast, false, 0, null);
   };
 
   // G0 + G1 (scan already ran — its result seeds nextState either way)
@@ -267,11 +285,25 @@ export function advanceIncrementalParse(
   // G3
   const boundary = Math.min(freshBoundary, prev!.stableBoundary);
   if (boundary <= 0) return fullPath();
-  // G4 (defensive) — deliberately a FULL scan, no ordered-children early
-  // break: this is the gate that catches ordering/straddle violations, so
-  // it must not share the assumption it defends against (round-2 review).
-  // O(top-level children) per frame is noise next to the tail parse.
-  for (const child of prev!.mdast.children) {
+  // Splice resume state is usable only for the very trees it was built
+  // from and for a boundary that did not move back (its passes ran to
+  // `cache.boundary`; a later boundary only appends work). Anything else
+  // runs the passes in full — same output, more work.
+  const cache = prev!.spliceCache;
+  const resume =
+    cache !== null && cache.roots.mdast === prev!.mdast && cache.roots.hast === prev!.hast && cache.boundary <= boundary
+      ? cache
+      : null;
+  // G4 (defensive) — deliberately a FULL scan of the unverified children,
+  // no ordered-children early break: this is the gate that catches
+  // ordering/straddle violations, so it must not share the assumption it
+  // defends against (round-2 review). With a valid resume the first
+  // `mdastCount` children are the previous frame's frozen prefix, node for
+  // node — this same gate proved at that frame that none of them ends past
+  // its boundary, which is at most this one — so the scan covers the rest.
+  const children = prev!.mdast.children;
+  for (let i = resume ? resume.mdastCount : 0; i < children.length; i++) {
+    const child = children[i];
     const start = child.position?.start?.offset;
     const end = child.position?.end?.offset;
     if (start !== undefined && end !== undefined && start < boundary && end > boundary) {
@@ -286,7 +318,15 @@ export function advanceIncrementalParse(
   const tailAndSuffix = content.slice(boundary) + phantomSuffix;
   if (tailMentionsTerminator(tailAndSuffix)) return fullPath();
 
-  const plan = collectPrefixInjection(prev!.mdast, prev!.content, boundary, injectionPlan);
+  // The plan cache and the splice cache are written by the same splice
+  // frame, so when both resume from the same boundary the splice cache's
+  // frozen prefix is exactly the run of children the plan walk would skip
+  // as "before the resume point" — hand it the count so it starts after
+  // them (see `verifiedPrefix`). Any mismatch (plan carried across a
+  // full-path frame, plan not cacheable) walks every child as before.
+  const verifiedPrefix =
+    resume !== null && injectionPlan !== null && injectionPlan.boundary === resume.boundary ? resume.mdastCount : 0;
+  const plan = collectPrefixInjection(prev!.mdast, prev!.content, boundary, injectionPlan, verifiedPrefix);
   if (plan.cacheable !== false) {
     injectionPlan = { boundary, events: plan.events, uninjectable: plan.uninjectable };
   }
@@ -305,9 +345,10 @@ export function advanceIncrementalParse(
     boundary,
     injectionPrefix: injection.text,
     injectedSegments: injection.segments,
+    resume,
   });
   // null = the prefix/tail hast layout fell outside the alignment model —
   // full parse this frame (safe, one-frame cost).
   if (spliced === null) return fullPath();
-  return finish(spliced.mdast, spliced.hast, true, boundary);
+  return finish(spliced.mdast, spliced.hast, true, boundary, spliced.cache);
 }

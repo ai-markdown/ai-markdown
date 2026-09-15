@@ -95,6 +95,17 @@ function isProtocolAllowed(url: string, allowed: ReadonlyArray<string>): boolean
  *   the caller must render as `href=""` / `src=""` to stay byte-identical
  *   with standalone (v2.4.1 review: the two used to collapse into `''` and
  *   the placeholder omitted the attribute for `[x]: <>` too).
+ *
+ * @deprecated The adapters resolve cross-chunk references with
+ *   `resolveCrossChunkReference` (`./resolveCrossChunkReference`), which
+ *   sanitizes the final element (attribute and ancestor rules, `title`,
+ *   `alt`) and rebases `#hash` hrefs with the clobber prefix before the URL
+ *   transform. This helper only runs the protocol gate and the URL
+ *   transform on a bare URL: it never rebases a hash and knows nothing about
+ *   the element's other attributes, so its output can differ from what the
+ *   adapters render. It stays exported through 3.x; on a plain URL (no
+ *   hash) both helpers reach the same allow/block decision, and
+ *   `crossChunkUrlSanitize.test.ts` pins that.
  */
 export function sanitizeCrossChunkUrl(
   rawUrl: string,

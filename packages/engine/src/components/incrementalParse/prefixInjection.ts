@@ -61,7 +61,16 @@ export function collectPrefixInjection(
   mdast: MdastRoot,
   content: string,
   boundary: number,
-  resume?: CachedInjectionPlan | null
+  resume?: CachedInjectionPlan | null,
+  /** Leading top-level children the caller KNOWS are positioned, in
+   *  document order and below `resume.boundary` — the splice cache's frozen
+   *  prefix, which the cut that built it filtered by position and whose
+   *  order the plan walks of the frames that froze it verified. The
+   *  ordering scan below would inspect each of them and `continue`; it
+   *  starts after them instead, seeded with the last one's start so the
+   *  check on the first inspected child is unchanged. Only honoured with a
+   *  valid resume, since without one every child must be visited. */
+  verifiedPrefix = 0
 ): PrefixInjectionPlan {
   // Resume path (final-review R3): the frozen prefix is byte-identical
   // frame to frame, so a cached plan only needs the children in
@@ -136,8 +145,11 @@ export function collectPrefixInjection(
   // in [resumeAt, boundary) are visited) and flags any disorder as
   // uninjectable (full-parse fallback) — the cut layer's correct-or-bailing
   // promise for the same threat model (2026-08 project review, eng-parse-07).
-  let lastStart = -1;
-  for (const child of mdast.children) {
+  const children = mdast.children;
+  const skip = resumeValid && verifiedPrefix > 0 ? Math.min(verifiedPrefix, children.length) : 0;
+  let lastStart = skip > 0 ? (children[skip - 1].position?.start?.offset ?? -1) : -1;
+  for (let i = skip; i < children.length; i++) {
+    const child = children[i];
     // Nothing at or past the boundary can contribute a prefix event (E5),
     // and nothing before the resume point needs re-visiting.
     const start = child.position?.start?.offset;

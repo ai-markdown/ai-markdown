@@ -5,7 +5,12 @@
 // that `initialize` is not called when nothing needs to change.
 import type { MermaidConfig } from 'mermaid';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
-import { ensureMermaidInitialized, resetMermaidInitializationForTests } from './initialize';
+import {
+  ensureMermaidInitialized,
+  getMermaidMaxTextSize,
+  MERMAID_DEFAULT_MAX_TEXT_SIZE,
+  resetMermaidInitializationForTests,
+} from './initialize';
 
 const DEFAULT_FONT = '"trebuchet ms", verdana, arial, sans-serif';
 
@@ -161,5 +166,23 @@ describe('ensureMermaidInitialized', () => {
     ensureMermaidInitialized({ initialize }, true);
     expect(initialize).toHaveBeenCalledTimes(1);
     expect(initialize.mock.calls[0][0]).toMatchObject({ securityLevel: 'strict', theme: 'dark', darkMode: true });
+  });
+});
+
+describe('getMermaidMaxTextSize', () => {
+  test('reads the site config value and falls back to mermaid default otherwise', () => {
+    expect(getMermaidMaxTextSize(createMermaidStub({ maxTextSize: 1234 }))).toBe(1234);
+    expect(getMermaidMaxTextSize(createMermaidStub({ maxTextSize: 0 }))).toBe(0);
+    expect(getMermaidMaxTextSize(createMermaidStub({}))).toBe(MERMAID_DEFAULT_MAX_TEXT_SIZE);
+    expect(getMermaidMaxTextSize(createMermaidStub({ maxTextSize: -1 }))).toBe(MERMAID_DEFAULT_MAX_TEXT_SIZE);
+    expect(getMermaidMaxTextSize(createMermaidStub({ maxTextSize: Number.NaN }))).toBe(MERMAID_DEFAULT_MAX_TEXT_SIZE);
+    expect(getMermaidMaxTextSize({ initialize: vi.fn() })).toBe(MERMAID_DEFAULT_MAX_TEXT_SIZE);
+  });
+
+  test('survives our own re-initialize because the site config is passed through', () => {
+    const mermaid = createMermaidStub({ securityLevel: 'loose', maxTextSize: 800 });
+    ensureMermaidInitialized(mermaid, false);
+    expect(mermaid.site.securityLevel).toBe('strict');
+    expect(getMermaidMaxTextSize(mermaid)).toBe(800);
   });
 });

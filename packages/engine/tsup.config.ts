@@ -11,10 +11,19 @@ const shared: Options = {
   format: ['cjs', 'esm'],
   sourcemap: true,
   noExternal: ['lodash-es'],
-  // NO `treeshake: true` here: tsup's rollup treeshake pass strips
-  // module-level directives (verified in core), and the cost of the env
-  // replacement leaving inert `if (false)` bodies is a few KB that never
-  // execute; any consumer minifier removes them.
+  // The rollup treeshake pass is what turns the build-time NODE_ENV fold
+  // into removed code: esbuild alone leaves every `if (false) { ... }` body
+  // in place (it only drops them under minifySyntax), so dev-only
+  // invariants, the seal-release containment module and other test hooks
+  // shipped in the production bundle. With the pass on, the production
+  // ESM build went from 230,560 to 225,472 bytes (2026-09-15, together
+  // with moving the test-only modules out of the import graph), every
+  // `if (false)` body is gone, and the export list is unchanged.
+  //
+  // Known cost of the pass: it strips module-level directives such as
+  // 'use client' (verified in core). This package has none and must not
+  // grow one; core, which is the adapters' boundary, keeps the pass off.
+  treeshake: true,
 };
 
 /**

@@ -387,12 +387,13 @@ describe('registry notifications do not re-run unaffected chunk pipelines', () =
         // A definition appended to the last chunk resolves chunk 0's link.
         // Chunk 0 legitimately parses again: its phantom targets change (the
         // label is no longer missing), so its frame must be rebuilt. The
-        // last chunk parses twice: once for the append and once more after
-        // its label set changes and it re-registers under a fresh symbol.
-        // Chunks 1-3 reference nothing and stay untouched.
+        // last chunk's label set changes and it re-registers under a fresh
+        // symbol; registration is synchronous with the change, so the one
+        // parse for the append already carries the new symbol. Chunks 1-3
+        // reference nothing and stay untouched.
         chunks.value = chunks.value.map((c, i) => (i === 4 ? c + '\n\n[u]: https://example.com' : c));
         await settle();
-        expect(delta(parseCounts, parsesBeforeDef)).toEqual([1, 0, 0, 0, 2]);
+        expect(delta(parseCounts, parsesBeforeDef)).toEqual([1, 0, 0, 0, 1]);
         // Chunk 0 re-renders once with the resolved link. The last chunk
         // re-renders for the append, the re-registration and each
         // notification of that churn, which rebuilds the footer it owns.
@@ -660,5 +661,130 @@ describe('top-level blocks keep their component instances by source offset', () 
     } finally {
       app.unmount();
     }
+  });
+});
+
+describe('a documentId switch resolves the registry with the prefix', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  const textOf = (n: HostNode): string => n.text + n.children.map(textOf).join('');
+
+  test('one switch parses once and never pairs the old registry with the new prefix', async () => {
+    vi.stubGlobal('window', {});
+    parseCounts.length = 0;
+    // Two documents whose companion chunks define the same labels with
+    // different destinations. The reference chunk moves from one to the
+    // other; its link resolves through the registry and its footnote mark
+    // carries the clobber prefix, so a frame that mixes the two shows a
+    // destination from one document under the prefix of the other.
+    const doc = shallowRef('alpha');
+    const frames: Array<{ link: string | undefined; mark: string | undefined }> = [];
+    const root = node();
+    // The wrapper renders a fragment, so the host root holds the fragment
+    // anchors and the three chunk wrappers as siblings; the moved chunk is
+    // the first element.
+    const chunkRoot = () => root.children.find((child) => child.tag === 'div')!;
+    const record = () => {
+      const hrefs = anchors(chunkRoot()).map((a) => String(a.props.href));
+      frames.push({
+        link: hrefs.find((href) => !href.startsWith('#')),
+        mark: hrefs.find((href) => href.startsWith('#')),
+      });
+    };
+    // The link resolves through the registry's label set as soon as the
+    // chunk holds the registry; the footnote number arrives with the
+    // chunk's own contribution, which commits post-flush, so a frame may
+    // still lack the mark. A mark under one document's prefix next to the
+    // other document's destination is the mixed frame this test forbids.
+    const consistent = ({ link, mark }: { link: string | undefined; mark: string | undefined }) =>
+      (link === 'https://alpha.example/' && (mark === undefined || mark === '#aimd-alpha-fn-n')) ||
+      (link === 'https://beta.example/' && (mark === undefined || mark === '#aimd-beta-fn-n'));
+    const app = host.createApp({
+      render: () =>
+        h(AIMarkdownDocuments, null, {
+          $stable: true,
+          default: () => [
+            h(AIMarkdown, {
+              key: 'ref',
+              content: 'Claim[^n] on [site][u].',
+              documentId: doc.value,
+              documentIndex: 0,
+              onVnodeUpdated: record,
+            }),
+            h(AIMarkdown, {
+              key: 'alpha',
+              content: '[^n]: Alpha body\n\n[u]: https://alpha.example/',
+              documentId: 'alpha',
+              documentIndex: 1,
+            }),
+            h(AIMarkdown, {
+              key: 'beta',
+              content: '[^n]: Beta body\n\n[u]: https://beta.example/',
+              documentId: 'beta',
+              documentIndex: 1,
+            }),
+          ],
+        }),
+    });
+    try {
+      app.mount(root);
+      await settle();
+      record();
+      expect(frames.at(-1)).toEqual({ link: 'https://alpha.example/', mark: '#aimd-alpha-fn-n' });
+      const before = [...parseCounts];
+      frames.length = 0;
+      doc.value = 'beta';
+      await settle();
+      // The moved chunk parses once, with the new registry, its new symbol
+      // and the new prefix together. The companions parse nothing: no label
+      // set moved in either registry.
+      expect(parseCounts.map((n, i) => n - before[i])).toEqual([1, 0, 0]);
+      expect(frames.length).toBeGreaterThanOrEqual(1);
+      expect(frames.filter((frame) => !consistent(frame))).toEqual([]);
+      expect(frames.at(-1)).toEqual({ link: 'https://beta.example/', mark: '#aimd-beta-fn-n' });
+      expect(textOf(root)).toContain('Beta body');
+    } finally {
+      app.unmount();
+    }
+  });
+});
+
+describe('the documents wrapper supplies the orphan policy', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  const textOf = (n: HostNode): string => n.text + n.children.map(textOf).join('');
+  const mount = async (wrapper: Record<string, unknown>, chunk: Record<string, unknown>) => {
+    vi.stubGlobal('window', {});
+    const root = node();
+    const app = host.createApp({
+      render: () =>
+        h(AIMarkdownDocuments, wrapper, {
+          $stable: true,
+          default: () => [
+            h(AIMarkdown, { key: 'text', content: 'Prose without a reference.', documentId: 'doc', documentIndex: 0 }),
+            h(AIMarkdown, { key: 'def', content: '[^o]: Orphan body', documentId: 'doc', documentIndex: 1, ...chunk }),
+          ],
+        }),
+    });
+    app.mount(root);
+    await settle();
+    const text = textOf(root);
+    app.unmount();
+    return text;
+  };
+
+  test('an unreferenced definition shows in the aggregate footer by default, as in React', async () => {
+    expect(await mount({}, {})).toContain('Orphan body');
+  });
+  test('the wrapper prop turns the policy off', async () => {
+    expect(await mount({ preserveOrphanReferences: false }, {})).not.toContain('Orphan body');
+  });
+  test('the wrapper value wins over a chunk prop in both directions, as in React', async () => {
+    expect(await mount({}, { preserveOrphanReferences: false })).toContain('Orphan body');
+    expect(await mount({ preserveOrphanReferences: false }, { preserveOrphanReferences: true })).not.toContain(
+      'Orphan body'
+    );
   });
 });

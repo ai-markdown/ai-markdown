@@ -16,6 +16,15 @@
  * dropped-defs mutation) exercises freezing past a RESOLVED link ref.
  * These pin that path deterministically, by name.
  *
+ * Four more purpose-built docs joined 2026-09-15 with the tab and tag-name
+ * prefix generator axes (fuzzGenerators.ts): TAB_INDENT_DOC and
+ * TAB_FENCE_TABLE_DOC carry U+0009 where it decides block structure (the
+ * corpus had none), TAG_PREFIX_BLOCKS_DOC and TAG_PREFIX_TABLE_MIX_DOC
+ * carry element names that share a prefix with a table part, a raw-text
+ * name or a document-structure name. They are the freezable side of each
+ * axis; the poisoning shapes are pinned in tabIndentAxis.test.ts and
+ * tagNamePrefixAxis.test.ts, where equivalence-only is the right claim.
+ *
  * The 2000 fuzz samples come from fast-check with a pinned seed. That is
  * deterministic for a FIXED fast-check version only, so every consumer must
  * verify `corpusFingerprint` before trusting a stored baseline: a
@@ -134,6 +143,32 @@ export const REALISTIC_DOCS: PinnedDoc[] = [
     id: 'REF_RESOLUTION_TITLED',
     configIndex: 2,
     doc: '[spec][] with [x] inline\n\n[spec]: /s "The Title"\n[x]: /x\n\nclosing paragraph\n\ntail prose\n\nend\n',
+  },
+  {
+    id: 'TAB_INDENT_DOC',
+    configIndex: 3,
+    doc: '# Tabs in structure\n\n-\ttab after the marker\n-\tsecond item\n\tcontinuation indented by a tab\n\n1.\tordered\n2.\titems\n\t- nested by a tab\n\t\tdeep continuation\n\n>\tquoted with a tab\n>\t\tcode inside the quote\n\n\tcode indented by one tab\n  \tcode via two spaces and a tab\n\npara line\n\t\npara after a tab-only blank line\n\n#\ttab heading\n\n-\t-\t-\n\nclosing prose\n',
+  },
+  {
+    id: 'TAB_FENCE_TABLE_DOC',
+    configIndex: 4,
+    doc: '## Fences and tables\n\n```\ncode\n\t```\nstill inside the fence\n```\n\n\t```\nindented code, not an opener\n```\nreal fence\n```\n\n| a\t| b |\n| -\t| - |\n|\t1\t|\t2\t|\n\n[a]:\t/u\t"t"\n\nsee [a] and a claim[^n]\n\n[^n]:\tnote body\n\n\ttab continuation of the note\n\nTerm line\n:\tdescription body\n\nSetext title\n===\t\n\ntrailing prose\n',
+  },
+  {
+    id: 'TAG_PREFIX_BLOCKS_DOC',
+    configIndex: 5,
+    // The table-part prefixes (`td-cell`, `tr-row`, `col-md-6`,
+    // `caption-box`) are deliberately absent here: outside a real table the
+    // splice guard's `\b` match refuses every later frame (the over-block
+    // recorded in tagNamePrefixAxis.test.ts), and this corpus must keep the
+    // oracle sweep's engagement floor. They sit inside real tables in the
+    // next doc.
+    doc: '# Prefixed names\n\n<prefix>\ninner prose\n</prefix>\n\np <framework>f</framework> q and <images>i</images> inline\n\n<header class="c" data-x="a>b">\nattrs on the tag line\n</header>\n\n<styled>\n<style>.a{}</style>\n</styled>\n\n<scripted>\n<script>x</script>\n</scripted>\n\n<textareas>\n<textarea>t</textarea>\n</textareas>\n\n<header>\n<h1>x</h1>\n</header>\n\n<html-x>\nx\n</html-x>\n\n<body-x>\nx\n</body-x>\n\nclosing prose\n',
+  },
+  {
+    id: 'TAG_PREFIX_TABLE_MIX_DOC',
+    configIndex: 0,
+    doc: '# Prefixed names next to real tables\n\nintro prose before the first table\n\n<table>\n<tr><td-cell>x</td-cell></tr>\n</table>\n\nprose between the tables\n\n<table>\n<tr-row><td>x</td></tr-row>\n</table>\n\n| a | b |\n| - | - |\n| 1 | 2 |\n\n<pre>\n<prefix>x</prefix>\n</pre>\n\n<script>\nlet s = "<scripted>";\n</script>\n\n<images>\n<img src="x">\n</images>\n\np <framework>f</framework> after the blocks\n\nclosing prose\n',
   },
 ];
 

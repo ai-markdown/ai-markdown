@@ -8,7 +8,8 @@
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within, userEvent } from 'storybook/test';
-import MantineAIMarkdown from '../src/index';
+import hljs from 'highlight.js';
+import MantineAIMarkdown, { type MantineCodeBlockOptions } from '../src/index';
 import { withMantineProvider } from './decorators';
 
 // highlight.js's whole-registry autodetection is noisy by nature (the option
@@ -40,13 +41,7 @@ const JSON_FRAMES: Array<{ content: string; streaming: boolean }> = [
   { content: JSON_DOC + ' and ends.', streaming: false },
 ];
 
-function Harness({
-  frames,
-  codeBlock,
-}: {
-  frames: typeof JSON_FRAMES;
-  codeBlock?: { autoDetectUnknownLanguage: boolean };
-}) {
+function Harness({ frames, codeBlock }: { frames: typeof JSON_FRAMES; codeBlock?: Partial<MantineCodeBlockOptions> }) {
   const [step, setStep] = useState(0);
   const frame = frames[Math.min(step, frames.length - 1)];
   return (
@@ -71,7 +66,7 @@ export default meta;
 
 type Story = StoryObj<typeof Harness>;
 
-const AUTODETECT = { autoDetectUnknownLanguage: true };
+const AUTODETECT = { autoDetectUnknownLanguage: true, highlightJs: hljs };
 
 export const AutodetectEarlyThenCorrected: Story = {
   render: () => <Harness frames={AUTODETECT_FRAMES} codeBlock={AUTODETECT} />,

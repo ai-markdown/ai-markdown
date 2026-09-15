@@ -39,7 +39,8 @@
 
 import { describe, expect, test, vi } from 'vitest';
 
-import { computeFreezeBoundary, readSealReleaseEvaluations, type FreezeBoundaryOptions } from './computeFreezeBoundary';
+import { computeFreezeBoundary, type FreezeBoundaryOptions } from './computeFreezeBoundary';
+import { readSealReleaseEvaluations } from './sealReleaseContainment';
 import { CATALOG, buildAdvanceOptions } from './testPluginCatalog';
 import { REALISTIC_DOCS, pinnedFuzzDocs, type PinnedDoc } from './pinnedCorpus';
 

@@ -46,6 +46,25 @@ const readSiteConfig = (mermaid: MermaidInitTarget): MermaidConfig => {
   return api?.getSiteConfig?.() ?? api?.getConfig?.() ?? {};
 };
 
+/** mermaid's own default for `maxTextSize` (`MAX_TEXTLENGTH` in mermaidAPI). */
+export const MERMAID_DEFAULT_MAX_TEXT_SIZE = 50_000;
+
+/**
+ * The effective `maxTextSize`. `mermaid.render` does not reject oversized
+ * input: it swaps in a placeholder diagram ("Maximum text size in diagram
+ * exceeded") and resolves normally, and `mermaid.parse` has no size gate at
+ * all, so the whole text is parsed first. The renderer checks this before
+ * parsing and reports the size as an error instead. The key is in mermaid's
+ * `secure` list, so a `%%{init}%%` directive cannot raise it and the site
+ * config is the value that applies.
+ */
+export const getMermaidMaxTextSize = (mermaid: MermaidInitTarget): number => {
+  const configured = readSiteConfig(mermaid).maxTextSize;
+  return typeof configured === 'number' && Number.isFinite(configured) && configured >= 0
+    ? configured
+    : MERMAID_DEFAULT_MAX_TEXT_SIZE;
+};
+
 /**
  * mermaid's config is a module-level singleton shared with the host
  * application when the bundler dedupes the package, and a host that enables

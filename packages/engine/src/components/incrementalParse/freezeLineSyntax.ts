@@ -76,31 +76,53 @@ export const NO_ELEMENT_NAMES = new Set([...DOCUMENT_STRUCTURE_NAMES, 'frame', '
  *  half-arrived `<!DOCTYPE html` already erases and merges (soak leg 1,
  *  shards 3 and 9: a snapshot cut mid-doctype froze at a boundary the
  *  arriving doctype then rewrote). */
-const RETROACTIVE_OPENERS = [
-  '<!doctype',
-  // DERIVED, so the trailing-partial guard cannot drift from the poison the
-  // confirmed lines get. It was transcribed until F28, and the transcription
-  // was already two names behind by then. `<frame` subsumes `<frameset`,
-  // which is why the derived list is SHORTER than the one it replaces and
-  // still covers strictly more.
-  ...[...NO_ELEMENT_NAMES].flatMap((name) => [`<${name}`, `</${name}`]),
-];
+const RETROACTIVE_TAG_NAMES = [...NO_ELEMENT_NAMES];
 
-/** Does a partial line already carry one of them? Matches COMPLETE openers
- *  only. A "could still become one" arm was tried and reverted: every `<`
- *  is a prefix of every opener, so a stream cut right after a `<` dropped
- *  the boundary to 0 — and since the consumer takes
+/** A tag-name terminator to parse5: whitespace, `/` or `>` (the tag-name
+ *  state leaves on exactly these). Anything else continues the name, so
+ *  `<header`, `<html-x`, `<bodyguard`, `<framework` and `<images` are
+ *  other elements, not the retroactive ones. */
+const isTagNameEnd = (c: number): boolean =>
+  c === 32 || c === 9 || c === 10 || c === 12 || c === 13 || c === 47 /* / */ || c === 62; /* > */
+
+/** Does a partial line already carry a retroactive construct? Matches
+ *  COMPLETE openers only:
+ *  - `<!doctype` needs no terminator (parse5's markup-declaration state
+ *    recognizes the seven letters and emits a doctype token from there,
+ *    even at end of input);
+ *  - an element name (derived from `NO_ELEMENT_NAMES`, so this guard
+ *    cannot drift from the poison confirmed lines get — it was transcribed
+ *    until F28 and two names behind by then) must be followed by a
+ *    name terminator. `<head` streamed as the start of `<header …>` is not
+ *    a head tag, and a prefix match here poisoned every later frame of the
+ *    stream, since every later frame still starts with those five bytes
+ *    (37 of 41 frames full-parsed for `<header class="x">Title</header>`
+ *    streamed byte by byte). A name that runs to the END of the partial
+ *    line is not complete either: parse5 drops a tag cut off inside its
+ *    name or attributes at end of input (eof-in-tag), so the full parse
+ *    this frame is checked against sees no element there. `lineEndingFollows`
+ *    is for callers that pass a CONFIRMED line (the line ending after it
+ *    is a terminator to parse5, so `<head` at the end of such a line is a
+ *    complete name).
+ *  A "could still become one" arm was tried and reverted: every `<` is a
+ *  prefix of every opener, so a stream cut right after a `<` dropped the
+ *  boundary to 0 — and since the consumer takes
  *  `min(boundary, prev.stableBoundary)`, one transient dip disables
  *  freezing for the whole stream permanently. Frames that cut INSIDE an
  *  opener (`…<!DOCTYP`) need no suppression: the full parse they are
  *  checked against does not see a doctype there either, so the frozen
  *  prefix still matches. Suppresses the BOUNDARY only — nothing here may
  *  reach the checkpoint, since the tail is not confirmed. */
-export function tailCarriesRetroactive(text: string): boolean {
+export function tailCarriesRetroactive(text: string, lineEndingFollows = false): boolean {
   const lower = text.toLowerCase();
   for (let i = lower.indexOf('<'); i !== -1; i = lower.indexOf('<', i + 1)) {
-    const rest = lower.slice(i);
-    for (const op of RETROACTIVE_OPENERS) if (rest.startsWith(op)) return true;
+    if (lower.startsWith('<!doctype', i)) return true;
+    const nameStart = lower.charCodeAt(i + 1) === 47 /* / */ ? i + 2 : i + 1;
+    for (const name of RETROACTIVE_TAG_NAMES) {
+      if (!lower.startsWith(name, nameStart)) continue;
+      const after = nameStart + name.length;
+      if (after === lower.length ? lineEndingFollows : isTagNameEnd(lower.charCodeAt(after))) return true;
+    }
   }
   return false;
 }
@@ -173,7 +195,7 @@ export const SCOPE_BARRIER_NAMES = new Set([
 export const FOREIGN_ROOT_NAMES = ['svg', 'math'];
 
 /** CommonMark type-1 block start names — start tags only. */
-const TYPE1_NAMES = new Set(['script', 'pre', 'style', 'textarea']);
+export const TYPE1_NAMES = new Set(['script', 'pre', 'style', 'textarea']);
 
 /** parse5 elements whose CONTENT is text to the tokenizer (RAWTEXT /
  *  RCDATA / script data / plaintext): every `<…>` inside is text until the
@@ -600,33 +622,9 @@ export function classifyBlockStart(text: string, indent: number, defListEnabled:
   return null; // indent 1–3 non-marker: ambiguous
 }
 
-/**
- * TEST-ONLY view of the name lists this scanner classifies tags by.
- *
- * Not part of the module's behaviour and not re-exported by any barrel; it
- * exists so a test can DERIVE its corpus from the scanner's own taxonomy
- * instead of transcribing it. The census alphabet was hand-written for two
- * years, and F13 is exactly one cell of the table below — `pre`, the single
- * member of `TYPE1_NAMES \ RAW_TEXT_ELEMENTS`. A transcribed list cannot
- * grow that cell back when an upstream `htmlBlockNames` bump moves a name;
- * a derived one does, on the next test run.
- *
- * Adding a list here widens every derived corpus automatically, which is
- * the point — so add one whenever the scanner starts keying a decision on a
- * new set of names.
- */
-export const SCANNER_NAME_LISTS: ReadonlyArray<readonly [string, ReadonlySet<string>]> = [
-  ['type1', TYPE1_NAMES],
-  ['rawText', RAW_TEXT_ELEMENTS],
-  ['type6', TYPE6_NAMES],
-  ['void', VOID_TAGS],
-  ['documentStructure', DOCUMENT_STRUCTURE_NAMES],
-  // Added with F28, and it is the list that would have made F28 visible: the
-  // derived census alphabet partitions names by their membership across THIS
-  // table, so before it existed `frame` shared one 39-name class with `div`
-  // and could never be sampled apart from it.
-  ['noElement', NO_ELEMENT_NAMES],
-  ['tablePart', TABLE_PART_NAMES],
-  ['scopeBarrier', SCOPE_BARRIER_NAMES],
-  ['foreignRoot', new Set(FOREIGN_ROOT_NAMES)],
-];
+// The name lists this scanner keys decisions on are also tabulated by
+// `scannerNameLists.ts` (test-only, never bundled) so a test can derive its
+// corpus from the scanner's own taxonomy. Add a list there whenever the
+// scanner starts keying a decision on a new set of names. Exported for that
+// table only:
+export { DOCUMENT_STRUCTURE_NAMES };

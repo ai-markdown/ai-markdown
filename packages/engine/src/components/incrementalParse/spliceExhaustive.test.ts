@@ -92,7 +92,8 @@
 
 import { describe, expect, test } from 'vitest';
 
-import { computeFreezeBoundary, SCANNER_NAME_LISTS, type FreezeScanCheckpoint } from './computeFreezeBoundary';
+import { computeFreezeBoundary, type FreezeScanCheckpoint } from './computeFreezeBoundary';
+import { SCANNER_NAME_LISTS } from './scannerNameLists';
 import { CATALOG, buildAdvanceOptions, type CatalogConfig } from './testPluginCatalog';
 import { assertStreamEquivalence, fallbackOracleSampleFromEnv, runFull, testEnv } from './spliceArbiterHarness';
 import { engineProbe, probeTailsFor, snapshotRawDisagreement, type NodeLike } from './conformanceOracles';

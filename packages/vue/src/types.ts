@@ -33,3 +33,10 @@ export interface AIMarkdownProps {
   metadata?: unknown;
   streamingCursor?: boolean;
 }
+export interface AIMarkdownDocumentsProps {
+  /** Default `true`. Orphan policy for every chunk in this scope; it wins
+   * over each chunk's own `preserveOrphanReferences`, as React's wrapper
+   * does. Coordination itself is gated by an explicit `documentId`, not by
+   * this prop. */
+  preserveOrphanReferences?: boolean;
+}

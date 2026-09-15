@@ -10,7 +10,9 @@ import type { Element as HastElement } from 'hast';
 import { sanitizeCrossChunkUrl } from './crossChunkUrlSanitize';
 import { sanitizeSchema as defaultLibrarySchema } from './sanitizeSchema';
 import { extendSanitizeSchema } from './extendSanitizeSchema';
-import { defaultUrlTransform } from './markdown';
+import { defaultUrlTransform, type UrlTransform } from './markdown';
+import type { SanitizeSchema } from './extendSanitizeSchema';
+import { resolveCrossChunkReference } from './resolveCrossChunkReference';
 
 describe('sanitizeCrossChunkUrl — default library policy', () => {
   test('strips javascript: hrefs on <a> (protocol gate → attribute absent)', () => {
@@ -217,5 +219,85 @@ describe('sanitizeCrossChunkUrl — case-sensitive protocol comparison (upstream
     expect(sanitizeCrossChunkUrl('myapp://thing', 'href', 'a', allowAll, upperSchema)).toBeNull();
     // Mismatched case in the OTHER direction also rejects.
     expect(sanitizeCrossChunkUrl('MYAPP://thing', 'href', 'a', allowAll, upperSchema)).toBe('MYAPP://thing');
+  });
+});
+
+describe('sanitizeCrossChunkUrl (deprecated) — agrees with resolveCrossChunkReference on plain URLs', () => {
+  // The deprecated helper stays exported through 3.x while the adapters use
+  // `resolveCrossChunkReference`. The two differ by design on hash rebasing
+  // and on title/alt handling, so the comparison is restricted to a plain
+  // URL (no `#`) with no other attributes: there, both must either keep the
+  // attribute with the same value or drop it. A divergence here would be
+  // the deprecated helper silently reaching a different safety decision.
+  type Decision = { readonly kept: boolean; readonly value?: string };
+
+  function viaSanitize(
+    url: string,
+    tagName: 'a' | 'img',
+    urlTransform: UrlTransform,
+    schema: SanitizeSchema
+  ): Decision {
+    const key = tagName === 'a' ? 'href' : 'src';
+    const out = sanitizeCrossChunkUrl(url, key, tagName, urlTransform, schema);
+    return out === null ? { kept: false } : { kept: true, value: out };
+  }
+
+  function viaResolve(url: string, tagName: 'a' | 'img', urlTransform: UrlTransform, schema: SanitizeSchema): Decision {
+    const key = tagName === 'a' ? 'href' : 'src';
+    const { element } = resolveCrossChunkReference({ tagName, url }, schema, urlTransform, 'user-content-');
+    const value = element?.properties[key];
+    return value === undefined || value === null ? { kept: false } : { kept: true, value: String(value) };
+  }
+
+  const plainUrls = [
+    'https://example.com/x',
+    'http://example.com/pic.png',
+    'mailto:someone@example.com',
+    '/abs/path',
+    'rel/path',
+    'a b/c?d=e f',
+    '',
+    'javascript:alert(1)',
+    'vbscript:msgbox',
+    'data:text/html,<script>alert(1)</script>',
+    'HTTPS://example.com/x',
+    'myapp://thing',
+    'myapp:thing',
+  ];
+
+  const allowMyapp: UrlTransform = (url, key, node) =>
+    url.startsWith('myapp:') ? url : defaultUrlTransform(url, key, node);
+  const schemaWithMyappHref = extendSanitizeSchema((s) => {
+    s.protocols!.href!.push('myapp');
+  });
+  const schemaWithMyappBoth = extendSanitizeSchema((s) => {
+    s.protocols!.href!.push('myapp');
+    s.protocols!.src!.push('myapp');
+  });
+
+  const policies: ReadonlyArray<readonly [string, UrlTransform, SanitizeSchema]> = [
+    ['default transform, default schema', defaultUrlTransform, defaultLibrarySchema],
+    ['myapp transform, default schema', allowMyapp, defaultLibrarySchema],
+    ['myapp transform, myapp on href only', allowMyapp, schemaWithMyappHref],
+    ['myapp transform, myapp on href and src', allowMyapp, schemaWithMyappBoth],
+    ['blank-all transform, default schema', () => '', defaultLibrarySchema],
+  ];
+
+  for (const [name, urlTransform, schema] of policies) {
+    test(name, () => {
+      for (const tagName of ['a', 'img'] as const) {
+        for (const url of plainUrls) {
+          expect(viaSanitize(url, tagName, urlTransform, schema), `${tagName} ${JSON.stringify(url)}`).toEqual(
+            viaResolve(url, tagName, urlTransform, schema)
+          );
+        }
+      }
+    });
+  }
+
+  test('the comparison is not vacuous: both allow and both block occur', () => {
+    const decisions = plainUrls.map((url) => viaSanitize(url, 'a', defaultUrlTransform, defaultLibrarySchema).kept);
+    expect(decisions).toContain(true);
+    expect(decisions).toContain(false);
   });
 });

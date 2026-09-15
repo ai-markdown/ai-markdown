@@ -21,7 +21,8 @@
 
 import { describe, expect, test } from 'vitest';
 
-import { computeFreezeBoundary, SCANNER_NAME_LISTS } from './computeFreezeBoundary';
+import { computeFreezeBoundary } from './computeFreezeBoundary';
+import { SCANNER_NAME_LISTS } from './scannerNameLists';
 import { CATALOG } from './testPluginCatalog';
 import {
   CLOSER_OPERATORS,

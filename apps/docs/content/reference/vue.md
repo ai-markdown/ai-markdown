@@ -43,27 +43,27 @@ Pass the **complete accumulated Markdown string**. Append decoded network data t
 
 ## Component props
 
-| Prop                       | Default                  | Contract                                                                                                                                    |
-| -------------------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `content`                  | Required                 | Complete current source string                                                                                                              |
-| `documentId`               | Vue `useId()`            | Explicit IDs coordinate only inside `AIMarkdownDocuments`; generated IDs stay standalone                                                    |
-| `documentIndex`            | Mount order              | Optional ordering hint for the reference registry; supply it for reordered/remounted logical chunks                                         |
-| `streaming`                | `false`                  | Passed to custom components and element slots, controls cursor and `aria-busy`                                                              |
-| `incrementalParse`         | `true`                   | Uses verified retained-prefix parsing in the browser; a server render uses the full pipeline                                                |
-| `preserveOrphanReferences` | `false`                  | Preserve unreferenced footnote definitions; React's document wrapper defaults this to `true`, see [below](#multiple-chunks-in-one-document) |
-| `enginePlugins`            | All five shipped plugins | Sealed catalog selection; membership changes, canonical ordering does not                                                                   |
-| `contentPreprocessors`     | `[]`                     | Synchronous string transforms after built-in LaTeX normalization                                                                            |
-| `sanitizeSchema`           | Library schema           | Treat as immutable; derive a fresh schema with `extendSanitizeSchema`                                                                       |
-| `urlTransform`             | Safe default transform   | Final attribute-specific URL policy after sanitization                                                                                      |
-| `components`               | `{}`                     | Tag-to-Vue-component mapping                                                                                                                |
-| `metadata`                 | `undefined`              | Application-owned value passed to mapped components and scoped element slots                                                                |
-| `streamingCursor`          | `true`                   | Enable the cursor while streaming; custom rendering uses the `cursor` slot                                                                  |
+| Prop                       | Default                  | Contract                                                                                                                                                         |
+| -------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `content`                  | Required                 | Complete current source string                                                                                                                                   |
+| `documentId`               | Vue `useId()`            | Explicit IDs coordinate only inside `AIMarkdownDocuments`; generated IDs stay standalone                                                                         |
+| `documentIndex`            | Mount order              | Optional ordering hint for the reference registry; supply it for reordered/remounted logical chunks                                                              |
+| `streaming`                | `false`                  | Passed to custom components and element slots, controls cursor and `aria-busy`                                                                                   |
+| `incrementalParse`         | `true`                   | Uses verified retained-prefix parsing in the browser; a server render uses the full pipeline                                                                     |
+| `preserveOrphanReferences` | `false` standalone       | Preserve unreferenced footnote definitions; inside `AIMarkdownDocuments` the wrapper's policy wins over this prop, see [below](#multiple-chunks-in-one-document) |
+| `enginePlugins`            | All five shipped plugins | Sealed catalog selection; membership changes, canonical ordering does not                                                                                        |
+| `contentPreprocessors`     | `[]`                     | Synchronous string transforms after built-in LaTeX normalization                                                                                                 |
+| `sanitizeSchema`           | Library schema           | Treat as immutable; derive a fresh schema with `extendSanitizeSchema`                                                                                            |
+| `urlTransform`             | Safe default transform   | Final attribute-specific URL policy after sanitization                                                                                                           |
+| `components`               | `{}`                     | Tag-to-Vue-component mapping                                                                                                                                     |
+| `metadata`                 | `undefined`              | Application-owned value passed to mapped components and scoped element slots                                                                                     |
+| `streamingCursor`          | `true`                   | Enable the cursor while streaming; custom rendering uses the `cursor` slot                                                                                       |
 
 Root attributes such as `class`, `id` and `style` fall through to the wrapper. The wrapper establishes a relative positioning context for the cursor. Supplying a different `position` style can change that geometry.
 
 ## Custom Vue components and slots
 
-A mapped component receives the sanitized element attributes plus `node`, `streaming` and `metadata`. Its default slot contains converted Vue children. Declare the props you consume and forward attributes deliberately; framework event handlers belong to your component code, not Markdown attributes.
+A mapped component receives the sanitized element attributes. The context values `node`, `streaming` and `metadata` are passed only to a component that declares them as props (an array or object `props` option, including one inherited through `extends` or `mixins`); a component that declares none receives no context, so nothing falls through to its root element as a stray attribute. A functional component without a `props` option receives every value as a prop. The default slot contains converted Vue children. Forward attributes deliberately; framework event handlers belong to your component code, not Markdown attributes.
 
 ```vue
 <script setup lang="ts">
@@ -121,7 +121,7 @@ Chunks are intentionally complete logical Markdown sections. A code fence, table
 
 References may precede definitions. The shared registry supplies canonical link/image destinations, global footnote numbering and occurrence IDs. The last registered chunk renders the aggregate footer. Updating/removing a definition updates readers; switching `documentId` releases the old registration. Different IDs and different provider instances remain independent.
 
-The aggregate footer follows each chunk's `preserveOrphanReferences`, which defaults to `false`: a footnote definition that no chunk references is left out. React's `<AIMarkdownDocuments>` defaults the same policy to `true` and applies it to every chunk, so a definition whose reference never arrives (a stream that stops early, a chunk that is never mounted) shows in React's footer but not in Vue's. For the same output pass `:preserve-orphan-references="true"` on each chunk; there is no document-level prop in Vue.
+The aggregate footer follows the orphan policy in force for each chunk. `AIMarkdownDocuments` accepts `preserveOrphanReferences` (default `true`) and applies it to every chunk under it, so a definition whose reference never arrives (a stream that stops early, a chunk that is never mounted) stays in the footer. The wrapper value wins over each chunk's own `preserveOrphanReferences`; both adapters resolve the wrapper value first, so this matches React's `<AIMarkdownDocuments>`. Outside the wrapper the chunk prop applies and defaults to `false`.
 
 SSR renders each chunk's local content and local footnotes without registering or publishing contributions. The first hydration render uses the same path. Cross-chunk resolution becomes available after mounted contributions commit. Consequently, a definition supplied only by another chunk is not pre-resolved in server HTML. If server-only output needs fully resolved references, render the complete document through one component.
 
@@ -190,9 +190,9 @@ Controllers and watchers are created on mount and released on unmount. Initial/S
 
 `MarkdownElementContext` contains `node` (the render-owned HAST element), `properties` (sanitized element properties), `children` (converted Vue children), `streaming` (boolean), and `metadata` (unknown application data). It is the element-slot contract, not the cursor-slot contract.
 
-`MarkdownComponents` is a read-only tag-to-Vue-component map. Mapped components receive element attributes plus `node`, `streaming`, and `metadata`, with converted children in their default slot. `MarkdownElementSlot` is a function from `MarkdownElementContext` to a Vue child value. See [custom rendering](../guides/vue-customization.md) for complete examples.
+`MarkdownComponents` is a read-only tag-to-Vue-component map. Mapped components receive element attributes, plus whichever of `node`, `streaming` and `metadata` they declare as props, with converted children in their default slot. `MarkdownElementSlot` is a function from `MarkdownElementContext` to a Vue child value. See [custom rendering](../guides/vue-customization.md) for complete examples.
 
-`AIMarkdownDocuments` accepts its default slot and renders a fragment. It has no declared configuration props; orphan-reference policy belongs to each renderer (default `false`, unlike React's wrapper default of `true`; see [Multiple chunks in one document](#multiple-chunks-in-one-document)). It owns the document scope, rather than adding a layout element.
+`AIMarkdownDocuments` accepts its default slot and renders a fragment. Its one prop, `preserveOrphanReferences` (`AIMarkdownDocumentsProps`, default `true`), is the orphan policy for every chunk under it and wins over each chunk's own prop; see [Multiple chunks in one document](#multiple-chunks-in-one-document). It owns the document scope, rather than adding a layout element.
 
 ## Cursor behavior
 

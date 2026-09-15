@@ -16,7 +16,7 @@ export const mantineArgTypes: NonNullable<MantineMeta['argTypes']> = {
   codeBlock: {
     control: 'object',
     description:
-      'Code-block behavior group (`defaultExpanded`, `autoDetectUnknownLanguage`). ' +
+      'Code-block behavior group (`defaultExpanded`, `autoDetectUnknownLanguage`, `highlightJs`, `mermaidIntervalMs`, …). ' +
       'Replaces atomically; omitted fields fall to the shipped defaults.',
   },
 };
@@ -25,9 +25,9 @@ export const mantineArgTypes: NonNullable<MantineMeta['argTypes']> = {
  * Everything a Mantine meta shares. Same rule as `baseReactMeta`: spread it,
  * then write `title` and `tags` as literal properties.
  *
- * No themed render wrapper here — `<MantineAIMarkdown>` reads Mantine's own
- * `useComputedColorScheme()`, so it follows the provider the decorator sets
- * up. That automatic tracking is a feature of the package, not scaffolding to
+ * No themed render wrapper here — `<MantineAIMarkdown>` reads Mantine's
+ * provider color scheme itself, so it follows the provider the decorator
+ * sets up. That automatic tracking is a feature of the package, not scaffolding to
  * work around.
  */
 export const baseMantineMeta: Partial<MantineMeta> = {

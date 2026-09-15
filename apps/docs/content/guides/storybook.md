@@ -45,7 +45,7 @@ The following 19 usage chapters, including Playground, exist under identical tit
 | Documents/Cross-Chunk Coordination  | Late definitions, repeated footnote occurrences and valid backlinks          |
 | Documents/Definition Lifecycle      | Definition updates, removal, restoration and document isolation              |
 
-Shared chapter names do not imply identical adapter APIs. Vue receives element context through props/scoped slots. Its `preserveOrphanReferences` defaults to `false` and is configured per renderer; the React provider-level override is not a Vue prop. Smooth turn order is registration order, while `documentIndex` orders references. Flushing an unfinished smooth stream retains its final tentative grapheme until another append or producer completion confirms it.
+Shared chapter names do not imply identical adapter APIs. Vue receives element context through props/scoped slots. Its standalone `preserveOrphanReferences` defaults to `false`; inside `AIMarkdownDocuments` the wrapper prop of the same name (default `true`) wins over each chunk's own prop, as in React. Smooth turn order is registration order, while `documentIndex` orders references. Flushing an unfinished smooth stream retains its final tentative grapheme until another append or producer completion confirms it.
 
 The remaining React chapters have explicit framework or verification responsibilities:
 

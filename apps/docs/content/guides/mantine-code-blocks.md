@@ -42,19 +42,26 @@ function App() {
 By default, code blocks without an explicit language annotation render as plaintext. Enable auto-detection via the `codeBlock` prop:
 
 ```tsx
-<MantineAIMarkdown content={markdown} codeBlock={{ autoDetectUnknownLanguage: true }} />
+import hljs from 'highlight.js';
+
+const CODE_BLOCK = { autoDetectUnknownLanguage: true, highlightJs: hljs };
+// or load it on first use — keep the loader at module scope, the group is compared by value:
+// const CODE_BLOCK = { autoDetectUnknownLanguage: true, highlightJs: () => import('highlight.js') };
+
+<MantineAIMarkdown content={markdown} codeBlock={CODE_BLOCK} />;
 ```
 
-This uses `highlight.js`'s `highlightAuto` to guess the language. Results may vary for short or ambiguous snippets. While a block streams, detection runs on a doubling schedule — a first guess once the block has ~32 characters, a corrective re-run each time it has doubled in length, and a final verdict when the stream ends — so an append-only stream submits O(n) total input to detection instead of re-scoring every prefix. This bounds the amount of submitted text, not the runtime of highlight.js or its language grammars. A block that is replaced rather than appended to (a regenerate) restarts the schedule. Without a `streaming` prop the renderer cannot tell chunks apart and re-detects on every content change — pass `streaming` when you stream. The full `highlight.js` build is loaded on demand the first time it is needed; the package itself no longer imports the root `highlight.js` entry, so consumers who register only the languages they need via `highlight.js/lib/core` keep that bundle saving unless they turn this option on.
+This uses `highlight.js`'s `highlightAuto` to guess the language, run on the instance or loader you pass as `highlightJs`. The package does not import `highlight.js` itself (the peer is optional), so the option is inert without `highlightJs` and logs one warning. Passing the same instance the adapter uses — including a `highlight.js/lib/core` build with only your languages registered — keeps detection limited to what the adapter can highlight. Results may vary for short or ambiguous snippets. While a block streams, detection runs on a doubling schedule — a first guess once the block has ~32 characters, a corrective re-run each time it has doubled in length, and a final verdict when the stream ends — so an append-only stream submits O(n) total input to detection instead of re-scoring every prefix. This bounds the amount of submitted text, not the runtime of highlight.js or its language grammars. A block that is replaced rather than appended to (a regenerate) restarts the schedule. Without a `streaming` prop the renderer cannot tell chunks apart and re-detects on every content change — pass `streaming` when you stream. A loader runs once per page (cached by function identity); a failed load is retried a bounded number of times.
 
 ### Preloading the on-demand assets
 
-`mermaid` and (for auto-detection) `highlight.js` are loaded lazily by the code-block renderers. An app that would rather pay that cost at startup — a documentation page whose first screen shows a diagram, or a chat UI that wants to reduce the first diagram’s module-loading delay — calls the exported helper once at boot:
+`mermaid` is loaded lazily by the diagram renderer, and a `highlightJs` loader runs the first time auto-detection needs it. An app that would rather pay that cost at startup — a documentation page whose first screen shows a diagram, or a chat UI that wants to reduce the first diagram’s module-loading delay — calls the exported helper once at boot:
 
 ```tsx
 import { preloadMantineCodeAssets } from '@ai-markdown/react-mantine';
 
-void preloadMantineCodeAssets(); // idempotent; failures are swallowed and the renderers fall back to lazy loading
+void preloadMantineCodeAssets(); // mermaid only; idempotent; failures are swallowed and the renderers fall back to lazy loading
+void preloadMantineCodeAssets({ highlightJs: loadHljs }); // also runs the loader you pass as codeBlock.highlightJs (same function)
 ```
 
 An eager app import can also preload an asset when it resolves to the same module as the renderer's dynamic import. Use the helper when you want to load the integration's assets without depending on your application's module-resolution choices.
@@ -89,6 +96,6 @@ Ordinary code highlighting has separate source and display values. The latest so
 
 The highlighter retains only its latest result for the same code, language, color scheme, and highlight function. It is not an unbounded cache of every streamed prefix. JSON formatting first validates a complete candidate, then formats tokens without converting number spellings through a stringify round trip. A nested JSON string expands only when it contains an object or array; primitive-looking strings stay strings. Nested expansion changes the display structure, so disable it when showing that distinction matters.
 
-Mermaid has a separate asynchronous lifecycle. Initialization, parsing, and rendering are serialized, with only the latest pending request retained per instance. During an incomplete stream, the last valid diagram remains visible after transient failures; before a valid diagram exists, source provides the fallback. Completion triggers the final corrective render. The renderer enforces strict Mermaid security configuration and handles diagram generation independently of ordinary highlight coalescing.
+Mermaid has a separate asynchronous lifecycle. Initialization, parsing, and rendering are serialized, with only the latest pending request retained per instance. While streaming, render attempts are additionally throttled by `codeBlock.mermaidIntervalMs` (default 300 ms, 0 attempts every update): a mermaid render lays the diagram out synchronously, so the queue alone still kept the main thread busy back to back during a fast stream. Appended source within the interval replaces one pending frame without moving its deadline; completion and replacement pass through at once, so the final corrective render always sees the final source, and the source view and copy button always show the latest text. During an incomplete stream, the last valid diagram remains visible after transient failures; before a valid diagram exists, source provides the fallback. Completion triggers the final corrective render. Source longer than mermaid's `maxTextSize` (site config, default 50 000 characters) is refused before parsing and shown as an error with the size in plain text, instead of the placeholder diagram mermaid would otherwise substitute. The renderer enforces strict Mermaid security configuration and handles diagram generation independently of ordinary highlight coalescing.
 
 Only a plain pre/code shape is eligible for replacement: one positioned code child containing text, no pre attributes, and no code attributes beyond language classes. Raw HTML with nested markup, siblings, or extra attributes remains a normal pre element, preserving information a highlighter would otherwise discard. A caller-provided `pre` override replaces this entire decision path; a `code` override alone does not intercept fences consumed by Mantine's pre renderer.

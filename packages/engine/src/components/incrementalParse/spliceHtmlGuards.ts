@@ -9,13 +9,30 @@
  * every frame keep blockMemo's node-identity assumptions intact while
  * never mutating the previous frame's roots.
  */
+/** A tag NAME ends at whitespace, `/`, `>` or the end of the value — the
+ *  HTML tag-name grammar, and the same terminator set the scanner's
+ *  `TAG_OR_COMMENT_RE` / `isType7Line` use, so a custom element whose name
+ *  merely starts with a table-part name (`<col-md-6>`, `<td-cell>`,
+ *  `<caption-box>`) is not a table part here either. The regexes below
+ *  used `\b`, which treats `-` as a boundary: the scanner granted such a
+ *  document a boundary and the splice refused it every frame (measured:
+ *  `<col-md-6>` + 400 paragraphs in 60 frames, 426 ms against 26 ms for
+ *  `<section>`). End of value keeps the old `\b` behaviour for `<col` cut
+ *  off at the end of a value. `detectorConsistency`'s guard-vs-scanner
+ *  pin derives its corpus from the scanner's name lists so the two
+ *  cannot drift apart again. */
+const TAG_NAME_END = '(?=[\\s/>]|$)';
+
 /** Table-part START tags whose appearance outside a table re-routes parse5's
  *  tree construction for the rest of the document. */
-export const TABLE_PART_TAG_RE = /<(?:td|th|tr|tbody|thead|tfoot|caption|col|colgroup)\b/i;
+export const TABLE_PART_TAG_RE = new RegExp(`<(?:td|th|tr|tbody|thead|tfoot|caption|col|colgroup)${TAG_NAME_END}`, 'i');
 
 /** Same scan, but positioned: `<table>` / `</table>` and every table part in
  *  one raw-HTML value, in order. */
-const TABLE_TOKEN_RE = /<(\/?)(table|td|th|tr|tbody|thead|tfoot|caption|col|colgroup)\b/gi;
+const TABLE_TOKEN_RE = new RegExp(
+  `<(\\/?)(table|td|th|tr|tbody|thead|tfoot|caption|col|colgroup)${TAG_NAME_END}`,
+  'gi'
+);
 
 /**
  * Does any table part in `values` sit OUTSIDE a table? Only those re-route
@@ -29,7 +46,15 @@ const TABLE_TOKEN_RE = /<(\/?)(table|td|th|tr|tbody|thead|tfoot|caption|col|colg
  * going negative, so a stray close cannot mask a later stray part.
  */
 export function hasStrayTablePart(values: Iterable<string>): boolean {
-  let depth = 0;
+  return scanTableParts(values, 0).stray;
+}
+
+/** The scan behind `hasStrayTablePart`, resumable: `depth` is the table
+ *  depth left by the values already scanned, and the returned depth is the
+ *  one to resume from. The splice cache scans only the html values the
+ *  boundary advanced over since the last frame; the whole frozen prefix
+ *  was scanned exactly once, in order, just as the one-shot form does. */
+export function scanTableParts(values: Iterable<string>, depth: number): { stray: boolean; depth: number } {
   for (const value of values) {
     TABLE_TOKEN_RE.lastIndex = 0;
     let m: RegExpExecArray | null;
@@ -40,10 +65,10 @@ export function hasStrayTablePart(values: Iterable<string>): boolean {
         depth = closing ? Math.max(0, depth - 1) : depth + 1;
         continue;
       }
-      if (depth === 0) return true;
+      if (depth === 0) return { stray: true, depth };
     }
   }
-  return false;
+  return { stray: false, depth };
 }
 
 /** `startTagInTemplate` routes these names to "in head" WITHOUT first popping
@@ -118,8 +143,10 @@ export function headRoutedCaptureUnclosed(values: readonly string[]): boolean {
   return !new RegExp(`</${name}(?=[\\s/>])`, 'i').test(after);
 }
 
-/** The two END tags HTML synthesizes (`<br>` / empty `<p>`) instead of dropping. */
-export const STRAY_SYNTHESIZED_END_TAG_RE = /<\/(?:br|p)\b/i;
+/** The two END tags HTML synthesizes (`<br>` / empty `<p>`) instead of
+ *  dropping. Complete names only (see `TAG_NAME_END`): `</p-x>` is a
+ *  custom element's end tag, which parse5 drops like any other. */
+export const STRAY_SYNTHESIZED_END_TAG_RE = new RegExp(`<\\/(?:br|p)${TAG_NAME_END}`, 'i');
 
 /** parse5 raw-text elements (RAWTEXT / RCDATA / script data / plaintext),
  *  matching the scanner's RAW_TEXT_ELEMENTS (`noscript` excluded —

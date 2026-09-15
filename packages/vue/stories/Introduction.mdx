@@ -41,8 +41,9 @@ defineProps<{ content: string; streaming: boolean }>();
 
 The same chapter name describes the same task, not identical prop names. Vue
 passes element context through component props and scoped slots; React also has
-context hooks and definition factories. Vue configures orphan preservation per
-renderer and defaults to hiding unreferenced definitions.
+context hooks and definition factories. A standalone Vue renderer hides
+unreferenced definitions by default; under `AIMarkdownDocuments` the wrapper's
+`preserveOrphanReferences` (default `true`) wins over each chunk's prop, as in React.
 
 React's typography presets, built-in design tokens, extra-style registry,
 provider/factory helpers, Mantine widgets and React render profiling do not have

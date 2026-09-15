@@ -28,9 +28,12 @@ interface AIMarkdownProps {
     metadata?: unknown;
     streamingCursor?: boolean;
 }
+interface AIMarkdownDocumentsProps {
+    preserveOrphanReferences?: boolean;
+}
 declare const AIMarkdown: DefineComponent<AIMarkdownProps>;
 declare const AIMarkdownStreamingCursor: DefineComponent;
-declare const AIMarkdownDocuments: DefineComponent;
+declare const AIMarkdownDocuments: DefineComponent<AIMarkdownDocumentsProps>;
 interface SmoothStreamInput {
     content: string;
     streaming?: boolean;
@@ -57,4 +60,4 @@ declare const AIMarkdownSmoothStream: DefineComponent<AIMarkdownProps & {
 }, {
     flush: () => void;
 }>;
-export { AIMarkdown, AIMarkdownDocuments, type AIMarkdownProps, AIMarkdownSmoothStream, AIMarkdownStreamingCursor, type DocumentSmoothStreamInput, type MarkdownComponents, type MarkdownElementContext, type MarkdownElementSlot, type SmoothStreamInput, AIMarkdown as default, useDocumentSmoothStream, useSmoothStream };
+export { AIMarkdown, AIMarkdownDocuments, type AIMarkdownDocumentsProps, type AIMarkdownProps, AIMarkdownSmoothStream, AIMarkdownStreamingCursor, type DocumentSmoothStreamInput, type MarkdownComponents, type MarkdownElementContext, type MarkdownElementSlot, type SmoothStreamInput, AIMarkdown as default, useDocumentSmoothStream, useSmoothStream };

@@ -4,8 +4,10 @@
 // that keeps every render inside `act`.
 import { act, type ReactNode } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { MantineProvider } from '@mantine/core';
+import { MantineProvider, type MantineProviderProps } from '@mantine/core';
 import { CodeHighlightAdapterProvider, type CodeHighlightAdapter } from '@mantine/code-highlight';
+
+type ProviderProps = Omit<MantineProviderProps, 'children'>;
 
 /** jsdom ships neither matchMedia (Mantine's color-scheme manager) nor
  *  ResizeObserver (Mantine's ScrollArea, used by CodeHighlight). */
@@ -33,22 +35,32 @@ export function installMantineDomStubs() {
 export const flushEffects = () => act(async () => {});
 
 export function createMountHarness() {
-  const roots: { root: Root; container: HTMLElement }[] = [];
+  const roots: { root: Root; container: HTMLElement; adapter: CodeHighlightAdapter; providerProps?: ProviderProps }[] =
+    [];
+  const wrap = (ui: ReactNode, adapter: CodeHighlightAdapter, providerProps?: ProviderProps) => (
+    <MantineProvider {...providerProps}>
+      <CodeHighlightAdapterProvider adapter={adapter}>{ui}</CodeHighlightAdapterProvider>
+    </MantineProvider>
+  );
   return {
     /** Mount `ui` under MantineProvider + CodeHighlightAdapterProvider, the README consumer setup. */
-    async mount(ui: ReactNode, adapter: CodeHighlightAdapter): Promise<HTMLElement> {
+    async mount(ui: ReactNode, adapter: CodeHighlightAdapter, providerProps?: ProviderProps): Promise<HTMLElement> {
       const container = document.createElement('div');
       document.body.appendChild(container);
       const root = createRoot(container);
-      roots.push({ root, container });
+      roots.push({ root, container, adapter, providerProps });
       await act(async () => {
-        root.render(
-          <MantineProvider>
-            <CodeHighlightAdapterProvider adapter={adapter}>{ui}</CodeHighlightAdapterProvider>
-          </MantineProvider>
-        );
+        root.render(wrap(ui, adapter, providerProps));
       });
       return container;
+    },
+    /** Re-render the most recently mounted root with new `ui` (same providers, same adapter). */
+    async update(ui: ReactNode): Promise<void> {
+      const last = roots[roots.length - 1];
+      if (!last) throw new Error('update() called before mount()');
+      await act(async () => {
+        last.root.render(wrap(ui, last.adapter, last.providerProps));
+      });
     },
     async cleanup() {
       for (const { root, container } of roots.splice(0)) {

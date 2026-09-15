@@ -5,7 +5,6 @@ import {
   isType7Line,
   TYPE6_START_RE,
   TYPE6_NAMES,
-  CLOSE_TAG_ONLY_RE,
   canBecomeDdLine,
   FOREIGN_ROOT_NAMES,
   inRawTextTok,
@@ -40,6 +39,7 @@ import {
 import { type FreezeScanCheckpointInternal, type LineRec, type P5Tok, type TagAttrState } from './freezeScanState';
 import { mdTrimStart, isMdBlank } from './mdLineText';
 import { DEF_RE, FOOTNOTE_DEF_RE, collectRefLine } from './referenceTaint';
+import { assertSealReleaseContained } from './sealReleaseContainment';
 
 /**
  * Blocker-6 residue: the bytes of a line that are neither tags nor comment
@@ -140,7 +140,7 @@ const sealResumableAbove = (cp: FreezeScanCheckpointInternal): boolean =>
  * resumed body (F18) — each fixed by adding one member to a list whose
  * complement has no enumeration.
  */
-function sealReleaseDerived(cp: FreezeScanCheckpointInternal, ln: LineRec, isBlockStart: boolean): boolean {
+function shouldReleaseSeal(cp: FreezeScanCheckpointInternal, ln: LineRec, isBlockStart: boolean): boolean {
   // L1a — the resumable-context gate, ahead of every classification. The
   // only line that provably interrupts a resumable block is a BLOCK-START
   // line at ≤ 3 indent: blank above means it cannot be a lazy continuation,
@@ -200,47 +200,6 @@ function sealReleaseDerived(cp: FreezeScanCheckpointInternal, ln: LineRec, isBlo
   return true;
 }
 
-/**
- * How many times the containment assertion below has been EVALUATED, which
- * is the number of times the derived predicate released a pending seam. Dev
- * builds only, and it goes with the enumeration.
- *
- * It exists because the assertion cannot otherwise report that it applied.
- * `sealReleaseContainment.test.ts` drives the whole pinned corpus and asserts
- * that nothing was logged — a claim a corpus that never reaches the release
- * path satisfies perfectly. That file already names the risk and answers it
- * with a hand-written single-document pin, which catches the release path
- * dying GLOBALLY and cannot catch this corpus drifting away from it: a
- * regenerated corpus, or a guard moving earlier, leaves the pin green and the
- * sweep vacuous. Measured 2026-08-29 before the floor went in: 862
- * evaluations over 91 distinct line shapes on 6,060 scans, so the sweep is
- * live today and the floor records what "live" was.
- */
-let sealReleaseEvaluations = 0;
-
-/** TEST-ONLY (see above). Not re-exported by any barrel. */
-export const readSealReleaseEvaluations = (): number => sealReleaseEvaluations;
-
-/**
- * The RETIRED enumeration of node-less line classes, kept for one release
- * as the migration's containment assertion (design §8.4): the derived
- * predicate must release only where this one did. Deleted with its F-rows
- * at the next version.
- */
-function sealReleaseEnumerated(cp: FreezeScanCheckpointInternal, ln: LineRec, isBlockStart: boolean): boolean {
-  const defShapedLine =
-    DEF_RE.test(ln.text) ||
-    FOOTNOTE_DEF_RE.test(ln.text) ||
-    cp.defBlockMaybeOpen ||
-    (cp.fnDefResumable && !(isBlockStart && ln.indent <= 3));
-  const commentOnly =
-    ln.text
-      .replace(/<!--[\s\S]*?-->/g, ' ')
-      .replace(/<!--[\s\S]*$/, ' ')
-      .replace(/[ \t\r]/g, '') === '';
-  return !defShapedLine && !commentOnly && !CLOSE_TAG_ONLY_RE.test(ln.text);
-}
-
 /** Bake one confirmed line into the checkpoint. */
 export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text: string): void {
   // Blocker-4 eager settle: this line is the "next confirmed line" of the
@@ -251,7 +210,7 @@ export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineR
     newest.defListSettled = ln.blank ? true : !canBecomeDdLine(ln.text, true);
   }
   const isBlockStart = cp.prevLineBlank;
-  // Blocker-6 seam release (see `sealReleaseDerived` for the rule and its
+  // Blocker-6 seam release (see `shouldReleaseSeal` for the rule and its
   // three layers). The three conditions here are L1's leaf-block half,
   // answered from state rather than from the line: a blank line starts no
   // block, a line INSIDE an html-flow run or inside a still-open
@@ -269,24 +228,14 @@ export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineR
     cp.mdBlock.kind !== 'html' &&
     !(cp.p5Tok.kind === 'comment' || cp.p5Tok.kind === 'bogus')
   ) {
-    if (sealReleaseDerived(cp, ln, isBlockStart)) {
+    if (shouldReleaseSeal(cp, ln, isBlockStart)) {
       cp.p5SealPending = false;
       // The migration's containment assertion, live for one release: the
-      // derived predicate must release only where the enumeration it
-      // replaces did. The other quadrant (the enumeration releasing where
-      // the derived one holds) is this change's whole point and is silent;
-      // THIS direction would be the derived side going UP, which is the
-      // defect direction, so it is reported rather than tolerated. Not a
-      // hot path — the check runs on a non-blank line only while a seam is
-      // actually pending.
+      // derived predicate must release only where the retired enumeration
+      // did (see `sealReleaseContainment.ts`). Dev builds only; the
+      // production build folds this gate and drops the module.
       if (process.env.NODE_ENV !== 'production') {
-        sealReleaseEvaluations += 1;
-        if (!sealReleaseEnumerated(cp, ln, isBlockStart)) {
-          console.error(
-            `[ai-react-markdown] seal-release containment broken at offset ${ln.start}: the derived predicate ` +
-              `released a line the retired enumeration withheld (${JSON.stringify(ln.text.slice(0, 80))}).`
-          );
-        }
+        assertSealReleaseContained(cp, ln, isBlockStart);
       }
     }
   }
@@ -1103,7 +1052,8 @@ export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineR
       if (
         inRawTextTok(cp.p5Tok) &&
         cp.p5Tok.openedInline &&
-        (tailCarriesRetroactive(ln.text) || /<template(?![a-z0-9-])/i.test(ln.text))
+        // Confirmed line: its line ending terminates a name at its end.
+        (tailCarriesRetroactive(ln.text, true) || /<template(?![a-z0-9-])/i.test(ln.text))
       ) {
         cp.phasePoisonedAt = 0;
       }
@@ -1825,7 +1775,8 @@ export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineR
   const maskUnbacked = mdType1RawText(cp.mdBlock) && !inRawTextTok(cp.p5Tok);
   if (maskUnbacked) {
     cp.phasePoisonedAt = Math.min(cp.phasePoisonedAt, ln.start);
-    if (tailCarriesRetroactive(ln.text) || /<template(?![a-z0-9-])/i.test(ln.text)) {
+    // Confirmed line: its line ending terminates a name at its end.
+    if (tailCarriesRetroactive(ln.text, true) || /<template(?![a-z0-9-])/i.test(ln.text)) {
       cp.phasePoisonedAt = 0;
     }
   }

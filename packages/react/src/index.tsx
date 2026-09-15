@@ -206,6 +206,11 @@ export interface AIMarkdownProps<TMetadata extends AIMarkdownMetadata = AIMarkdo
    *
    * **API stability**: the `UrlTransform` type tracks the upstream
    * `react-markdown` shape and may change with its major versions.
+   *
+   * `null` is accepted and means the same as omitting the prop: the
+   * built-in `defaultUrlTransform` runs. It is not a way to disable the
+   * per-attribute pass (see SECURITY.md and the URL sanitization guide);
+   * the vendored `Markdown` options type admits `null` for the same reason.
    */
   urlTransform?: UrlTransform | null;
   /**
