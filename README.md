@@ -75,7 +75,7 @@ The five framework/shared packages track `latest`; the independent highlight plu
 
 ## Vue adapter
 
-The Vue 3.5+ adapter is part of the stable 3.0.1 release train. See the [Vue README](./packages/vue/README.md) for components, SSR/hydration, cross-chunk references, slots and smooth streaming. Shared core/engine contracts and prerelease migration notes are documented in the [API contracts](https://ai-markdown.github.io/docs/guides/api/core-engine-contracts/).
+The Vue 3.5+ adapter is part of the stable 3.0.2 release train. See the [Vue README](./packages/vue/README.md) for components, SSR/hydration, cross-chunk references, slots and smooth streaming. Shared core/engine contracts and prerelease migration notes are documented in the [API contracts](https://ai-markdown.github.io/docs/guides/api/core-engine-contracts/).
 
 ## Installation
 
