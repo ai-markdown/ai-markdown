@@ -66,7 +66,7 @@ Mantine uses the React adapter and does not depend directly on shared core. Vue 
 {
   "react": "^19.0.0",
   "react-dom": "^19.0.0",
-  "@ai-markdown/react": "^3.0.1",
+  "@ai-markdown/react": "^3.0.2",
   "@mantine/core": "^9.0.0",
   "@mantine/code-highlight": "^9.0.0",
   "highlight.js": "^11.11.2"

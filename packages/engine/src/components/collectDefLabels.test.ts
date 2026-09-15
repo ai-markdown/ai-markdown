@@ -5,7 +5,41 @@ import {
   DEF_LINE_START_RE,
   lastRegionStart,
   type DefLabels,
+  type DefLabelGrammarOptions,
 } from './collectDefLabels';
+import { parseStage } from './markdown';
+import { buildCoreRemarkPlugins, buildCoreRehypePlugins, buildCoreRemarkRehypeOptions } from './pluginChain';
+import { extractContributions } from './extractContributions';
+import { sanitizeSchema } from './sanitizeSchema';
+import { defaultEnginePlugins, definitionList } from '../plugins/catalog';
+
+const asPlain = (l: DefLabels) => ({ fn: [...l.footnoteLabels].sort(), link: [...l.linkLabels].sort() });
+
+/** The labels the PRODUCTION chain defines for `source`: the chain
+ *  `pluginChain.ts` builds for the shipped adapters (remark-math always on,
+ *  `singleDollarTextMath: false`), read through `extractContributions` —
+ *  the same extractor that publishes a chunk's definitions to the registry.
+ *  This is the set PASS 0 has to advertise; anything else lets a sibling
+ *  chunk phantom-inject a label the document never defines, or leaves a
+ *  defined label unresolved. Only the parse stage runs: no remark
+ *  transformer in the chain creates or removes `definition` /
+ *  `footnoteDefinition` nodes, so the parse-stage mdast carries exactly the
+ *  labels the transformed one does. */
+function productionLabels(source: string, enginePlugins = defaultEnginePlugins): DefLabels {
+  const parsed = parseStage({
+    children: source,
+    remarkPlugins: buildCoreRemarkPlugins(enginePlugins),
+    rehypePlugins: buildCoreRehypePlugins(sanitizeSchema, 'p-', { provenance: 'test' }),
+    remarkRehypeOptions: buildCoreRemarkRehypeOptions(enginePlugins.includes(definitionList)),
+  });
+  const footnoteLabels = new Set<string>();
+  const linkLabels = new Set<string>();
+  for (const c of extractContributions(parsed.mdast)) {
+    if (c.kind === 'fnDef') footnoteLabels.add(c.label);
+    else if (c.kind === 'linkDef') linkLabels.add(c.label);
+  }
+  return { footnoteLabels, linkLabels };
+}
 
 describe('collectDefLabels', () => {
   test('extracts footnote def labels', () => {
@@ -53,20 +87,29 @@ describe('collectDefLabels', () => {
 
 // ─── createDefLabelScanner — append-aware fast path ─────────────────────────
 
-const asPlain = (l: DefLabels) => ({ fn: [...l.footnoteLabels].sort(), link: [...l.linkLabels].sort() });
-
 /** Replay `chunks` as an append-only stream and assert, at EVERY step, that
  *  the scanner's answer deep-equals a fresh full parse of the accumulated
- *  source. This is the scanner's whole contract — the fast path must be
- *  unobservable except through object identity. */
-function replay(chunks: string[]): void {
-  const scanner = createDefLabelScanner();
+ *  source under the same grammar. This is the scanner's whole contract —
+ *  the fast path must be unobservable except through object identity.
+ *  Under `{ math: true }` — the grammar the shipped adapters scan with —
+ *  the full parse is ALSO checked against the production chain at every
+ *  step, so a stream can neither drift from the collector nor the
+ *  collector from the real parse. */
+function replay(chunks: string[], grammar?: DefLabelGrammarOptions): void {
+  const scanner = createDefLabelScanner(grammar);
   let acc = '';
   for (const chunk of chunks) {
     acc += chunk;
-    expect(asPlain(scanner.scan(acc))).toEqual(asPlain(collectDefLabels(acc)));
+    const full = asPlain(collectDefLabels(acc, grammar));
+    expect(asPlain(scanner.scan(acc)), JSON.stringify(acc)).toEqual(full);
+    if (grammar?.math) expect(full, JSON.stringify(acc)).toEqual(asPlain(productionLabels(acc)));
   }
 }
+
+/** The production adapters' scanner grammar (React `MarkdownContent`, Vue
+ *  `useMarkdownChunk` — both scan with `{ math: true }` because their chain
+ *  always includes remark-math). */
+const PRODUCTION: DefLabelGrammarOptions = { math: true };
 
 describe('createDefLabelScanner', () => {
   test('equals a full parse at every step of adversarial streams', () => {
@@ -100,14 +143,21 @@ describe('createDefLabelScanner', () => {
     replay(['see\n[x', ']', ': /url\n']);
     // Link list followed by a genuine def footer.
     replay(['- [a](https://e.com/a)\n', '- [b](https://e.com/b)\n', '\n[c]: https://e.com/c\n']);
-    // Ghost-def counterexample (Phase B review): without the scanner
-    // boundary profile, `$$`-wrapped `<!--` reads as closed math and the
-    // frozen prefix would let the tail parse invent `[x]` OUTSIDE the
-    // still-open type-2 comment. Per-step equality pins the profile.
+    // Ghost-def counterexample (Phase B review): the boundary profile must
+    // read `$$` exactly as the scanner's parser does. Under the pinned
+    // no-argument (GFM) grammar the type-2 comment stays open past `$$` and
+    // `[x]` is comment text — a math-aware boundary would let the frozen
+    // prefix invent it. Under `{ math: true }` `$$`-wrapped `<!--` IS
+    // closed math, the comment never opens and `[x]` is a definition. Each
+    // profile is pinned by per-step equality with its own full parse.
     replay(['$$\n', '<!--\n', '$$\n', '\n', '[x]: /u\n', 'prose\n']);
     replay(['$$\r\n', '<!--\r\n', '$$\r\n', '\r\n', '[x]: /u\r\n']);
-    // A ``` fence inside $$ really opens under the pinned grammar.
+    replay(['$$\n', '<!--\n', '$$\n', '\n', '[x]: /u\n', 'prose\n'], PRODUCTION);
+    replay(['$$\r\n', '<!--\r\n', '$$\r\n', '\r\n', '[x]: /u\r\n'], PRODUCTION);
+    // A ``` fence inside $$ really opens under the pinned grammar; it is
+    // math interior under `{ math: true }`.
     replay(['$$\n', '```\n', '$$\n', '\n', '[x]: /u\n']);
+    replay(['$$\n', '```\n', '$$\n', '\n', '[x]: /u\n'], PRODUCTION);
     // Streaming def footer after freezable prose (the Phase B motivation).
     replay(['body paragraph one.\n\n', 'body paragraph two.\n\n', '[1]: /a\n', '[2]: /b\n', '[^3]: note\n']);
   });
@@ -363,18 +413,229 @@ describe('createDefLabelScanner', () => {
       '===\n',
       ': ',
       '$$\n',
+      '$$x$$\n',
+      '$$ meta\n',
       '<!--\n',
       '-->\n',
       '<div>\n',
       '</div>\n',
     ];
-    for (let stream = 0; stream < 25; stream++) {
-      const scanner = createDefLabelScanner();
-      let acc = '';
-      for (let i = 0; i < 40; i++) {
-        acc += PIECES[Math.floor(rand() * PIECES.length)];
-        expect(asPlain(scanner.scan(acc))).toEqual(asPlain(collectDefLabels(acc)));
+    for (const grammar of [undefined, PRODUCTION]) {
+      for (let stream = 0; stream < 25; stream++) {
+        const scanner = createDefLabelScanner(grammar);
+        let acc = '';
+        for (let i = 0; i < 40; i++) {
+          acc += PIECES[Math.floor(rand() * PIECES.length)];
+          expect(asPlain(scanner.scan(acc)), JSON.stringify(acc)).toEqual(asPlain(collectDefLabels(acc, grammar)));
+        }
       }
     }
+    // The same generator against the production chain: `{ math: true }`
+    // must agree with the real parse on every prefix, not only on the
+    // hand-picked math shapes below.
+    for (let stream = 0; stream < 12; stream++) {
+      const scanner = createDefLabelScanner(PRODUCTION);
+      let acc = '';
+      for (let i = 0; i < 30; i++) {
+        acc += PIECES[Math.floor(rand() * PIECES.length)];
+        expect(asPlain(scanner.scan(acc)), JSON.stringify(acc)).toEqual(asPlain(productionLabels(acc)));
+      }
+    }
+  });
+});
+
+// ─── `$$` flow math — the grammar the production chain parses with ────────
+
+describe('math flow grammar (review F1)', () => {
+  // The shapes the React and Vue repros used (`.local-notes` review,
+  // 2026-09-14): a definition on the line directly under a closing `$$`
+  // fence, and a def-shaped line inside a math block that contains blank
+  // lines. The LaTeX preprocessor leaves `$$` flow blocks as they are and
+  // rewrites `\[ … \]` display math to the same shape, so this is what the
+  // scanner sees in production.
+  const afterMath = '$$\nx\n$$\n[x]: https://example.com\n';
+  const footnoteAfterMath = '$$\nE=mc^2\n$$\n[^1]: Einstein\n';
+  const insideMath = '$$\n\n[^a]: note\n\n$$\n';
+  const linkInsideMath = '$$\n\n[x]: /u\n\n$$\n';
+
+  test('a link definition directly under a closing $$ fence is a definition, as in production', () => {
+    // A definition cannot interrupt a paragraph; only a grammar that ends
+    // the math block at the fence sees `[x]:` at a block start. This is the
+    // missed cross-chunk link: the sibling `[link][x]` rendered as text.
+    expect(asPlain(collectDefLabels(afterMath, PRODUCTION))).toEqual({ fn: [], link: ['X'] });
+    expect(asPlain(collectDefLabels(afterMath, PRODUCTION))).toEqual(asPlain(productionLabels(afterMath)));
+    expect(asPlain(createDefLabelScanner(PRODUCTION).scan(afterMath))).toEqual({ fn: [], link: ['X'] });
+    // A footnote definition can interrupt a paragraph, so this direction
+    // never depended on the grammar; pinned so it stays that way.
+    expect(asPlain(collectDefLabels(footnoteAfterMath, PRODUCTION))).toEqual({ fn: ['1'], link: [] });
+    expect(asPlain(collectDefLabels(footnoteAfterMath))).toEqual({ fn: ['1'], link: [] });
+    expect(asPlain(collectDefLabels(footnoteAfterMath, PRODUCTION))).toEqual(
+      asPlain(productionLabels(footnoteAfterMath))
+    );
+  });
+
+  test('a def-shaped line inside a $$ block is math, not a definition, as in production', () => {
+    // The ghost footnote: PASS 0 advertised `A`, the sibling `body[^a]`
+    // phantom-injected it and rendered a numbered mark with no footer entry.
+    expect(asPlain(collectDefLabels(insideMath, PRODUCTION))).toEqual({ fn: [], link: [] });
+    expect(asPlain(collectDefLabels(insideMath, PRODUCTION))).toEqual(asPlain(productionLabels(insideMath)));
+    expect(asPlain(createDefLabelScanner(PRODUCTION).scan(insideMath))).toEqual({ fn: [], link: [] });
+    expect(asPlain(collectDefLabels(linkInsideMath, PRODUCTION))).toEqual({ fn: [], link: [] });
+    expect(asPlain(collectDefLabels(linkInsideMath, PRODUCTION))).toEqual(asPlain(productionLabels(linkInsideMath)));
+  });
+
+  test('agrees with the production chain on the math shapes around definitions', () => {
+    const cases = [
+      // Unclosed `$$` runs to EOF and swallows every def-shaped line after it.
+      '$$\n[x]: /u\n\n[^a]: note\n',
+      // A single-line `$$x$$` is inline math in a paragraph: the link def
+      // below it is paragraph text, the footnote def interrupts.
+      '$$x$$\n[x]: /u\n',
+      '$$x$$\n[^a]: note\n',
+      // Opener with meta, closer with trailing spaces, indented (≤ 3) fences.
+      '$$ tex\ny\n$$   \n[x]: /u\n',
+      '   $$\ny\n   $$\n[x]: /u\n',
+      // Four spaces: indented code, not math — the def-shaped line is code
+      // and the `[x]:` after the (still open) code block is a definition
+      // only once a blank line and an unindented line end the block.
+      '    $$\n    [n]: /u\n\n[x]: /u\n',
+      // Math interrupts a paragraph; the definition after it is real.
+      'para\n$$\ny\n$$\n[x]: /u\n',
+      // Math inside containers: blockquote and list item.
+      '> $$\n> [q]: /u\n> $$\n> [x]: /u\n',
+      '- $$\n  [l]: /u\n  $$\n  [x]: /u\n',
+      // `$$` inside a fence and inside an html block is literal.
+      '```\n$$\n```\n[x]: /u\n',
+      '<div>\n$$\n</div>\n\n[x]: /u\n',
+      // Definition before, inside (blank-line separated) and after math.
+      '[a]: /a\n$$\n\n[b]: /b\n\n$$\n[c]: /c\n\n[^d]: note\n',
+      // Control shapes from the review: blank line between fence and def.
+      '$$\nx\n$$\n\n[x]: https://example.com\n',
+      'Term\n: def\n[x]: /u\n',
+      // CRLF.
+      '$$\r\nx\r\n$$\r\n[x]: /u\r\n',
+      '$$\r\n\r\n[^a]: note\r\n\r\n$$\r\n',
+    ];
+    for (const source of cases) {
+      expect(asPlain(collectDefLabels(source, PRODUCTION)), JSON.stringify(source)).toEqual(
+        asPlain(productionLabels(source))
+      );
+      expect(asPlain(createDefLabelScanner(PRODUCTION).scan(source)), JSON.stringify(source)).toEqual(
+        asPlain(productionLabels(source))
+      );
+    }
+    // The extra-syntax selection does not move a definition: the same
+    // labels with the definition-list extension off.
+    const plain = defaultEnginePlugins.filter((plugin) => plugin !== definitionList);
+    for (const source of cases) {
+      expect(asPlain(collectDefLabels(source, PRODUCTION)), JSON.stringify(source)).toEqual(
+        asPlain(productionLabels(source, plain))
+      );
+    }
+  });
+
+  test('the no-argument form keeps the pinned CommonMark + GFM grammar', () => {
+    // Documented contract for low-level consumers with a math-less chain
+    // (and for existing custom `parse` hooks): `$$` is paragraph text, so
+    // the def under the fence is paragraph continuation and the def inside
+    // the "block" is real. `{ math: false }` spells the same grammar out.
+    for (const grammar of [undefined, { math: false }]) {
+      expect(asPlain(collectDefLabels(afterMath, grammar))).toEqual({ fn: [], link: [] });
+      expect(asPlain(collectDefLabels(insideMath, grammar))).toEqual({ fn: ['A'], link: [] });
+      expect(asPlain(collectDefLabels(linkInsideMath, grammar))).toEqual({ fn: [], link: ['X'] });
+      expect(asPlain(createDefLabelScanner(grammar).scan(afterMath))).toEqual({ fn: [], link: [] });
+      expect(asPlain(createDefLabelScanner(grammar).scan(insideMath))).toEqual({ fn: ['A'], link: [] });
+    }
+    // Math-free input is grammar-independent.
+    for (const source of ['[a]: /u\n\n[^n]: note\n', '```\n[x]: /u\n```\n\n[y]: /v\n', 'para\n[^a]: note\n']) {
+      expect(asPlain(collectDefLabels(source, PRODUCTION))).toEqual(asPlain(collectDefLabels(source)));
+    }
+  });
+
+  test('streams through math shapes equal the full parse and the production chain at every step', () => {
+    for (const grammar of [undefined, PRODUCTION]) {
+      // The review shapes, token by token, including the frames where the
+      // closing fence and the definition are still partial.
+      replay(['$$\n', 'x\n', '$', '$\n', '[x', ']: https://', 'example.com\n'], grammar);
+      replay(['$$\n', '\n', '[^a', ']: note\n', '\n', '$$', '\n', 'tail\n'], grammar);
+      // Definition settled before math, then math opens, streams blank
+      // lines and def-shaped lines, closes, and a footer follows.
+      replay(
+        ['[a]: /a\n\n', 'intro\n\n', '$$\n', '\n', '[b]: /b\n', '\n', '$$\n', '[c]: /c\n', '\n[^d]: note\n'],
+        grammar
+      );
+      // Unclosed math runs to EOF: labels stay empty until the closer lands
+      // and the def after it arrives.
+      replay(['$$\n', '[x]: /u\n', '\n', 'prose\n', '\n', '$$\n', '[y]: /v\n'], grammar);
+      // Inline `$$x$$` line then defs (paragraph continuation vs interrupt).
+      replay(['$$x', '$$\n', '[x]: /u\n', '[^a]: note\n'], grammar);
+      // Math in a blockquote and in a list item.
+      replay(['> $$\n', '> [q]: /u\n', '> $$\n', '> [x]: /u\n'], grammar);
+      replay(['- $$\n', '  [l]: /u\n', '  $$\n', '  [x]: /u\n'], grammar);
+      // Fence and html block around `$$`.
+      replay(['```\n', '$$\n', '```\n', '[x]: /u\n'], grammar);
+      replay(['<div>\n', '$$\n', '</div>\n', '\n', '[x]: /u\n'], grammar);
+      // CRLF.
+      replay(['$$\r\n', 'x\r\n', '$$\r\n', '[x]: /u\r\n'], grammar);
+      replay(['$$\r\n', '\r\n', '[^a]: note\r\n', '\r\n', '$$\r\n'], grammar);
+      // Long prose prefix so the frozen-prefix path is exercised, then math
+      // with an inner def-shaped line, then a real footer.
+      const body = Array.from({ length: 12 }, (_, i) => `Body paragraph ${i} with prose.\n\n`);
+      replay([...body, '$$\n', '\n', '[^g]: ghost\n', '\n', '$$\n', '[x]: /u\n', '\n[^n]: note\n'], grammar);
+    }
+  });
+
+  test('non-append regeneration resets math state in both directions', () => {
+    for (const grammar of [undefined, PRODUCTION]) {
+      const scanner = createDefLabelScanner(grammar);
+      const oracle = (source: string) => asPlain(collectDefLabels(source, grammar));
+      // Frozen state built on an open math block must not survive a
+      // regeneration into a math-free document, and vice versa.
+      const opened = '$$\n\n[^a]: note\n\n';
+      expect(asPlain(scanner.scan(opened))).toEqual(oracle(opened));
+      const regenerated = 'intro\n\n[^a]: note\n\n[b]: /b\n';
+      expect(asPlain(scanner.scan(regenerated))).toEqual(oracle(regenerated));
+      expect(asPlain(scanner.scan(regenerated + '\n[c]: /c\n'))).toEqual(oracle(regenerated + '\n[c]: /c\n'));
+      const back = '$$\nx\n$$\n[x]: /u\n';
+      expect(asPlain(scanner.scan(back))).toEqual(oracle(back));
+      expect(asPlain(scanner.scan(back + '\n$$\n\n[^z]: z\n'))).toEqual(oracle(back + '\n$$\n\n[^z]: z\n'));
+      expect(asPlain(scanner.scan(back + '\n$$\n\n[^z]: z\n\n$$\n'))).toEqual(oracle(back + '\n$$\n\n[^z]: z\n\n$$\n'));
+    }
+  });
+
+  test('prose appended after a closed math block with a definition rides the fast path', () => {
+    let calls = 0;
+    const scanner = createDefLabelScanner({
+      math: true,
+      parse: (s) => {
+        calls++;
+        return collectDefLabels(s, PRODUCTION);
+      },
+    });
+    let acc = '$$\nx\n$$\n[x]: /u\n\nprose ';
+    const first = scanner.scan(acc);
+    expect(asPlain(first)).toEqual({ fn: [], link: ['X'] });
+    calls = 0;
+    for (const token of ['streams ', 'with [a link](https://e.com) ', 'and $$inline$$ math ', 'to the end.\n']) {
+      acc += token;
+      expect(scanner.scan(acc)).toBe(first);
+    }
+    expect(calls).toBe(0);
+    // A new `$$` block opening afterwards carries no def signature either.
+    for (const token of ['\n$$\n', 'y\n', '$$\n']) {
+      acc += token;
+      expect(scanner.scan(acc)).toBe(first);
+    }
+    expect(calls).toBe(0);
+  });
+
+  test('the bare-function form still injects the parse hook', () => {
+    const seen: string[] = [];
+    const scanner = createDefLabelScanner((s) => {
+      seen.push(s);
+      return collectDefLabels(s);
+    });
+    expect(asPlain(scanner.scan('[a]: /u\n'))).toEqual({ fn: [], link: ['A'] });
+    expect(seen).toEqual(['[a]: /u\n']);
   });
 });

@@ -31,6 +31,8 @@
 | 流式控制   | `smoothStream/controller`                                                                                                                                        | `createSmoothStreamController()` —— `<AIMarkdownSmoothStream>` 底层与框架无关的打字机节奏状态机，配套提供 `SMOOTH_STREAM_PACING_PRESETS`                                                                                                                                                                                                                                                                              |
 | 叶子工具   | `hastPredicates`、`normalizeId`、`shortenDocumentId`、`devStageTimings`                                                                                          | 小型纯函数辅助工具；共享测试语料保持仅限源码使用，不对外导出                                                                                                                                                                                                                                                                                                                                                          |
 
+如果渲染管线包含 `remark-math`，定义标签扫描也应使用 `collectDefLabels(source, { math: true })` 或 `createDefLabelScanner({ math: true })`，内置 React 和 Vue 适配器均采用这一配置。不传选项时，保留原有的不含数学解析的 CommonMark + GFM 语法。扫描与渲染使用相同的语法，才能正确区分显示公式内部的文本和真正的链接、脚注定义。
+
 <span id="install"></span>
 
 ## 安装

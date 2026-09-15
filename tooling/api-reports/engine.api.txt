@@ -106,15 +106,21 @@ interface AdvanceResult {
     nextState: IncrementalParseState;
 }
 declare function advanceIncrementalParse(prev: IncrementalParseState | null, content: string, options: AdvanceOptions): AdvanceResult;
+interface DefLabelGrammarOptions {
+    math?: boolean;
+}
 interface DefLabels {
     footnoteLabels: Set<string>;
     linkLabels: Set<string>;
 }
-declare function collectDefLabels(source: string): DefLabels;
+declare function collectDefLabels(source: string, options?: DefLabelGrammarOptions): DefLabels;
 interface DefLabelScanner {
     scan(source: string): DefLabels;
 }
-declare function createDefLabelScanner(parse?: (source: string) => DefLabels): DefLabelScanner;
+interface DefLabelScannerOptions extends DefLabelGrammarOptions {
+    parse?: (source: string) => DefLabels;
+}
+declare function createDefLabelScanner(options?: DefLabelScannerOptions | ((source: string) => DefLabels)): DefLabelScanner;
 declare function footnoteSafeId(identifier: string): string;
 declare function sourceIdFromFootnoteLiId(idProp: string, clobberPrefix?: string): string | null;
 declare function extractDefBodiesFromHast(hast: Root$1, clobberPrefix?: string): Map<string, ElementContent[]>;
@@ -318,4 +324,4 @@ declare function createIncrementalLatexPreprocessor(options?: {
 }): (content: string) => string;
 type RemendPreprocessorOptions = Omit<RemendOptions, 'katex' | 'inlineKatex'>;
 declare function createRemendPreprocessor(options?: RemendPreprocessorOptions): AIMDContentPreprocessor;
-export { type AIMDContentPreprocessor, type AIMarkdownEnginePlugin, type AIMarkdownEnginePluginName, type AdvanceOptions, type AdvanceResult, type AllowElement, type ChunkData, type Contribution, type CoreRehypePluginsOptions, type CrossChunkHandlerOptions, type DefLabelScanner, type DefLabels, type Deprecation, ENGINE_PLACEHOLDER_TAGS, ENGINE_PROVENANCE_PROPERTY, EngineRawHtmlDepthError, type ExtractContributionsOptions, type FootnoteDef, type FreezeBoundaryOptions, type IncrementalParseState, type IncrementalStage, type LinkDef, PIPELINE_STAGES, type ParsedMarkdown, type PhantomLabels, type PipelineOptions, type PipelineStage, type RefKind, type RefRecord, type Registry, type RegistryController, type RehypePlugins, type RehypeRebaseHashLinksOptions, type RehypeVerifyEngineTagsOptions, type RemarkPlugins, type RemarkRehypeOptions, type RemendPreprocessorOptions, SMOOTH_STREAM_PACING_PRESETS, STAGE_MEASURE_PREFIX, type SanitizeSchema, type SmoothStreamController, type SmoothStreamOptions, type SmoothStreamPacing, type SmoothStreamPacingParams, type TransformContext, type UrlAttrKey, type UrlAttrTag, type UrlTransform, advanceIncrementalParse, buildCoreRehypePlugins, buildCoreRemarkPlugins, buildCoreRemarkRehypeOptions, buildCrossChunkHandlers, buildPhantomSuffix, buildTransform, collectDefLabels, computeFreezeBoundary, createDefLabelScanner, createIncrementalLatexPreprocessor, createProcessor, createRegistry, createRemendPreprocessor, createSmoothStreamController, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, extractContributions, extractDefBodiesFromHast, footnoteSafeId, hasLoneSurrogate, highlight, isEnginePlugin, isFootnoteSection, lastMeaningfulIdx, measureStage, normalizeForMatch, normalizeId, pangu, parseStage, phantomSuffixCloser, preprocessAIMDContent, preprocessLaTeX, rehypeFooterAdorn, rehypeRebaseHashLinks, rehypeVerifyEngineTags, removeComments, resolveCrossChunkReference, sanitizeCrossChunkUrl, sanitizeSchema, shortenDocumentId, smartypants, sourceIdFromFootnoteLiId, subscribeStageTimings, transformStage };
+export { type AIMDContentPreprocessor, type AIMarkdownEnginePlugin, type AIMarkdownEnginePluginName, type AdvanceOptions, type AdvanceResult, type AllowElement, type ChunkData, type Contribution, type CoreRehypePluginsOptions, type CrossChunkHandlerOptions, type DefLabelGrammarOptions, type DefLabelScanner, type DefLabelScannerOptions, type DefLabels, type Deprecation, ENGINE_PLACEHOLDER_TAGS, ENGINE_PROVENANCE_PROPERTY, EngineRawHtmlDepthError, type ExtractContributionsOptions, type FootnoteDef, type FreezeBoundaryOptions, type IncrementalParseState, type IncrementalStage, type LinkDef, PIPELINE_STAGES, type ParsedMarkdown, type PhantomLabels, type PipelineOptions, type PipelineStage, type RefKind, type RefRecord, type Registry, type RegistryController, type RehypePlugins, type RehypeRebaseHashLinksOptions, type RehypeVerifyEngineTagsOptions, type RemarkPlugins, type RemarkRehypeOptions, type RemendPreprocessorOptions, SMOOTH_STREAM_PACING_PRESETS, STAGE_MEASURE_PREFIX, type SanitizeSchema, type SmoothStreamController, type SmoothStreamOptions, type SmoothStreamPacing, type SmoothStreamPacingParams, type TransformContext, type UrlAttrKey, type UrlAttrTag, type UrlTransform, advanceIncrementalParse, buildCoreRehypePlugins, buildCoreRemarkPlugins, buildCoreRemarkRehypeOptions, buildCrossChunkHandlers, buildPhantomSuffix, buildTransform, collectDefLabels, computeFreezeBoundary, createDefLabelScanner, createIncrementalLatexPreprocessor, createProcessor, createRegistry, createRemendPreprocessor, createSmoothStreamController, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, extractContributions, extractDefBodiesFromHast, footnoteSafeId, hasLoneSurrogate, highlight, isEnginePlugin, isFootnoteSection, lastMeaningfulIdx, measureStage, normalizeForMatch, normalizeId, pangu, parseStage, phantomSuffixCloser, preprocessAIMDContent, preprocessLaTeX, rehypeFooterAdorn, rehypeRebaseHashLinks, rehypeVerifyEngineTags, removeComments, resolveCrossChunkReference, sanitizeCrossChunkUrl, sanitizeSchema, shortenDocumentId, smartypants, sourceIdFromFootnoteLiId, subscribeStageTimings, transformStage };

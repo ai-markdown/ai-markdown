@@ -16,7 +16,7 @@
 
 import { renderToString, renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, test } from 'vitest';
-import AIMarkdown, { defaultUrlTransform, extendSanitizeSchema } from '.';
+import AIMarkdown, { AIMarkdownDocuments, defaultUrlTransform, extendSanitizeSchema } from '.';
 
 describe('AIMarkdown — default URL handling (no custom props)', () => {
   test('strips javascript: hrefs (XSS protection)', () => {
@@ -156,5 +156,47 @@ describe('AIMarkdown — SSR determinism with semantically equal inputs', () => 
     const b = renderOnce();
     expect(a).toBe(b);
     expect(a).toContain('href="myapp://x"');
+  });
+});
+
+describe('coordinated footnote rendering policy', () => {
+  const content = 'Body[^a]\n\n[^a]: Note';
+
+  test('the same URL transform handles standalone and coordinated footnote marks', () => {
+    const calls: string[] = [];
+    const transform = (url: string, key: string, node: Parameters<typeof defaultUrlTransform>[2]) => {
+      calls.push(`${node.tagName}:${key}:${url}`);
+      return '';
+    };
+    const child = <AIMarkdown documentId="policy" content={content} urlTransform={transform} />;
+    const standalone = renderToStaticMarkup(child);
+    calls.length = 0;
+    const coordinated = renderToStaticMarkup(<AIMarkdownDocuments>{child}</AIMarkdownDocuments>);
+    expect(coordinated).toBe(standalone);
+    expect(calls).toContain('a:href:#policy-user-content-fn-a');
+    expect(coordinated).not.toContain('href="#');
+  });
+
+  test('both sup and anchor overrides receive real footnote elements in coordinated SSR', () => {
+    const customComponents = {
+      a: ({
+        children,
+        node,
+      }: import('./components/markdown').ExtraProps & { children?: import('react').ReactNode }) => (
+        <span data-rendered-tag={node?.tagName}>{children}</span>
+      ),
+      sup: ({
+        children,
+        node,
+      }: import('./components/markdown').ExtraProps & { children?: import('react').ReactNode }) => (
+        <span data-rendered-tag={node?.tagName}>{children}</span>
+      ),
+    };
+    const child = <AIMarkdown documentId="policy" content={content} customComponents={customComponents} />;
+    const standalone = renderToStaticMarkup(child);
+    const coordinated = renderToStaticMarkup(<AIMarkdownDocuments>{child}</AIMarkdownDocuments>);
+    expect(coordinated).toBe(standalone);
+    expect(coordinated).toContain('<span data-rendered-tag="sup"><span data-rendered-tag="a">1</span></span>');
+    expect(coordinated).not.toContain('<a ');
   });
 });

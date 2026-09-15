@@ -280,7 +280,7 @@ const BlockMemoizedRenderer = memo(
     const defScannerRef = useRef<DefLabelScanner | null>(null);
     const ownLabels = useMemo(() => {
       if (!registry) return EMPTY_DEF_LABELS;
-      const scanner = (defScannerRef.current ??= createDefLabelScanner());
+      const scanner = (defScannerRef.current ??= createDefLabelScanner({ math: true }));
       return scanner.scan(content ?? '');
     }, [content, registry]);
 
@@ -607,8 +607,9 @@ const BlockMemoizedRenderer = memo(
       () => ({
         urlTransform: urlTransform || defaultUrlTransform,
         sanitizeSchema: usedSanitizeSchema,
+        components: usedComponents,
       }),
-      [urlTransform, usedSanitizeSchema]
+      [urlTransform, usedSanitizeSchema, usedComponents]
     );
 
     // React keys come from buildBlocks:

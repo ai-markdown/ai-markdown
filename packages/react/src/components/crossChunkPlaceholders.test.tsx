@@ -518,3 +518,29 @@ describe('crossChunkPlaceholders — URL sanitization (render-time two-gate)', (
     expect(imgHtml).not.toContain('https://tracker.example/x');
   });
 });
+
+test('globally numbered footnotes use the current URL policy and element overrides', () => {
+  const render = (prefix: string) =>
+    renderToString(
+      <WithProvider
+        documentId="doc"
+        policy={{
+          sanitizeSchema: defaultLibrarySchema,
+          urlTransform: (url) => `${prefix}${url}`,
+          components: {
+            a: ({ href, children, node }) => (
+              <span data-href={href} data-tag={node?.tagName}>
+                {children}
+              </span>
+            ),
+          },
+        }}
+      >
+        <SeedRegistryMidFlight>
+          <FootnoteSupNumber label="X" localOccurrence={1} />
+        </SeedRegistryMidFlight>
+      </WithProvider>
+    );
+  expect(render('/one')).toContain('data-href="/one#doc-user-content-fn-x" data-tag="a">1</span>');
+  expect(render('/two')).toContain('data-href="/two#doc-user-content-fn-x" data-tag="a">1</span>');
+});

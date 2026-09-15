@@ -135,12 +135,38 @@ try {
   await page.waitForFunction(
     () => document.querySelector('#cursor-probe .aimd-vue-cursor')?.style.visibility === 'visible'
   );
+  await page.waitForFunction(
+    () => document.querySelector('#math-link a')?.getAttribute('href') === 'https://example.com/math'
+  );
+  assert.equal(await page.locator('#math-ghost').innerText(), 'body[^a]', 'math text must not create a ghost footnote');
+  assert.equal(await page.locator('#math-ghost [data-footnote-ref]').count(), 0);
   const cursor = await page.locator('#cursor-probe .aimd-vue-cursor').boundingBox();
   const paragraph = await page.locator('#cursor-probe p').boundingBox();
   assert(
     cursor && paragraph && Math.abs(cursor.y - paragraph.y) < paragraph.height,
     'cursor must occupy the final text line'
   );
+  for (const mode of ['ltr', 'rtl', 'scaled']) {
+    const selector = `#cursor-border-${mode}`;
+    await page.waitForFunction(
+      (selector) => document.querySelector(`${selector} .aimd-vue-cursor`)?.style.visibility === 'visible',
+      selector
+    );
+    const offset = await page.locator(selector).evaluate((root) => {
+      const text = root.querySelector('p').firstChild;
+      const range = document.createRange();
+      range.setStart(text, text.textContent.length - 1);
+      range.setEnd(text, text.textContent.length);
+      const tail = range.getBoundingClientRect();
+      const marker = root.querySelector('.aimd-vue-cursor').getBoundingClientRect();
+      const rtl = window.getComputedStyle(root).direction === 'rtl';
+      return { x: rtl ? marker.right - tail.left : marker.left - tail.right, y: marker.top - tail.top };
+    });
+    assert(
+      Math.abs(offset.x) < 1 && Math.abs(offset.y) < 1,
+      `${mode}: borders must not displace the cursor from the final character (${JSON.stringify(offset)})`
+    );
+  }
   await page.evaluate(() => window.vueProbe.update({ cursor: '[hidden]: https://example.com' }));
   await page.waitForFunction(
     () => document.querySelector('#cursor-probe .aimd-vue-cursor')?.style.visibility === 'hidden'

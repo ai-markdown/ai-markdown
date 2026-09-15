@@ -103,7 +103,7 @@ export function createProvenance(): string {
 export function useMarkdownChunk(input: () => ChunkInput) {
   const pipeline = createPipelineSession();
   const publisher = createContributionSession();
-  const scanner = createDefLabelScanner();
+  const scanner = createDefLabelScanner({ math: true });
   const provenance = createProvenance();
   // The registry keys allocations by this string and uses it as the Symbol
   // description. It only has to be unique per instance within one app, and

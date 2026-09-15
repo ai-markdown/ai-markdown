@@ -71,9 +71,11 @@ export const AIMarkdownStreamingCursor = defineComponent({
       if (!rect || !rect.height) return;
       const box = root.getBoundingClientRect();
       const scale = root.offsetWidth ? box.width / root.offsetWidth : 1;
+      // DOM rectangles start at the border edge; absolute offsets start at
+      // the padding edge, including an RTL scrollbar on the left.
       const rtl = getComputedStyle(node.parentElement!).direction === 'rtl';
-      marker.style.left = `${((rtl ? rect.left : rect.right) - box.left) / scale + root.scrollLeft}px`;
-      marker.style.top = `${(rect.top - box.top) / scale + root.scrollTop}px`;
+      marker.style.left = `${((rtl ? rect.left : rect.right) - box.left) / scale + root.scrollLeft - root.clientLeft}px`;
+      marker.style.top = `${(rect.top - box.top) / scale + root.scrollTop - root.clientTop}px`;
       marker.style.height = `${rect.height / scale}px`;
       marker.style.lineHeight = `${rect.height / scale}px`;
       marker.style.transform = rtl ? 'translateX(-100%)' : '';

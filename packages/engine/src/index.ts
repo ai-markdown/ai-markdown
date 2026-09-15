@@ -16,7 +16,9 @@ export {
   collectDefLabels,
   createDefLabelScanner,
   type DefLabels,
+  type DefLabelGrammarOptions,
   type DefLabelScanner,
+  type DefLabelScannerOptions,
 } from './components/collectDefLabels';
 export {
   extractDefBodiesFromHast,

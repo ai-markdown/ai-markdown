@@ -17,7 +17,7 @@
  * @module components/crossChunkUrlContext
  */
 import { createContext } from 'react';
-import type { UrlTransform } from './markdown';
+import type { Components, UrlTransform } from './markdown';
 import type { SanitizeSchema } from '@ai-markdown/engine';
 
 export interface CrossChunkUrlPolicy {
@@ -25,6 +25,8 @@ export interface CrossChunkUrlPolicy {
   urlTransform: UrlTransform;
   /** Resolved sanitize schema — caller's prop or the library default. */
   sanitizeSchema: SanitizeSchema;
+  /** Element overrides for materialized footnote marks. */
+  components?: Components;
 }
 
 export const CrossChunkUrlContext = createContext<CrossChunkUrlPolicy | null>(null);

@@ -29,7 +29,7 @@ import { resolveCrossChunkReference } from '@ai-markdown/engine';
 import { toJsxRuntime } from 'hast-util-to-jsx-runtime';
 import { jsx, jsxs } from 'react/jsx-runtime';
 import type { CrossChunkUrlPolicy } from './crossChunkUrlContext';
-import { defaultUrlTransform } from './markdown';
+import { defaultUrlTransform, renderHastSubtree } from './markdown';
 import { sanitizeSchema as defaultSanitizeSchema } from '@ai-markdown/engine';
 import type { Element } from 'hast';
 import type { LinkDef } from '@ai-markdown/engine';
@@ -117,6 +117,7 @@ export function FootnoteSupNumber({
   localOccurrence: localOccurrenceRaw,
   localNumber: localNumberRaw,
 }: FootnoteSupProps): ReactNode {
+  const policy = useContext(CrossChunkUrlContext);
   const localOccurrence = coerceLocalOccurrence(localOccurrenceRaw);
   const localNumber = coerceLocalOccurrence(localNumberRaw);
   const { documentId, documentIdExplicit, clobberPrefix } = useAIMarkdownDocument();
@@ -173,17 +174,15 @@ export function FootnoteSupNumber({
     // order included, id encoding via footnoteSafeId), so a wrapped chunk's
     // server output equals its standalone output — pinned in
     // byteEquivalence.test.tsx.
-    return (
-      <sup>
-        <a
-          href={`#${clobberPrefix}fn-${safeId}`}
-          id={`${clobberPrefix}fnref-${safeId}${localSuffix}`}
-          data-footnote-ref=""
-          aria-describedby={`${clobberPrefix}footnote-label`}
-        >
-          {localNumber}
-        </a>
-      </sup>
+    return renderFootnoteMark(
+      localNumber,
+      {
+        href: `#${clobberPrefix}fn-${safeId}`,
+        id: `${clobberPrefix}fnref-${safeId}${localSuffix}`,
+        dataFootnoteRef: '',
+        ariaDescribedBy: [`${clobberPrefix}footnote-label`],
+      },
+      policy
     );
   }
   // No chunk symbol yet (`chunkSym` is state, null on a chunk's very first
@@ -207,12 +206,29 @@ export function FootnoteSupNumber({
   const occSuffix = globalOcc !== null && globalOcc > 1 ? `-${globalOcc}` : '';
   const markId =
     globalOcc !== null || localOccurrence === null ? `${clobberPrefix}fnref-${safeId}${occSuffix}` : undefined;
-  return (
-    <sup>
-      <a href={`#${clobberPrefix}fn-${safeId}`} id={markId} data-footnote-ref="">
-        {num}
-      </a>
-    </sup>
+  return renderFootnoteMark(num, { href: `#${clobberPrefix}fn-${safeId}`, id: markId, dataFootnoteRef: '' }, policy);
+}
+
+/** These generated fragments already contain the document prefix. Materialize
+ * the mark before the final URL/JSX pass, just like a standalone footnote, so
+ * URL callbacks and both sup/a overrides receive the actual rendered elements. */
+function renderFootnoteMark(number: number, properties: Element['properties'], policy: CrossChunkUrlPolicy | null) {
+  return renderHastSubtree(
+    {
+      type: 'root',
+      children: [
+        {
+          type: 'element',
+          tagName: 'sup',
+          properties: {},
+          children: [
+            { type: 'element', tagName: 'a', properties, children: [{ type: 'text', value: String(number) }] },
+          ],
+        },
+      ],
+    },
+    { urlTransform: policy?.urlTransform ?? defaultUrlTransform, components: policy?.components },
+    { ownsTree: true }
   );
 }
 

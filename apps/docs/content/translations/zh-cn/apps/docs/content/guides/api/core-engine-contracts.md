@@ -33,6 +33,14 @@ Core 不会无脑重新导出 engine 的全部 API，也不处理 ReactNode、VN
 
 块级 key 严格对齐其逻辑位置；但**单个 key 的稳定并不等同于缓存依然有效**。URL 安全策略、注册表数据、组件配置或语法树引用的变动，依然可能需要重新执行组件树转换。部分扫描与规划工作的时间复杂度仍为 O(blocks) 或 O(document)；更新开销并不承诺绝对与新增追加的字符数量严格成正比。
 
+<span id="definition-label-scanning"></span>
+
+## 定义标签扫描
+
+定义扫描器需要与渲染管线使用相同的数学语法。React 和 Vue 使用 `createDefLabelScanner({ math: true })`，对应内置 `remark-math` 的 `singleDollarTextMath: false` 配置。这样既能识别显示公式后紧接的链接定义，也不会把公式内部形似定义的文本当成真实定义。
+
+自定义适配器可以用 `collectDefLabels(source, { math: true })` 执行相同语法的全量扫描。不传选项或传入 `{ math: false }` 时，保留原有的 CommonMark + GFM 语法，不启用数学解析。每个片段应持有自己的扫描器；语法改变时需要新建扫描器。原有的 `createDefLabelScanner(parse)` 回调形式仍受支持，自定义解析函数需要与扫描器选择的语法一致。
+
 <span id="engine-registry-readwrite-boundaries"></span>
 
 ## Engine Registry 读写边界

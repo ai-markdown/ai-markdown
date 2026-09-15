@@ -1,18 +1,32 @@
 /**
  * Lightweight def-only parse: runs a minimal unified pipeline
- * (remark-parse + remark-gfm) to extract identifiers of all
- * `footnoteDefinition` and `definition` nodes from a markdown source string.
+ * (remark-parse + remark-gfm, plus remark-math on request) to extract
+ * identifiers of all `footnoteDefinition` and `definition` nodes from a
+ * markdown source string.
  *
  * Used by PASS 0 of cross-chunk coordination to discover label sets without
  * triggering the full to-hast pipeline. Output is normalized via normalizeId
  * (uppercase, whitespace-collapsed) — same canonical form used everywhere in
  * the registry, phantomFootnoteLabels Set, and handler comparisons.
  *
+ * The parse must agree with the production chain (`pluginChain.ts`) on
+ * every BLOCK-level construct that can contain or interrupt a definition,
+ * or PASS 0 advertises labels the real parse never defines (and vice
+ * versa). `$$` flow math is such a construct: it swallows blank lines and
+ * def-shaped lines, and a definition directly under its closing fence is a
+ * definition to remark-math but paragraph text to a math-less grammar
+ * (a link definition cannot interrupt a paragraph). The shipped adapters
+ * therefore scan with `{ math: true }`, which adds remark-math with the
+ * production `singleDollarTextMath: false` setting. The no-argument form
+ * keeps the documented CommonMark + GFM grammar for hand-assembled chains
+ * without remark-math and for existing custom `parse` hooks.
+ *
  * @module components/collectDefLabels
  */
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
 import { visit } from 'unist-util-visit';
 import type { Root as MdastRoot } from 'mdast';
 import { normalizeId } from './normalizeId';
@@ -20,50 +34,79 @@ import { createBlankLineScanner } from './blankLineScanner';
 import { computeFreezeBoundary, type FreezeScanCheckpoint } from './incrementalParse/computeFreezeBoundary';
 
 /**
- * The scanner's freeze-boundary grammar profile. `mathFlow: false` because
- * this module's PINNED pipeline (remark-parse + remark-gfm) has no
- * remark-math — `$$` is paragraph text here, and the engine's math
- * masking would hide comment/fence opens from the balance scan (ghost-def
- * counterexample, Phase B design review). `referenceTaint: false` because
- * only definition IDENTITIES matter to PASS 0 — a block-level fact
- * independent of inline reference resolution — and taint would collapse
- * the boundary to the body's first citation exactly while a def footer
- * streams. The engine's soak battery does not cover this switch
- * combination; the replay/property/fuzz suites in collectDefLabels.test.ts
- * are its safety net.
+ * Grammar switches shared by {@link collectDefLabels} and
+ * {@link createDefLabelScanner}. The scanner's parse and its freeze-boundary
+ * profile are derived from the SAME object, so the two can never disagree
+ * about what `$$` means.
  */
-const SCANNER_BOUNDARY_PROFILE = { defListEnabled: false, mathFlow: false, referenceTaint: false } as const;
+export interface DefLabelGrammarOptions {
+  /**
+   * Parse `$$` flow math (remark-math with `singleDollarTextMath: false`,
+   * exactly as the production chain does). Pass `true` whenever the chain
+   * that renders the same source includes remark-math — the shipped React
+   * and Vue adapters always do — so PASS 0 reads a definition directly under
+   * a closing `$$` fence as a definition and a def-shaped line inside a
+   * math block as math. Default `false`: the pinned CommonMark + GFM grammar
+   * of the no-argument form, where `$$` is paragraph text to both the parse
+   * and the boundary scan.
+   */
+  math?: boolean;
+}
+
+/**
+ * The scanner's freeze-boundary grammar profile for a given grammar.
+ * `mathFlow` follows {@link DefLabelGrammarOptions.math}: with remark-math in
+ * the pipeline `$$` opens a block that swallows blank lines, so no candidate
+ * inside it may freeze (the production profile); without it `$$` is
+ * paragraph text and the math masking would hide comment/fence opens from
+ * the balance scan (ghost-def counterexample, Phase B design review).
+ * `referenceTaint: false` because only definition IDENTITIES matter to
+ * PASS 0 — a block-level fact independent of inline reference resolution —
+ * and taint would collapse the boundary to the body's first citation
+ * exactly while a def footer streams. `defListEnabled: false` because this
+ * pipeline has no definition-list extension. The engine's soak battery does
+ * not cover this switch combination; the replay/property/fuzz suites in
+ * collectDefLabels.test.ts are its safety net.
+ */
+const scannerBoundaryProfile = (math: boolean) =>
+  ({ defListEnabled: false, mathFlow: math, referenceTaint: false }) as const;
 
 export interface DefLabels {
   footnoteLabels: Set<string>;
   linkLabels: Set<string>;
 }
 
-// Build helper kept as its own function so the cached processor's type is
-// inferred as the FULL chained Processor (remark-parse + remark-gfm), not
-// the bare `unified()` Processor with `undefined` extension types.
+// Build helpers kept as their own functions so the cached processors' types
+// are inferred as the FULL chained Processor, not the bare `unified()`
+// Processor with `undefined` extension types.
 //
-// NOTE: PASS 0 deliberately pins remark-parse + remark-gfm and ignores the
-// pipeline's user remarkPlugins. The append-aware scanner below encodes
-// grammar facts about exactly this plugin set — "definitions never cross a
-// blank line", "a definition's `[` sits at a line's content start". If
-// this processor ever grows plugins whose def-like constructs violate
-// those facts (directives, MDX, multi-line containers), the scanner's
-// fast path must be revisited: its replay tests only lock today's grammar.
-function buildProcessor() {
+// NOTE: PASS 0 deliberately pins remark-parse + remark-gfm (+ remark-math
+// when `math` is set) and ignores the pipeline's user remarkPlugins. The
+// append-aware scanner below encodes grammar facts about exactly this
+// plugin set — "definitions never cross a blank line", "a definition's `[`
+// sits at a line's content start", "whether a line is math interior is
+// decided by the lines before it". If this processor ever grows plugins
+// whose def-like constructs violate those facts (directives, MDX,
+// multi-line containers), the scanner's fast path must be revisited: its
+// replay tests only lock today's grammar.
+function buildMathProcessor() {
+  return unified().use(remarkParse).use(remarkGfm).use(remarkMath, { singleDollarTextMath: false });
+}
+function buildPlainProcessor() {
   return unified().use(remarkParse).use(remarkGfm);
 }
-let _processor: ReturnType<typeof buildProcessor> | null = null;
-function processor(): ReturnType<typeof buildProcessor> {
-  if (!_processor) _processor = buildProcessor();
-  return _processor;
+let _mathProcessor: ReturnType<typeof buildMathProcessor> | null = null;
+let _plainProcessor: ReturnType<typeof buildPlainProcessor> | null = null;
+function processor(math: boolean): ReturnType<typeof buildMathProcessor> | ReturnType<typeof buildPlainProcessor> {
+  if (math) return (_mathProcessor ??= buildMathProcessor());
+  return (_plainProcessor ??= buildPlainProcessor());
 }
 
-export function collectDefLabels(source: string): DefLabels {
+export function collectDefLabels(source: string, options?: DefLabelGrammarOptions): DefLabels {
   if (!source) {
     return { footnoteLabels: new Set(), linkLabels: new Set() };
   }
-  const mdast = processor().parse(source) as MdastRoot;
+  const mdast = processor(options?.math ?? false).parse(source) as MdastRoot;
   const footnoteLabels = new Set<string>();
   const linkLabels = new Set<string>();
   visit(mdast, (node) => {
@@ -130,10 +173,22 @@ export function lastRegionStart(source: string): number {
 export const DEF_LINE_START_RE = /^[ \t>*+\d.)-]*\[(?:[^\]\\]|\\[\s\S])*\]:/m;
 
 export interface DefLabelScanner {
-  /** Equivalent to `collectDefLabels(source)` at every call, but cheap for
-   *  the streaming common case. Returns a REFERENCE-STABLE result while the
-   *  label set is unchanged. */
+  /** Equivalent to `collectDefLabels(source, options)` at every call, but
+   *  cheap for the streaming common case. Returns a REFERENCE-STABLE result
+   *  while the label set is unchanged. */
   scan(source: string): DefLabels;
+}
+
+export interface DefLabelScannerOptions extends DefLabelGrammarOptions {
+  /**
+   * Full-parse fallback — injectable so tests can COUNT parses and assert
+   * the fast path actually fires (from the outside, a skipped parse is
+   * indistinguishable from a parse whose sets came out equal). Defaults to
+   * `collectDefLabels` under this scanner's grammar; a replacement must
+   * parse the grammar `math` names, because the boundary profile is derived
+   * from `math`, not from the function. Production callers never pass it.
+   */
+  parse?: (source: string) => DefLabels;
 }
 
 /**
@@ -151,7 +206,12 @@ export interface DefLabelScanner {
  * the destination on the next line) and a trailing append can re-type an
  * entire paragraph (setext `===`). No construct that produces or destroys
  * a definition crosses a blank line (labels, destinations and titles all
- * forbid them), so text before that boundary is settled. When the region
+ * forbid them), so text before that boundary is settled. `$$` flow math
+ * DOES cross blank lines, but whether a line is math interior is decided
+ * only by the lines before it (the opener sits at a line start and, once
+ * unclosed, runs to EOF), so an append can never move an earlier def line
+ * into or out of a math block; a def line it opens or closes math AROUND
+ * carries the signature itself and takes the slow path. When the region
  * has no def-capable line, the previous result is returned AS-IS;
  * otherwise (and for any non-append change) a full re-parse runs, and the
  * previous result object is kept whenever the recomputed sets are equal.
@@ -162,13 +222,19 @@ export interface DefLabelScanner {
  * The reference stability doubles as churn control: consumers that list
  * the result in effect deps (chunk re-registration) stop firing per token.
  *
- * @param parse Full-parse fallback — injectable so tests can COUNT parses
- *   and assert the fast path actually fires (from the outside, a skipped
- *   parse is indistinguishable from a parse whose sets came out equal).
- *   Production callers never pass it.
+ * @param options Grammar switches ({@link DefLabelGrammarOptions}) plus the
+ *   test-only `parse` hook ({@link DefLabelScannerOptions}). A bare
+ *   function is accepted as the `parse` hook (the original signature).
  */
 /** @soak-entry definition-label-scanner */
-export function createDefLabelScanner(parse: (source: string) => DefLabels = collectDefLabels): DefLabelScanner {
+export function createDefLabelScanner(
+  options?: DefLabelScannerOptions | ((source: string) => DefLabels)
+): DefLabelScanner {
+  const resolved: DefLabelScannerOptions = typeof options === 'function' ? { parse: options } : (options ?? {});
+  const math = resolved.math ?? false;
+  const grammar: DefLabelGrammarOptions = { math };
+  const parse = resolved.parse ?? ((source: string) => collectDefLabels(source, grammar));
+  const boundaryProfile = scannerBoundaryProfile(math);
   let prevSource: string | null = null;
   let prevLabels: DefLabels | null = null;
   const scanBlankLines = createBlankLineScanner();
@@ -241,7 +307,7 @@ export function createDefLabelScanner(parse: (source: string) => DefLabels = col
       // frozen prefix as far as the boundary allows, then parse ONLY the
       // live tail instead of the whole document.
       if (!isAppend && prevSource !== null) resetFrozen();
-      const scanResult = computeFreezeBoundary(source, SCANNER_BOUNDARY_PROFILE, isAppend ? checkpoint : null);
+      const scanResult = computeFreezeBoundary(source, boundaryProfile, isAppend ? checkpoint : null);
       checkpoint = scanResult.checkpoint;
       // An older freeze is permanently valid — never move backwards even if
       // a later scan reports a smaller boundary (over-blocking direction).

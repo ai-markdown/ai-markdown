@@ -29,6 +29,12 @@ An incremental-path failure clears retained parse state and retries a full parse
 
 Block keys match logical positions; they do not guarantee cache validity. URL policy, registry, component, and tree-identity changes may still require reconversion. Some scanning/planning remains O(blocks) or O(document); updates are not guaranteed to cost only in proportion to newly appended characters.
 
+## Definition-label scanning
+
+The definition scanner must use the same math grammar as the rendering pipeline. React and Vue use `createDefLabelScanner({ math: true })`, matching the shipped `remark-math` configuration (`singleDollarTextMath: false`). This recognizes link definitions immediately after display math and excludes definition-shaped text inside math blocks.
+
+For custom adapters, `collectDefLabels(source, { math: true })` provides the corresponding full parse. Omitting options, or passing `{ math: false }`, preserves the CommonMark + GFM grammar without math. Keep one scanner per chunk; create a new scanner if its grammar changes. The existing `createDefLabelScanner(parse)` callback form remains supported; a custom parse callback must match the scanner's selected grammar.
+
 ## Engine registry read/write boundaries
 
 `createRegistry()` returns `RegistryController`. Its read side, `Registry`, exposes versions, readonly index snapshots, global/per-label subscriptions, and resolution selectors. The write side provides paired registration/release and contribution methods. Internal reference counts, subscriber containers, and notification functions do not appear in the public return type.

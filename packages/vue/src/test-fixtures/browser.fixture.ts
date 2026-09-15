@@ -68,6 +68,36 @@ const app = createApp({
       }),
       h(AIMarkdown, { content: state.code, streaming: state.streaming, components: { code: Code }, id: 'custom' }),
       h(AIMarkdown, { content: state.cursor, streaming: true, id: 'cursor-probe' }),
+      ...(['ltr', 'rtl', 'scaled'] as const).map((mode) =>
+        h(AIMarkdown, {
+          content: mode === 'rtl' ? 'مرحبا بالعالم' : 'border cursor target',
+          streaming: true,
+          id: `cursor-border-${mode}`,
+          style: {
+            width: '280px',
+            padding: '12px',
+            border: '7px solid black',
+            borderLeftWidth: '11px',
+            borderTopWidth: '9px',
+            direction: mode === 'rtl' ? 'rtl' : 'ltr',
+            transform: mode === 'scaled' ? 'scale(0.75)' : undefined,
+            transformOrigin: 'top left',
+          },
+        })
+      ),
+      ...(
+        [
+          ['math-link', '$$\nx\n$$\n[x]: https://example.com/math', '[link][x]'],
+          ['math-ghost', '$$\n\n[^a]: note\n\n$$', 'body[^a]'],
+        ] as const
+      ).map(([id, definition, reference]) =>
+        h(AIMarkdownDocuments, null, {
+          default: () => [
+            h(AIMarkdown, { documentId: id, content: definition }),
+            h(AIMarkdown, { documentId: id, content: reference, id }),
+          ],
+        })
+      ),
       h(AIMarkdown, { content: state.deep, id: 'deep' }),
       h(AIMarkdownDocuments, null, {
         default: () => [

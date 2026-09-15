@@ -6,6 +6,18 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.0.2 — Cross-chunk definitions and cursor positioning
+
+### 3.0.2
+
+This patch release aligns engine, core, React, Mantine, and Vue at `3.0.2`. The independently versioned highlight plugin remains at `1.0.2`.
+
+- **Math-aware definitions:** React and Vue now scan cross-chunk link and footnote definitions with the same math grammar as rendering. Links defined after a math block resolve correctly, and footnote-like text inside math no longer creates dangling references. The engine scanner exposes an optional `math` flag; calls without options retain their existing grammar, and custom parser callbacks remain supported.
+- **React footnotes:** Coordinated footnote marks now respect `urlTransform` and custom `sup` and `a` components, including globally numbered references.
+- **Vue streaming cursor:** Cursor positioning accounts for container borders in LTR, RTL, and uniformly scaled layouts.
+
+The scanner contracts and their Chinese translations have been updated to explain the optional grammar setting.
+
 ## 3.0.1 — Rendering and streaming correctness
 
 ### 3.0.1

@@ -1,6 +1,6 @@
 {
   "name": "@ai-markdown/react-mantine",
-  "version": "3.0.1",
+  "version": "3.0.2",
   "description": "Mantine UI integration for ai-markdown React: typography, code highlighting and Mermaid diagrams.",
   "publishConfig": {
     "access": "public"
@@ -66,7 +66,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {
-    "@ai-markdown/react": "^3.0.1",
+    "@ai-markdown/react": "^3.0.2",
     "@mantine/code-highlight": "^9.0.0",
     "@mantine/core": "^9.0.0",
     "highlight.js": "^11.11.2",
