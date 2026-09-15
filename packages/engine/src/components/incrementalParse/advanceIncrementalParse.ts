@@ -149,6 +149,11 @@ export interface IncrementalParseState {
   spliceCache: SplicePrefixCache | null;
   /** Identity tuple of every parse input beyond `content` (G0). */
   depsKey: readonly unknown[];
+  /** The scanner grammar profile these trees were frozen under (see
+   *  `AdvanceOptions.gfmTaskListItems`). A flip is a G0 miss like any
+   *  other deps change: the retained trees were spliced against under the
+   *  old profile and must not survive into the new one. */
+  gfmTaskListItems: boolean;
 }
 
 export type IncrementalStage = 'scan' | 'parse' | 'transform';
@@ -162,6 +167,12 @@ export interface AdvanceOptions {
   depsKey: readonly unknown[];
   /** Whether remark-definition-list is active (`enginePlugins` includes `definitionList`). */
   defListEnabled: boolean;
+  /** Whether the chain parses GFM task-list items (remark-gfm). Default
+   *  `false`, the conservative profile; the engine's own chain builders
+   *  always include remark-gfm, so the adapters pass `true`. See
+   *  `FreezeBoundaryOptions.gfmTaskListItems`. Participates in the G0
+   *  deps check on top of `depsKey`. */
+  gfmTaskListItems?: boolean;
   /** Cross-chunk phantom-definition suffix (coordinated mode) — appended to
    *  the parse input but NEVER frozen: the append gate, boundary scan, and
    *  prefix cut all see `content` alone, and the suffix re-parses with the
@@ -211,7 +222,9 @@ export function advanceIncrementalParse(
 ): AdvanceResult {
   const measure = options.measure ?? identityMeasure;
   const phantomSuffix = options.phantomSuffix ?? '';
-  const sameDeps = prev !== null && depsKeyEqual(prev.depsKey, options.depsKey);
+  const gfmTaskListItems = options.gfmTaskListItems ?? false;
+  const sameDeps =
+    prev !== null && depsKeyEqual(prev.depsKey, options.depsKey) && prev.gfmTaskListItems === gfmTaskListItems;
 
   // Zero-scan short-circuit — identical content AND suffix reuse the whole
   // previous state verbatim (registry version bumps, unrelated re-renders).
@@ -238,7 +251,11 @@ export function advanceIncrementalParse(
   // fresh. The checkpoint is mutable and single-consumer — this state
   // lineage owns it.
   const scan = measure('scan', () =>
-    computeFreezeBoundary(content, { defListEnabled: options.defListEnabled }, appendOnly ? prev!.scanCheckpoint : null)
+    computeFreezeBoundary(
+      content,
+      { defListEnabled: options.defListEnabled, gfmTaskListItems },
+      appendOnly ? prev!.scanCheckpoint : null
+    )
   );
   const freshBoundary = scan.boundary;
   if (process.env.NODE_ENV !== 'production' && phantomSuffix !== '') {
@@ -270,6 +287,7 @@ export function advanceIncrementalParse(
       injectionPlan,
       spliceCache,
       depsKey: options.depsKey,
+      gfmTaskListItems,
     },
   });
 

@@ -44,7 +44,11 @@
  *    Labels are matched with micromark's own `normalizeIdentifier`
  *    (Unicode case folding — `toLowerCase` is the unsafe direction).
  *    Definitions must START a block (or chain a valid definition line) —
- *    a def-shaped paragraph continuation line is literal text.
+ *    a def-shaped paragraph continuation line is literal text. Under the
+ *    `gfmTaskListItems` profile a checked task-list box (`- [x] text`) is
+ *    released from the taint by exact position once `taskListContext.ts`
+ *    has proved it sits where micromark's `tasklistCheck` consumes it and
+ *    its paragraph can no longer become a heading or a table head.
  * 6. **Raw-remnant seam** — an html FLOW run can swallow non-tag lines
  *    (e.g. a `$$` math fence glued under `</details>`); once tag balance
  *    returns to zero, that remnant becomes FLOATING text that parse5/
@@ -152,18 +156,20 @@ export function computeFreezeBoundary(
 ): FreezeScanResult {
   const mathFlow = options.mathFlow ?? true;
   const referenceTaint = options.referenceTaint ?? true;
+  const gfmTaskListItems = options.gfmTaskListItems ?? false;
   const prev = resume as FreezeScanCheckpointInternal | null | undefined;
   // A checkpoint encodes profile-dependent state (math phase, ref taint
-  // tables) — resuming under a DIFFERENT profile would mix grammars, so
-  // every switch participates in the invalidation check.
+  // tables, task-list ownership) — resuming under a DIFFERENT profile would
+  // mix grammars, so every switch participates in the invalidation check.
   const cp =
     prev &&
     prev.defListEnabled === options.defListEnabled &&
     prev.mathFlow === mathFlow &&
     prev.referenceTaint === referenceTaint &&
+    prev.gfmTaskListItems === gfmTaskListItems &&
     prev.confirmedOffset <= text.length
       ? prev
-      : freshCheckpoint(options.defListEnabled, mathFlow, referenceTaint);
+      : freshCheckpoint(options.defListEnabled, mathFlow, referenceTaint, gfmTaskListItems);
 
   // ── advance the checkpoint over newly-CONFIRMED lines ──
   let start = cp.confirmedOffset;

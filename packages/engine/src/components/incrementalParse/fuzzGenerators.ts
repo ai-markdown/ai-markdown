@@ -156,21 +156,20 @@ const indentedCodeArb = fc.constantFrom('    <details>[a] scanned literal', '   
  *    stays open until the real one, exactly like the NBSP shape in
  *    `unicodeBlankArb`.
  *
- * NOT here: a tab-indented ``` line (`\t```` — indented code at root, a
- * fence OPENER inside a footnote body). After `[^a]: body\n\n` it opens a
- * fence inside the footnote that the next column-0 line ends unclosed, and
- * the spliced hast keeps a stale end position for the footnote's empty code
- * node (fresh-seed finds 20260916 / 20260917, 2000 runs; the four-space
- * form diverges the same way, so the fence is the hazard and the tab only
- * reached it). Pinned as `test.skip` in tabIndentAxis.test.ts; it returns
- * to this list when that pin is green. The root-level form is covered
- * deterministically there.
+ *  - a tab-indented ``` line (`\t````): indented code at root, but a fence
+ *    OPENER inside a footnote body. After `[^a]: body\n\n` it opens a fence
+ *    the next column-0 line leaves unclosed; the splice replay used to give
+ *    the footer a stale end position for that shape (F30 in
+ *    GRAMMAR-COVERAGE, found by fresh seeds 20260916 / 20260917; the
+ *    four-space form is the same defect). Fixed in buildInjectionPrefix and
+ *    pinned in tabIndentAxis.test.ts; the shape is back here so fuzz keeps
+ *    reaching it.
  *
  * The benign side keeps freezing and carries the sampling weight; the
  * hazard side re-runs existing hazards under a tab (APPROX #5 literals in
  * tab code, a def / footnote / def-list line whose whitespace is a tab, a
- * task-list box after a tab — pinned to the full path by the checked-box
- * rule in GRAMMAR-COVERAGE).
+ * task-list box after a tab, which the task tracker can now certify once
+ * its paragraph closes).
  */
 const tabBenignArb = fc.constantFrom(
   '-\ttab after marker\n-\tsecond item',
@@ -185,7 +184,8 @@ const tabBenignArb = fc.constantFrom(
   'para line\n\t\npara after a tab-only blank',
   '```\ncode\n\t```\nstill inside the fence\n```',
   '-\t-\t-',
-  'Setext title\n===\t'
+  'Setext title\n===\t',
+  '\t```\nnot a fence opener at root, a fence inside a footnote body\n\tcode'
 );
 const tabIndentArb = fc.oneof(
   { weight: 3, arbitrary: tabBenignArb },
@@ -1127,6 +1127,91 @@ const refUseArb = fc
 
 const listArb = fc.constantFrom('- tight one\n- tight two', '- loose one\n\n- loose two', '1. ordered\n2. items');
 
+/**
+ * GFM task-list items — the `gfmTaskListItems` scanner profile
+ * (taskListContext.ts). Every `[x]` is a shortcut-reference candidate
+ * whose label collides with the late `[x]:` definitions drawn below, so
+ * the direction battery's late-definition futures and this pool decide
+ * together whether a released box was really a task. Split by outcome:
+ *
+ *  - PROVABLE: root, quote and nested bullet/ordered items whose box is
+ *    the first content and whose paragraph a later block closes — these
+ *    must be released, or the family only pins the old over-block;
+ *  - RECLAIMED: a setext underline at the item's content column (two
+ *    spaces, a tab stop, a nested item), a lazy line before it, a GFM
+ *    table delimiter row — the box becomes a reference again and the
+ *    release must not have happened;
+ *  - NOT A TASK: lazy ordered markers, a box past the first content, no
+ *    whitespace after `]`, trailing whitespace on an empty marker line,
+ *    a code-span or escaped box — each an ordinary reference the late
+ *    definition retargets.
+ */
+const TASK_MARKERS = ['-', '*', '+', '1.', '1)', '12.'] as const;
+const taskProvableArb = fc.oneof(
+  {
+    weight: 3,
+    arbitrary: fc
+      .tuple(
+        fc.constantFrom(...TASK_MARKERS),
+        fc.constantFrom('x', 'X'),
+        fc.constantFrom(' done', '\tdone', ' done [x] again', '\n  next line', '\nlazy line', ' ')
+      )
+      .map(([marker, box, tail]) => `${marker} [${box}]${tail}`),
+  },
+  {
+    weight: 2,
+    arbitrary: fc.constantFrom(
+      '- parent\n  - [x] child',
+      '- parent\n  1. [X] child',
+      '> - [x] quoted',
+      '> > - [X] deep',
+      '> - parent\n>   - [x] nested',
+      '1. [x] one\n2. [X] two',
+      '- [x] a\n\n- [x] b',
+      '-\n  [x] after an empty marker',
+      '- [x] a\n  - [X] b\n    - [x] c\n  - d\n- e',
+      '- [x] a\n  # heading closes it',
+      '- [x] a\n  ***',
+      '- [ ] open\n- [x] closed'
+    ),
+  }
+);
+const taskReclaimedArb = fc.constantFrom(
+  '- [x] a\n  ===',
+  '- [X] a\n  ---',
+  '- [x] a\n  b\n  ===',
+  '- [x] a\nlazy\n  ===',
+  '-\t[x] a\n    ===',
+  '> - [x] a\n>   ===',
+  '- parent\n  - [x] a\n    ===',
+  '- [x] a | b\n  --- | ---',
+  '- [x] a\n  -|',
+  '- [x] a\n  :--'
+);
+const taskNotTaskArb = fc.constantFrom(
+  'para\n2. [x] b',
+  '- a\n  2. [x] b',
+  'para\n    - [x] b',
+  '- item [x] a',
+  '- first\n\n  [x] a',
+  '- # first\n\n  [x] a',
+  '- [x]',
+  '- [x]text',
+  '- [x] a',
+  '- \n  [x] a',
+  '-\n   [x] a',
+  '- `[x]` code',
+  '- \\[x] escaped'
+);
+const taskListArb = fc.oneof(
+  { weight: 3, arbitrary: taskProvableArb },
+  { weight: 2, arbitrary: taskReclaimedArb },
+  { weight: 2, arbitrary: taskNotTaskArb }
+);
+/** The definition that retargets every reference-shaped box above; the
+ *  valid forms settle, the invalid ones stay paragraphs. */
+const lateBoxDefArb = fc.constantFrom('[x]: /late', '[X]: /late "t"', '[x]:', '[x]: /u(x');
+
 /** Definition-list description line — only meaningful when the defList
  *  config axis is on; under other configs it is a plain paragraph, which is
  *  itself a useful divergence probe. */
@@ -1147,7 +1232,11 @@ const benignBlockArb = fc.oneof(
   { weight: 1, arbitrary: fencedCodeArb.filter((b) => b.endsWith('```')) },
   // Tabs that keep freezing: the benign family owns the engagement floor,
   // so only the settled shapes sit here (pool 10 → 11).
-  { weight: 1, arbitrary: tabBenignArb }
+  { weight: 1, arbitrary: tabBenignArb },
+  // Provable task lists keep freezing once the next root block lands
+  // (pool 11 → 12); the reclaimed and non-task shapes sit in the hazard
+  // family with the late definition that retargets them.
+  { weight: 1, arbitrary: taskProvableArb }
 );
 
 const hazardBlockArb = fc.oneof(
@@ -1162,7 +1251,11 @@ const hazardBlockArb = fc.oneof(
   { weight: 1, arbitrary: unicodeBlankArb },
   // 2 of 16: tabs compose with every other block through the separators,
   // and the marker (any `\t`) must clear the floor on fresh seeds.
-  { weight: 2, arbitrary: tabIndentArb }
+  { weight: 2, arbitrary: tabIndentArb },
+  // 3 of 19: task boxes and the `[x]:` definitions they collide with
+  // (pool 16 → 19).
+  { weight: 2, arbitrary: taskListArb },
+  { weight: 1, arbitrary: lateBoxDefArb }
 );
 
 // --- document assembly ----------------------------------------------------------
@@ -1329,4 +1422,14 @@ export const COVERAGE_MARKERS: Record<string, RegExp> = {
   tabIndent: /\t/,
   tagNamePrefix:
     /<\/?(?:col-md-6|td-cell|tr-row|caption-box|header|html-x|images|framework|body-x|prefix|styled|scripted|textareas)[ />]/,
+  // Task-list family (taskListContext.ts). The structural markers say the
+  // shapes were drawn; `taskReleased` in spliceFuzz counts how many of the
+  // provable ones the scanner actually released, which a regex cannot.
+  taskBox: /^(?:[-*+]|\d{1,2}[.)])[ \t]\[[xX]\]/m,
+  taskNested: /^(?:>|[-*+]|\d[.)]) (?:> )?(?:parent|- \[|> -)/m,
+  taskSetextReclaim: /\[[xX]\][^\n]*\n(?:[^\n]*\n)? {2,4}(?:===|---)\n/,
+  taskTableReclaim: /\[[xX]\][^\n]*\n {2}(?:--- \| ---|-\||:--)/,
+  taskLazyMarker: /^para\n2\. \[x\]|^- a\n {2}2\. \[x\]|^para\n {4}- \[x\]/m,
+  taskLateDef: /^\[[xX]\]:(?: \/late| \/u\(x|$)/m,
+  taskEmptyMarker: /^-\n {2,3}\[x\]|^- \n {2}\[x\]/m,
 };

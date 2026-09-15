@@ -136,6 +136,45 @@ export const SIGNATURE_DOMAIN: readonly SignatureField[] = [
     values: ['0', '1'],
     of: (cp) => (cp.pendingTruncatedCloses.length === 0 ? '0' : '1'),
   },
+  // The task-list tracker (taskListContext.ts). Without these a prefix
+  // holding a provable task box and one holding an ordinary `[x]`
+  // reference share a signature, and the search would keep only one of
+  // them. `off` is the profile without the tracker; every other value is
+  // the tracker's own state. The stack is bucketed by depth and by the
+  // innermost frame's kind; the innermost item's first-content phase is
+  // what decides whether a paragraph opening next can carry a box.
+  {
+    name: 'taskMode',
+    values: ['off', 'known', 'unknown'],
+    of: (cp) => (!cp.taskTracking ? 'off' : cp.task.unknown ? 'unknown' : 'known'),
+  },
+  {
+    name: 'taskStack',
+    values: ['0', '1', '2', '3+'],
+    of: (cp) => (cp.taskTracking ? depthBucket(cp.task.stack.length) : '0'),
+  },
+  {
+    name: 'taskInner',
+    values: ['root', 'quote', 'item:unseen', 'item:open', 'item:consumed'],
+    of: (cp) => {
+      const inner = cp.taskTracking ? cp.task.stack[cp.task.stack.length - 1] : undefined;
+      if (inner === undefined) return 'root';
+      return inner.kind === 'quote' ? 'quote' : `item:${inner.firstContent}`;
+    },
+  },
+  {
+    name: 'taskParagraph',
+    values: ['none', 'open', 'await'],
+    of: (cp) => (cp.taskTracking && cp.task.paragraph !== null ? cp.task.paragraph.phase : 'none'),
+  },
+  {
+    name: 'taskBox',
+    values: ['none', 'waiting', 'valid'],
+    of: (cp) => {
+      const box = cp.taskTracking ? cp.task.paragraph?.box : undefined;
+      return box === undefined || box === null ? 'none' : box.suffix;
+    },
+  },
 ];
 
 /** The signature string: one field per position, order fixed by the domain

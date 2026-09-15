@@ -25,6 +25,24 @@ import { buildCoreRehypePlugins, buildCoreRemarkPlugins } from '../pluginChain';
 import { buildCrossChunkHandlers } from '../customMdastHandlers';
 import { highlight, definitionList, removeComments, smartypants, pangu } from '../../plugins/catalog';
 import type { AdvanceOptions } from './advanceIncrementalParse';
+import type { FreezeBoundaryOptions } from './computeFreezeBoundary';
+
+/**
+ * The grammar capability the adapters declare on top of the plugin chain:
+ * `buildCoreRemarkPlugins` always includes remark-gfm, so React and Vue
+ * pass `gfmTaskListItems: true` (MarkdownContent.tsx, useMarkdownChunk.ts).
+ * `buildAdvanceOptions` deliberately leaves it UNSET — that is the
+ * conservative default a generic `advanceIncrementalParse` caller gets,
+ * and `taskListTaint.test.ts` pins it — so the harnesses that mirror the
+ * production lineage spread this in explicitly.
+ */
+export const ADAPTER_GRAMMAR = { gfmTaskListItems: true } as const;
+
+/** The scanner profile the production engine lineage runs a catalog
+ *  config under (`advanceIncrementalParse` → `computeFreezeBoundary`). */
+export function scannerProfile(config: CatalogConfig): FreezeBoundaryOptions {
+  return { defListEnabled: config.defList, ...ADAPTER_GRAMMAR };
+}
 
 export interface CatalogConfig {
   label: string;

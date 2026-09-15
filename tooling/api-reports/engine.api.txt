@@ -49,6 +49,7 @@ interface FreezeBoundaryOptions {
     defListEnabled: boolean;
     mathFlow?: boolean;
     referenceTaint?: boolean;
+    gfmTaskListItems?: boolean;
 }
 interface FreezeScanResult {
     boundary: number;
@@ -92,6 +93,7 @@ interface IncrementalParseState {
     injectionPlan: CachedInjectionPlan | null;
     spliceCache: SplicePrefixCache | null;
     depsKey: readonly unknown[];
+    gfmTaskListItems: boolean;
 }
 type IncrementalStage = 'scan' | 'parse' | 'transform';
 interface AdvanceOptions {
@@ -100,6 +102,7 @@ interface AdvanceOptions {
     remarkRehypeOptions: PipelineOptions['remarkRehypeOptions'];
     depsKey: readonly unknown[];
     defListEnabled: boolean;
+    gfmTaskListItems?: boolean;
     phantomSuffix?: string;
     measure?: <T>(stage: IncrementalStage, fn: () => T) => T;
 }

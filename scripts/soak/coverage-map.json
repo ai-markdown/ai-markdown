@@ -32,6 +32,18 @@
       "antiVacuity": "boundary and document-probe floors"
     },
     {
+      "id": "task-list-release",
+      "source": "packages/engine/src/components/incrementalParse/taskListContext.ts",
+      "oracle": "remark-gfm full parse before and after late-definition and setext/table futures",
+      "tests": [
+        "packages/engine/src/components/incrementalParse/taskListTaint.test.ts",
+        "packages/engine/src/components/incrementalParse/spliceFuzz.test.ts",
+        "packages/engine/src/components/incrementalParse/boundaryDirection.test.ts"
+      ],
+      "legs": ["fuzz", "dir"],
+      "antiVacuity": "taskReleased engagement floor and the benefit describe's splice-beyond-task assertion"
+    },
+    {
       "id": "definition-label-scanner",
       "source": "packages/engine/src/components/collectDefLabels.ts",
       "oracle": "collectDefLabels full parse",

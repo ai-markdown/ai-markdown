@@ -1,5 +1,6 @@
 /** Checkpoint representation and initialization. Only confirmed lines mutate this state. */
 import { type UnresolvedRef } from './referenceTaint';
+import { freshTaskContext, type TaskContext } from './taskListContext';
 
 export interface FreezeBoundaryOptions {
   /** Whether remark-definition-list is in the active plugin chain (the
@@ -28,6 +29,20 @@ export interface FreezeBoundaryOptions {
    * caching this profile exists for. `false` skips ref tracking entirely.
    */
   referenceTaint?: boolean;
+  /**
+   * Whether the grammar has GFM task-list items (remark-gfm). Default
+   * `false`: under plain CommonMark `- [x] a` is a paragraph whose `[x]` a
+   * later `[x]:` definition retargets, so the scanner must keep the
+   * reference taint. With `true`, a checked box that provably sits where
+   * micromark's `tasklistCheck` consumes it — the first content of a list
+   * item, its paragraph closed for good — is released from the taint by
+   * exact source position (see `taskListContext.ts`). Callers that build
+   * the engine's own chain (`buildCoreRemarkPlugins`) pass `true`; a
+   * caller with an arbitrary chain must not, unless it knows the chain
+   * has the construct. Part of the checkpoint profile: a checkpoint built
+   * under one value is not resumable under the other.
+   */
+  gfmTaskListItems?: boolean;
 }
 
 export interface FreezeScanResult {
@@ -157,6 +172,18 @@ export interface FreezeScanCheckpointInternal extends FreezeScanCheckpoint {
    *  resumable under the exact profile that built it. */
   mathFlow: boolean;
   referenceTaint: boolean;
+  gfmTaskListItems: boolean;
+  /** `referenceTaint && gfmTaskListItems`: the task-list tracker runs. The
+   *  def-label scanner profile has no references to release, so it pays
+   *  nothing for the tracker. */
+  taskTracking: boolean;
+  /** Container and paragraph state of the task-list tracker
+   *  (`taskListContext.ts`); inert when `taskTracking` is false. */
+  task: TaskContext;
+  /** Box offsets the tracker certified since the last settle; consumed by
+   *  `settleRefsAndEarliestUnresolved`, which drops the reference at each
+   *  offset and empties the list. */
+  taskCertified: number[];
   /** Start offset of the first line NOT yet baked into this checkpoint. */
   confirmedOffset: number;
   candidates: Candidate[];
@@ -372,12 +399,17 @@ export type TagAttrState = 'outside' | 'afterEq' | 'unquoted' | '"' | "'";
 export function freshCheckpoint(
   defListEnabled: boolean,
   mathFlow: boolean,
-  referenceTaint: boolean
+  referenceTaint: boolean,
+  gfmTaskListItems: boolean
 ): FreezeScanCheckpointInternal {
   return {
     defListEnabled,
     mathFlow,
     referenceTaint,
+    gfmTaskListItems,
+    taskTracking: referenceTaint && gfmTaskListItems,
+    task: freshTaskContext(),
+    taskCertified: [],
     confirmedOffset: 0,
     candidates: [],
     defs: new Map(),

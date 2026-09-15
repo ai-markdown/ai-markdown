@@ -26,7 +26,7 @@ import isEqual from 'lodash-es/isEqual';
 
 import { attributeHastChildren } from './attributeHastChildren';
 import { computeFreezeBoundary } from './computeFreezeBoundary';
-import { CATALOG, buildAdvanceOptions } from './testPluginCatalog';
+import { CATALOG, scannerProfile } from './testPluginCatalog';
 import { runFull, testEnv } from './spliceArbiterHarness';
 import { benignDocArb, hazardDocArb, type FuzzDoc } from './fuzzGenerators';
 import { soakBeat } from './soakHeartbeat';
@@ -59,6 +59,21 @@ const FUTURES = [
   '`\n',
   '\n- item\n',
   '\n===\n',
+  // Task-list back-claims (taskListContext.ts): a setext underline at the
+  // content column of a two-space item, of a tab-indented item and of a
+  // nested item; a GFM table delimiter row; the late definition for the
+  // box label in both cases and glued; and sibling / lazy markers whose
+  // box is a task in one container stack and a reference in another.
+  '\n  ===\n',
+  '\n  ---\n',
+  '\n    ===\n',
+  '\n  --- | ---\n',
+  '\n\n[x]: /late\n',
+  '\n[X]: /late "t"\n',
+  '[x]: /late\n',
+  '\n2. [x] b\n',
+  '\n  - [x] b\n',
+  '\r\n  ===\r\n',
 ] as const;
 
 interface Frozen {
@@ -94,7 +109,6 @@ describe(`boundary direction battery (runs=${RUNS} seed=${SEED}, futures=${FUTUR
       fc.property(fc.oneof(benignDocArb, hazardDocArb), fc.integer({ min: 1, max: 7 }), (fuzz: FuzzDoc, cutDenom) => {
         beat.tick();
         const config = CATALOG[fuzz.configIndex % CATALOG.length];
-        const { defListEnabled } = buildAdvanceOptions(config);
         // A prefix mid-stream (not just the finished doc) — cut at a
         // code-point-safe offset.
         let cut = Math.max(1, Math.floor(fuzz.doc.length / cutDenom));
@@ -102,7 +116,7 @@ describe(`boundary direction battery (runs=${RUNS} seed=${SEED}, futures=${FUTUR
         if (cc >= 0xd800 && cc <= 0xdbff) cut += 1;
         const prefix = fuzz.doc.slice(0, cut);
 
-        const boundary = computeFreezeBoundary(prefix, { defListEnabled }).boundary;
+        const boundary = computeFreezeBoundary(prefix, scannerProfile(config)).boundary;
         if (boundary === 0) return;
         boundaries += 1;
 

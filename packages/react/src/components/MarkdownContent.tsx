@@ -474,6 +474,10 @@ const BlockMemoizedRenderer = memo(
           provenance,
           incrementalParse: incrementalParse && typeof window !== 'undefined',
           defListEnabled,
+          // The chain comes from buildCoreRemarkPlugins, which always
+          // includes remark-gfm, so the scanner may release proven task
+          // boxes from the reference taint.
+          gfmTaskListItems: true,
           measure: measureHere,
         }),
       [

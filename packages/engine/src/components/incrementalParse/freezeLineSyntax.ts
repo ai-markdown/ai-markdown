@@ -375,6 +375,9 @@ export const TYPE6_START_RE = /^<\/?([A-Za-z][A-Za-z0-9-]*)(?:[ \t\r]|\/?>|$)/;
 
 /** Type-1 start: an OPEN tag of a raw-text name + (whitespace | `>` | EOL). */
 export const TYPE1_START_RE = /^<(script|pre|style|textarea)(?:[ \t\r]|>|$)/i;
+/** A raw construct (html block types 2-5) STARTING at the head of a line:
+ *  comment, processing instruction, declaration, CDATA. */
+export const RAW_CONSTRUCT_START_RE = /^<(?:!--|\?|![A-Za-z]|!\[CDATA\[)/;
 
 /** Type 1's end condition is a literal substring anywhere on the line —
  *  no attributes, no whitespace before `>` (CommonMark 4.6). */

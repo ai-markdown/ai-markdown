@@ -168,6 +168,10 @@ export function useMarkdownChunk(input: () => ChunkInput) {
       provenance,
       incrementalParse: current.incrementalParse,
       defListEnabled: current.enginePlugins.some((plugin) => plugin.name === 'definitionList'),
+      // The chain comes from buildCoreRemarkPlugins, which always includes
+      // remark-gfm, so the scanner may release proven task boxes from the
+      // reference taint.
+      gfmTaskListItems: true,
     };
     const trees = pipeline.parse(frameOptions);
     return {

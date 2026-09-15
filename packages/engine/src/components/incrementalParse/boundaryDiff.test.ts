@@ -74,7 +74,7 @@
 import { describe, expect, test } from 'vitest';
 
 import { computeFreezeBoundary, pendingFenceCloser, type FreezeBoundaryOptions } from './computeFreezeBoundary';
-import { CATALOG, buildAdvanceOptions } from './testPluginCatalog';
+import { CATALOG, scannerProfile } from './testPluginCatalog';
 import { REALISTIC_DOCS, pinnedFuzzDocs, corpusFingerprint, type PinnedDoc } from './pinnedCorpus';
 import { testEnv } from './spliceArbiterHarness';
 
@@ -115,9 +115,11 @@ interface Baseline {
 
 function lineages(doc: PinnedDoc): Array<[string, FreezeBoundaryOptions]> {
   const config = CATALOG[doc.configIndex % CATALOG.length];
-  const { defListEnabled } = buildAdvanceOptions(config);
   return [
-    ['e', { defListEnabled }],
+    // The engine lineage carries the adapters' grammar capability
+    // (`gfmTaskListItems`), as production does since the task-list
+    // release landed.
+    ['e', scannerProfile(config)],
     ['s', { defListEnabled: false, mathFlow: false, referenceTaint: false }],
     ['p', { defListEnabled: false, referenceTaint: false }],
   ];

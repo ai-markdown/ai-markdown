@@ -37,11 +37,13 @@ import {
   BARE_MARKER_RE,
   SETEXT_LEFTOVER_RE,
   CONTAINER_MARKER_RE,
+  RAW_CONSTRUCT_START_RE,
 } from './freezeLineSyntax';
 import { type FreezeScanCheckpointInternal, type LineRec, type P5Tok, type TagAttrState } from './freezeScanState';
 import { mdTrimStart, isMdBlank } from './mdLineText';
 import { DEF_RE, FOOTNOTE_DEF_RE, collectRefLine } from './referenceTaint';
 import { assertSealReleaseContained } from './sealReleaseContainment';
+import { advanceTaskLine } from './taskListContext';
 
 /**
  * Blocker-6 residue: the bytes of a line that are neither tags nor comment
@@ -93,11 +95,6 @@ function floatingResidue(text: string, commentOpenAtStart: boolean): string {
   if (!open) out += text.slice(last);
   return out;
 }
-
-/** A raw construct (html block types 2-5) STARTING at the head of a line:
- *  comment, processing instruction, declaration, CDATA. Shared by the
- *  line's own `rawFlowStart` and by the seal release's L3. */
-const RAW_CONSTRUCT_START_RE = /^<(?:!--|\?|![A-Za-z]|!\[CDATA\[)/;
 
 /** Blocks a LATER line can continue without emitting a node of its own —
  *  the seal release's L1a input. A link definition takes destination and
@@ -202,8 +199,30 @@ function shouldReleaseSeal(cp: FreezeScanCheckpointInternal, ln: LineRec, isBloc
   return true;
 }
 
-/** Bake one confirmed line into the checkpoint. */
+/** The line is html-owned in one of the two grammars: an md html block is
+ *  open, or parse5's tokenizer is inside a comment, bogus comment or
+ *  raw-text element. Read before and after the scanner's transition so a
+ *  block that opens or closes ON this line counts too. */
+const htmlOwnedState = (cp: FreezeScanCheckpointInternal): boolean =>
+  cp.mdBlock.kind === 'html' || cp.p5Tok.kind !== 'data';
+
+/**
+ * Bake one confirmed line into the checkpoint: the scanner's own
+ * transition (`applyConfirmedLine`, which returns early from its fence,
+ * math and blank branches), then the task-list tracker's, fed from the
+ * scanner's state before and after so that every return path commits the
+ * structural fact the tracker needs — a verbatim interior line, an
+ * html-owned line, a fence or math open the scanner took — and the two
+ * states can never disagree about which line was baked.
+ */
 export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text: string): void {
+  const verbatimBefore = cp.mdBlock.kind === 'fence' || cp.mdBlock.kind === 'math';
+  const opaqueBefore = htmlOwnedState(cp);
+  applyConfirmedLine(cp, ln, text);
+  advanceTaskLine(cp, ln, verbatimBefore, opaqueBefore || htmlOwnedState(cp));
+}
+
+function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text: string): void {
   // Blocker-4 eager settle: this line is the "next confirmed line" of the
   // newest candidate. The verdict uses the RAW line exactly like the old
   // lines-array lookback did (fence/math state deliberately not consulted).

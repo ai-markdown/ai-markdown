@@ -94,7 +94,7 @@ import { describe, expect, test } from 'vitest';
 
 import { computeFreezeBoundary, type FreezeScanCheckpoint } from './computeFreezeBoundary';
 import { SCANNER_NAME_LISTS } from './scannerNameLists';
-import { CATALOG, buildAdvanceOptions, type CatalogConfig } from './testPluginCatalog';
+import { ADAPTER_GRAMMAR, CATALOG, scannerProfile, type CatalogConfig } from './testPluginCatalog';
 import { assertStreamEquivalence, fallbackOracleSampleFromEnv, runFull, testEnv } from './spliceArbiterHarness';
 import { engineProbe, probeTailsFor, snapshotRawDisagreement, type NodeLike } from './conformanceOracles';
 import { CONSTRUCT_AXIS_CLAIMED_SHAPES } from './constructAxisAdapters';
@@ -623,8 +623,7 @@ const alignCut = (doc: string, at: number): number => {
  * boundary landing mid-token, which is where it stops being free.
  */
 function driveRawFrozen(doc: string, config: CatalogConfig, stats: RawFrozenStats): void {
-  const { defListEnabled } = buildAdvanceOptions(config);
-  const boundary = computeFreezeBoundary(doc, { defListEnabled }).boundary;
+  const boundary = computeFreezeBoundary(doc, scannerProfile(config)).boundary;
   if (boundary <= 0) return;
   stats.boundaries += 1;
   const positionsOnEntry = stats.positions;
@@ -771,11 +770,11 @@ function drive(doc: string, cuts: number[], config: CatalogConfig): { frames: nu
   // changing between minor versions. Audited 2026-08-28 — every other
   // resume in the repo is a linear loop, and `MarkdownContent`'s catch
   // already nulls its state ref for this exact reason.
-  const defListEnabled = config.defList;
+  const profile = scannerProfile(config);
   let checkpoint: FreezeScanCheckpoint | null = null;
   for (const snapshot of snapshots) {
-    const fresh = computeFreezeBoundary(snapshot, { defListEnabled });
-    const resumed = computeFreezeBoundary(snapshot, { defListEnabled }, checkpoint);
+    const fresh = computeFreezeBoundary(snapshot, profile);
+    const resumed = computeFreezeBoundary(snapshot, profile, checkpoint);
     if (resumed.boundary !== fresh.boundary) {
       expect.fail(
         `resume/fresh divergence doc=${JSON.stringify(doc)} len=${snapshot.length}: resumed=${resumed.boundary} fresh=${fresh.boundary}`
@@ -1236,7 +1235,7 @@ function bfs(defListEnabled: boolean, depth: number): BfsResult {
         // scanner documents as an implementation detail that changes
         // between minor versions. Rescanning costs O(prefix) per node
         // rather than O(token), which at these depths is a few seconds.
-        const scanned = computeFreezeBoundary(doc, { defListEnabled });
+        const scanned = computeFreezeBoundary(doc, { defListEnabled, ...ADAPTER_GRAMMAR });
         const cp = scanned.checkpoint as FreezeScanCheckpointInternal;
         const values = signatureValues(cp);
         const signature = values.join('|');

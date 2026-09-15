@@ -40,7 +40,7 @@ import isEqual from 'lodash-es/isEqual';
 import { parseStage, transformStage } from '../markdown';
 import { buildPhantomSuffix, phantomSuffixCloser } from '../remarkInjectPhantomDefs';
 import { advanceIncrementalParse, type AdvanceOptions, type IncrementalParseState } from './advanceIncrementalParse';
-import { buildAdvanceOptions, type CatalogConfig } from './testPluginCatalog';
+import { ADAPTER_GRAMMAR, buildAdvanceOptions, type CatalogConfig } from './testPluginCatalog';
 
 /** Test-only env access: the package's ambient `process` shim deliberately
  *  types only NODE_ENV (browser-shippable code must not grow env deps);
@@ -159,7 +159,9 @@ export function assertStreamEquivalence(
   config: CatalogConfig,
   streamOptions?: StreamOptions
 ): StreamStats {
-  const options = buildAdvanceOptions(config);
+  // The production lineage: the adapters' grammar capability on top of the
+  // catalog's chain (see ADAPTER_GRAMMAR).
+  const options = { ...buildAdvanceOptions(config), ...ADAPTER_GRAMMAR };
   const fallbackSample = streamOptions?.fallbackOracleSample ?? 1;
   let state: IncrementalParseState | null = null;
   let incrementalFrames = 0;

@@ -30,7 +30,8 @@ import { describe, expect, test } from 'vitest';
 import fc from 'fast-check';
 
 import { computeFreezeBoundary, type FreezeScanCheckpoint } from './computeFreezeBoundary';
-import { buildAdvanceOptions, buildCrossChunkAdvanceOptions, CATALOG } from './testPluginCatalog';
+import { buildCrossChunkAdvanceOptions, CATALOG, scannerProfile } from './testPluginCatalog';
+import type { FreezeBoundaryOptions, FreezeScanCheckpointInternal } from './computeFreezeBoundary';
 import {
   assertStreamEquivalence,
   fallbackOracleSampleFromEnv,
@@ -66,9 +67,16 @@ interface Totals {
   frames: number;
   incrementalFrames: number;
   markerHits: Record<string, number>;
+  /** Documents whose FIRST task box the scanner released from the
+   *  reference taint (its candidate present under the conservative
+   *  profile, gone under the production one). A structural marker only
+   *  proves the shape was drawn; this proves the certification path ran,
+   *  so a tracker that silently fell back to "unknown" on every sample
+   *  cannot pass on equivalence alone. */
+  taskReleased: number;
 }
 
-const newTotals = (): Totals => ({ frames: 0, incrementalFrames: 0, markerHits: {} });
+const newTotals = (): Totals => ({ frames: 0, incrementalFrames: 0, markerHits: {}, taskReleased: 0 });
 
 function meterMarkers(doc: string, totals: Totals): void {
   for (const [name, pattern] of Object.entries(COVERAGE_MARKERS)) {
@@ -76,12 +84,37 @@ function meterMarkers(doc: string, totals: Totals): void {
   }
 }
 
+function meterTaskRelease(doc: string, profile: FreezeBoundaryOptions, totals: Totals): void {
+  const box = COVERAGE_MARKERS.taskBox.exec(doc);
+  if (box === null) return;
+  const offset = box.index + box[0].indexOf('[');
+  const tainted = (options: FreezeBoundaryOptions): boolean =>
+    (computeFreezeBoundary(doc, options).checkpoint as FreezeScanCheckpointInternal).unresolvedRefs.some(
+      (ref) => ref.offset === offset
+    );
+  // The box's own candidate, not the document boundary (which the other
+  // generated references block on their own): live under the conservative
+  // profile — otherwise the sample never exercised the release — and gone
+  // under the production one.
+  if (tainted({ ...profile, gfmTaskListItems: false }) && !tainted(profile)) totals.taskReleased += 1;
+}
+
+/** The engagement numbers on the real stream (`console.*` is intercepted
+ *  and dropped on a passing run; same cast as boundaryDiff.test.ts). */
+function emitTotals(family: string, totals: Totals): void {
+  (process as unknown as { stdout?: { write(text: string): void } }).stdout?.write(
+    `[spliceFuzz] ${family}: frames=${totals.frames} incremental=${totals.incrementalFrames} ` +
+      `taskBoxDocs=${totals.markerHits.taskBox ?? 0} taskReleased=${totals.taskReleased}\n`
+  );
+}
+
 /** Drive one sample through P1+P2 on two schedules (forward + reversed
  *  chunk sizes — extra splice-path coverage, same oracle). */
 function driveSample(fuzz: FuzzDoc, tag: string, totals: Totals): void {
   const config = CATALOG[fuzz.configIndex % CATALOG.length];
-  const defListEnabled = buildAdvanceOptions(config).defListEnabled;
+  const profile = scannerProfile(config);
   meterMarkers(fuzz.doc, totals);
+  meterTaskRelease(fuzz.doc, profile, totals);
 
   for (const sizes of [fuzz.sizes, [...fuzz.sizes].reverse()]) {
     const snapshots = scheduleSnapshots(fuzz.doc, sizes);
@@ -117,8 +150,8 @@ function driveSample(fuzz: FuzzDoc, tag: string, totals: Totals): void {
     // hazard.
     let checkpoint: FreezeScanCheckpoint | null = null;
     for (const snapshot of snapshots) {
-      const fresh = computeFreezeBoundary(snapshot, { defListEnabled });
-      const resumed = computeFreezeBoundary(snapshot, { defListEnabled }, checkpoint);
+      const fresh = computeFreezeBoundary(snapshot, profile);
+      const resumed = computeFreezeBoundary(snapshot, profile, checkpoint);
       if (resumed.boundary !== fresh.boundary) {
         expect.fail(
           `${tag} resume/fresh boundary divergence at len=${snapshot.length}: resumed=${resumed.boundary} fresh=${fresh.boundary} doc=${JSON.stringify(snapshot)}`
@@ -152,8 +185,12 @@ describe(`splice fuzz arbiter (runs=${RUNS} seed=${SEED} fallbackOracleSample=${
     // A floor sitting on the mean fails half the time by construction, and
     // the soak deliberately runs FRESH seeds, so it would teach everyone
     // to ignore a red leg. 0.2 keeps a collapse unmissable with real margin.
+    emitTotals('benign', totals);
     expect(totals.frames).toBeGreaterThan(0);
     expect(totals.incrementalFrames / totals.frames).toBeGreaterThan(0.2);
+    // The task-list release must engage on the benign family too, where
+    // the provable shapes live; the same RUNS/200 floor as the markers.
+    expect(totals.taskReleased, 'task boxes released').toBeGreaterThanOrEqual(Math.max(1, Math.floor(RUNS / 200)));
   });
 
   test('hazard-dense family: equivalence + generator coverage meters', { timeout: TIMEOUT_MS }, () => {
@@ -167,6 +204,7 @@ describe(`splice fuzz arbiter (runs=${RUNS} seed=${SEED} fallbackOracleSample=${
       FC_PARAMS
     );
     beat.finish();
+    emitTotals('hazard', totals);
     // Hazard docs legitimately splice less — only demand the path is alive.
     expect(totals.incrementalFrames).toBeGreaterThan(0);
     // Every adversarial construct family must occur. The floor is RUNS/200,
@@ -180,6 +218,8 @@ describe(`splice fuzz arbiter (runs=${RUNS} seed=${SEED} fallbackOracleSample=${
     for (const name of Object.keys(COVERAGE_MARKERS)) {
       expect(totals.markerHits[name] ?? 0, `generator coverage: ${name}`).toBeGreaterThanOrEqual(floor);
     }
+    // Engagement floor for the task-list release (see Totals.taskReleased).
+    expect(totals.taskReleased, 'task boxes released').toBeGreaterThanOrEqual(floor);
   });
 
   test('cross-chunk family: phantom-suffix churn under fuzzed docs', { timeout: TIMEOUT_MS }, () => {

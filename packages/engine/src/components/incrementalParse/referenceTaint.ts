@@ -195,6 +195,8 @@ export interface RefTaintView {
   prevLineWasValidDef: boolean;
   lastBlankStart: number;
   phasePoisonedAt: number;
+  /** Box offsets certified by the task-list tracker since the last settle. */
+  taskCertified: number[];
 }
 
 export interface RefLineFacts {
@@ -288,41 +290,20 @@ export function collectRefLine(
         // Shortcut reference candidate. Plain prose brackets ("[sic]") land
         // here too — a future definition COULD retarget them, so they count.
         //
-        // GFM task-list checkboxes land here as well (2026-09-11 review):
-        // `- [x] text` pushes `x` as a candidate that no definition ever
-        // settles, so a document with a task list stays at the boundary
-        // before the list for the rest of the stream (`TASK_LIST_DOC` pins
-        // at 22, `GFM_BASICS` at 203 in boundaryBaseline.json). This is a
-        // KNOWN over-block, kept deliberately. micromark's `tasklistCheck`
-        // construct does consume the box before reference resolution when
-        // whitespace and content follow it on the item's first line
-        // (probed: `- [x] two` plus a later `[x]: /url` is
-        // `listItem{checked}`, no `linkReference`), but a line-local skip
-        // is NOT safe, and the shapes that break it need container state
-        // this module does not have:
-        //   - a setext underline inside the item turns the paragraph into
-        //     a heading where the box IS a reference again: `- [x] a` /
-        //     `  ===` (also `  ---`, also across a lazy line `b`, also
-        //     `-\t[x] a` / `    ===`) — retroactive, one or more lines
-        //     later, decided by the underline's indent against the item's
-        //     content column;
-        //   - an ordered marker other than `1` is a lazy continuation line
-        //     when a paragraph is open, so its box is a reference:
-        //     `para` / `2. [x] b`, `- a` / `  2. [x] b` (indent inside the
-        //     item), but a sibling `1. [x] a` / `2. [x] b` is a task —
-        //     which one holds depends on the open container stack;
-        //   - any marker at ≥4 indent after a paragraph is lazy text
-        //     (`para` / `    - [x] b` is a reference);
-        //   - bare `- [x]`, `- [x] ` (whitespace only) and `- [x]` + U+3000
-        //     + `text` (U+3000 / U+00A0 are not `markdownSpace`) fail the
-        //     construct and are references; `- [x]text` too.
-        // A conservative candidate over-blocks; a skipped candidate that a
-        // later definition retargets changes frozen output — the unsafe
-        // direction. Lifting this needs the item's content column and the
-        // paragraph-open state carried in the checkpoint (a pending entry
-        // dropped at the next confirmed blank, converted by an underline at
-        // or past that column); it is recorded in GRAMMAR-COVERAGE.md
-        // ("GFM task-list checkboxes") and not attempted here.
+        // GFM task-list checkboxes land here as well, on purpose. A
+        // line-local skip of `- [x] text` is NOT safe: whether micromark's
+        // `tasklistCheck` consumes the box depends on the container stack
+        // (`para` / `2. [x] b` is a lazy line whose box is a reference; a
+        // sibling `1. [x] a` / `2. [x] b` is a task), and whether it STAYS
+        // consumed depends on later lines (`- [x] a` / `  ===` is a heading
+        // whose box is a reference again; `- [x] a | b` / `  --- | ---` a
+        // table head). So the candidate is pushed here like any other, and
+        // `taskListContext.ts` — which carries that container state in the
+        // checkpoint — releases it by EXACT OFFSET through
+        // `settleRefsAndEarliestUnresolved` once the box's paragraph has
+        // closed for good. A same-label `[x]` anywhere else keeps its
+        // candidate. Under a grammar without the construct
+        // (`gfmTaskListItems` unset) nothing is ever released.
         label = normalizeLabel(inner);
       }
       if (label) cp.unresolvedRefs.push({ offset, label, footnote });
@@ -376,9 +357,19 @@ export function collectRefLine(
 }
 
 /** Settle references (monotone: entries only ever leave — a def counts
- *  once a confirmed blank line follows it), then report the earliest still
+ *  once a confirmed blank line follows it, and a task-list box counts once
+ *  the tracker certified its exact offset), then report the earliest still
  *  unresolved ref offset (`Infinity` when none). */
 export function settleRefsAndEarliestUnresolved(cp: RefTaintView): number {
+  // Certified task boxes leave by POSITION, never by label: the same `X`
+  // label in prose elsewhere is still a live shortcut reference. The list
+  // is consumed here so a resumed scan and a fresh one remove each entry
+  // exactly once, at the same scan.
+  if (cp.taskCertified.length > 0) {
+    const certified = new Set(cp.taskCertified);
+    cp.taskCertified = [];
+    cp.unresolvedRefs = cp.unresolvedRefs.filter((ref) => ref.footnote || !certified.has(ref.offset));
+  }
   if (cp.unresolvedRefs.length > 0) {
     // Once block ownership is uncertain, a definition-shaped line may be
     // HTML or math content. It cannot resolve an earlier reference: that

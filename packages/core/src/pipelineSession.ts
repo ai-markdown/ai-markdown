@@ -46,6 +46,11 @@ export interface PipelineFrameOptions {
   /** False for a one-shot server render; no browser-global probe is needed. */
   incrementalParse: boolean;
   defListEnabled: boolean;
+  /** Whether `remarkPlugins` parses GFM task-list items. Default `false`
+   *  (the boundary scanner keeps every `[x]` as reference taint). The
+   *  adapters pass `true` because they build the chain with
+   *  `buildCoreRemarkPlugins`, which always includes remark-gfm. */
+  gfmTaskListItems?: boolean;
   measure?: AdvanceOptions['measure'];
 }
 const unmeasured: NonNullable<AdvanceOptions['measure']> = (_stage, fn) => fn();
@@ -115,6 +120,7 @@ export function createPipelineSession(): PipelineSession {
       provenance,
       incrementalParse,
       defListEnabled,
+      gfmTaskListItems = false,
       measure: measureHere = unmeasured,
     }: PipelineFrameOptions) {
       // The suffix is APPENDED (the engine treats it as an always-tail
@@ -231,8 +237,10 @@ export function createPipelineSession(): PipelineSession {
             // retained TREES were still spliced against — a prefix frozen
             // under one profile must not survive into frames under the other.
             defListEnabled,
+            gfmTaskListItems,
           ],
           defListEnabled,
+          gfmTaskListItems,
           phantomSuffix,
           measure: measureHere,
         });
