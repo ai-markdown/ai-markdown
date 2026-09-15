@@ -190,6 +190,13 @@ export const SIGNATURE_DOMAIN: readonly SignatureField[] = [
     of: (cp) => (cp.taskTracking && cp.task.paragraph !== null ? cp.task.paragraph.phase : 'none'),
   },
   {
+    // The indented-code interrupt window (taskListContext.codeInterrupt):
+    // a marker line reads differently inside it.
+    name: 'taskCodeInterrupt',
+    values: ['no', 'yes'],
+    of: (cp) => (cp.taskTracking && cp.task.codeInterrupt !== null ? 'yes' : 'no'),
+  },
+  {
     name: 'taskBox',
     values: ['none', 'waiting', 'valid'],
     of: (cp) => {

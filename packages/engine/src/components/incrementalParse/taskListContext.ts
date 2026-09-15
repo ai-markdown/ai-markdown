@@ -117,10 +117,21 @@ export interface TaskContext {
   prevBlank: boolean;
   stack: TaskFrame[];
   paragraph: TaskParagraph | null;
+  /** Stack depth at the last confirmed indented-code line, or null once a
+   *  non-blank line of another kind (or a container exit) followed it.
+   *  micromark keeps `interrupt` set on the line after an indented code
+   *  block even across blank lines, so at that depth an ordered marker
+   *  other than `1` or an empty marker is paragraph text, not a list:
+   *  `\tcode` / blank / `12. [x] done` is a paragraph whose `[x]` becomes
+   *  a link reference once `[x]:` arrives (v3.1.0 release soak, direction
+   *  battery seed 202609711), while `1. [x]` and `- [x]` start lists. A
+   *  container that exits on the blank line resets the flag: `> \tcode` /
+   *  blank / `12. [x]` at the root is a list. */
+  codeInterrupt: number | null;
 }
 
 export function freshTaskContext(): TaskContext {
-  return { unknown: false, prevBlank: true, stack: [], paragraph: null };
+  return { unknown: false, prevBlank: true, stack: [], paragraph: null, codeInterrupt: null };
 }
 
 // ── columns ────────────────────────────────────────────────────────────
@@ -484,8 +495,13 @@ function processLine(cp: FreezeScanCheckpointInternal, t: TaskContext, ln: LineR
     }
   }
   // `self.interrupt` is recomputed only when every container continued;
-  // a failed continuation leaves it cleared.
-  const interrupt = !opened && continued === t.stack.length && paragraphOpen;
+  // a failed continuation leaves it cleared. It is also still set on the
+  // line after an indented code block at the same depth (see
+  // `codeInterrupt`).
+  const interrupt =
+    !opened &&
+    continued === t.stack.length &&
+    (paragraphOpen || (t.codeInterrupt !== null && t.codeInterrupt === t.stack.length));
 
   // 3. New containers, as many as the line opens.
   for (;;) {
@@ -536,6 +552,9 @@ function processLine(cp: FreezeScanCheckpointInternal, t: TaskContext, ln: LineR
     // Nothing stays open across a blank line, so the containers that did
     // not continue exit before it.
     if (!opened) t.stack.length = continued;
+    // A container exiting here ends the indented code block's interrupt
+    // window; a blank line at the same depth keeps it.
+    if (t.codeInterrupt !== null && t.codeInterrupt !== t.stack.length) t.codeInterrupt = null;
     onBlank(cp, t);
     return false;
   }
@@ -563,6 +582,9 @@ function processLine(cp: FreezeScanCheckpointInternal, t: TaskContext, ln: LineR
     forget(t);
     return false;
   }
+  // Only an indented code line (re)arms the interrupt window; every other
+  // non-blank line, including one that opened a container, ends it.
+  t.codeInterrupt = kind === 'code' && !opened ? t.stack.length : null;
   if (open) {
     if (kind === 'continuation') {
       continueParagraph(t);

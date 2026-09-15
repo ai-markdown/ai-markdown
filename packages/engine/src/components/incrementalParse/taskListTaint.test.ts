@@ -152,6 +152,22 @@ const SYNTAX_CASES: SyntaxCase[] = [
   { name: 'second paragraph is not first content', body: '- first\n\n  [x] a', checked: [null], refs: 1 },
   { name: 'heading consumed first content', body: '- # first\n\n  [x] a', checked: [null], refs: 1, headings: 1 },
   { name: 'empty marker then first content', body: '-\n  [x] a', checked: [true] },
+  // After a ROOT indented code block micromark keeps `interrupt` set, so
+  // these markers are paragraph text (release soak seeds 202609405 and
+  // 202609711); `1.` and `-` with content still start lists there.
+  { name: 'empty marker after indented code', body: '\tcode\n\n-\n  [x] a', checked: [], refs: 1 },
+  { name: 'ordered non-1 after indented code', body: '\tcode\n\n12. [x] done', checked: [], refs: 1 },
+  {
+    name: 'ordered non-1 after two blanks after indented code',
+    body: '    code\n\n\n2. [x] done',
+    checked: [],
+    refs: 1,
+  },
+  { name: 'ordered 1 after indented code', body: '\tcode\n\n1. [x] done', checked: [true] },
+  { name: 'bullet after indented code', body: '\tcode\n\n- [x] done', checked: [true] },
+  { name: 'quoted indented code then root ordered', body: '> \tcode\n\n12. [x] done', checked: [true] },
+  { name: 'item indented code then root ordered', body: '- \tcode\n\n12. [x] done', checked: [null, true] },
+  { name: 'paragraph between resets the window', body: '\tcode\n\ntext\n\n12. [x] done', checked: [true] },
   { name: 'bare checkbox has paragraph EOF', body: '- [x]', checked: [null], refs: 1 },
   { name: 'spaces then paragraph EOF', body: '- [x] \t', checked: [null], refs: 1 },
   { name: 'same paragraph supplies next-line content', body: '- [x]\n  a', checked: [true] },

@@ -772,7 +772,17 @@ first` / blank / `  [x] a`, `- - child` / blank / `  [x] a`, a fence,
   precedes it (v3.1.0 release soak, seed 202609405, shrunk to
   `\tcode` / blank / `-` / `  [x] after` + late `[x]: /late`). The
   tracker does not model the preceding block precisely enough, so the
-  item's first content counts as consumed and the box keeps its taint.
+  item's first content counts as consumed and the box keeps its taint;
+- a ROOT indented code block leaves micromark's `interrupt` flag set on
+  the next non-blank line, across any number of blank lines, so an
+  ordered marker other than `1` (or an empty marker) there is paragraph
+  text: `\tcode` / blank / `12. [x] done` + late `[x]: /late` renders a
+  link (v3.1.0 release soak, direction battery seed 202609711). The
+  tracker keeps `codeInterrupt` (the stack depth of the code line) and
+  applies the interrupt marker rules at that depth until another
+  non-blank line or a container exit; `1. [x]`, `- [x]`, and a marker
+  after `> \tcode` / blank or `- \tcode` / blank still start lists, all
+  measured against remark.
 
 Unknown branches — the tracker keeps the ordinary taint and proves
 nothing until a root sync point (a confirmed blank line followed by a

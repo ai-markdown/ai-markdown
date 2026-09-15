@@ -466,6 +466,16 @@ describe('splice equivalence — fuzz-found regressions', () => {
     // empty marker line `-` followed by `  [x] ...` is a paragraph in
     // micromark, not a task item, so a late `[x]:` definition turns the box
     // into a link; the tracker had certified it as a checkbox.
+    // v3.1.0 release soak, direction battery (seed 202609711): after a root
+    // indented code block micromark still has `interrupt` set, so `12. [x]`
+    // is paragraph text and a late `[x]:` makes the box a link; the tracker
+    // had started an ordered item and certified the box.
+    [
+      'soak-ordered-non-1-after-indented-code',
+      '\tcode indented by tab\n\tsecond code line\n\n12. [x] done\n\n-\ttab after marker\n-\tsecond item\n\n</br>\n\n\t<details>[a] scanned literal\n\nprose with [a] used\n\n\n[x]: /late\n',
+      [4, 4, 4, 1, 4, 1, 4, 4],
+      0,
+    ],
     [
       'soak-empty-marker-after-indented-code',
       '\tcode indented by tab\n\tsecond code line\n\n-\n  [x] after an empty marker\n\nfoo line\n\u3000\n\u3000\nbar joins the paragraph\n\nplain prose keeps flowing here\n\nplain prose keeps flowing here\n\n[x]: /late\n',
