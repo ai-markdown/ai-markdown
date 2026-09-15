@@ -78,8 +78,8 @@
   },
   "devDependencies": {
     "@ai-markdown/react": "workspace:*",
-    "@mantine/code-highlight": "^9.6.0",
-    "@mantine/core": "^9.6.0",
+    "@mantine/code-highlight": "^9.6.1",
+    "@mantine/core": "^9.6.1",
     "@mantine/hooks": "^9.6.0",
     "@types/node": "^25.9.5",
     "autoprefixer": "^10.5.5",
