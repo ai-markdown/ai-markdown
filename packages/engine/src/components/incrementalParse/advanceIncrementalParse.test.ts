@@ -13,6 +13,11 @@ import { advanceIncrementalParse, type IncrementalParseState } from './advanceIn
 import { scheduleSnapshots } from './fuzzGenerators';
 import { assertStreamEquivalence, runFull } from './spliceArbiterHarness';
 import { buildAdvanceOptions, buildCrossChunkAdvanceOptions, CATALOG } from './testPluginCatalog';
+import type { SplicePrefixCacheInternal } from './spliceParse';
+
+/** Tests read the cache's fields through the intra-package shape. */
+const cacheOf = (state: IncrementalParseState): SplicePrefixCacheInternal =>
+  state.spliceCache as SplicePrefixCacheInternal;
 
 const BASE = () => buildAdvanceOptions(CATALOG[0]);
 
@@ -154,7 +159,7 @@ describe('splice cache — retained per lineage, dropped on the full path, check
     expect(s1.spliceCache).toBeNull();
     const r2 = advanceIncrementalParse(s1, GROWN, BASE());
     expect(r2.usedIncremental).toBe(true);
-    const cache = r2.nextState.spliceCache!;
+    const cache = cacheOf(r2.nextState);
     expect(cache.roots.mdast).toBe(r2.mdast);
     expect(cache.roots.hast).toBe(r2.hast);
     expect(cache.boundary).toBe(r2.boundary);
@@ -162,7 +167,7 @@ describe('splice cache — retained per lineage, dropped on the full path, check
     // The next splice resumes from it and its cache moves with the boundary.
     const r3 = advanceIncrementalParse(r2.nextState, `${GROWN}para four.\n\n`, BASE());
     expect(r3.usedIncremental).toBe(true);
-    expect(r3.nextState.spliceCache!.boundary).toBeGreaterThanOrEqual(cache.boundary);
+    expect(cacheOf(r3.nextState).boundary).toBeGreaterThanOrEqual(cache.boundary);
     expectFullEqual(`${GROWN}para four.\n\n`, r3);
   });
 
@@ -184,7 +189,10 @@ describe('splice cache — retained per lineage, dropped on the full path, check
     // Same fields, foreign roots — as if a consumer had swapped the trees.
     const foreign: IncrementalParseState = {
       ...r2.nextState,
-      spliceCache: { ...r2.nextState.spliceCache!, roots: { mdast: seed().mdast, hast: seed().hast } },
+      spliceCache: {
+        ...cacheOf(r2.nextState),
+        roots: { mdast: seed().mdast, hast: seed().hast },
+      } as SplicePrefixCacheInternal,
     };
     const r3 = advanceIncrementalParse(foreign, `${GROWN}para four.\n\n`, BASE());
     expect(r3.usedIncremental).toBe(true);
@@ -195,7 +203,10 @@ describe('splice cache — retained per lineage, dropped on the full path, check
     const r2 = advanceIncrementalParse(seed(), GROWN, BASE());
     const ahead: IncrementalParseState = {
       ...r2.nextState,
-      spliceCache: { ...r2.nextState.spliceCache!, boundary: r2.nextState.spliceCache!.boundary + 1 },
+      spliceCache: {
+        ...cacheOf(r2.nextState),
+        boundary: cacheOf(r2.nextState).boundary + 1,
+      } as SplicePrefixCacheInternal,
     };
     const r3 = advanceIncrementalParse(ahead, `${GROWN}para four.\n\n`, BASE());
     expect(r3.usedIncremental).toBe(true);

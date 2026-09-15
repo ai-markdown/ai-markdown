@@ -80,6 +80,15 @@ export { isSanitizeStrippedConstruct, isExactSanitizeStrippedConstruct } from '.
  * restarted simply runs the uncached passes, which produce the same output.
  */
 export interface SplicePrefixCache {
+  /** Brand only: the field set below is an implementation detail and stays
+   *  out of the public d.ts, like `FreezeScanCheckpoint`. The supported
+   *  operations on the public type are storing it in the state and passing
+   *  it back. */
+  readonly '~splicePrefixCache'?: never;
+}
+
+/** The real shape behind `SplicePrefixCache`; intra-package only. */
+export interface SplicePrefixCacheInternal extends SplicePrefixCache {
   /** Boundary the passes below were run to. */
   boundary: number;
   /** The roots `spliceTrees` returned with this cache — identity anchors. */
@@ -109,10 +118,12 @@ export interface SpliceInput {
   injectedSegments: InjectedSegment[];
   /** Previous frame's cache, already validated against `prevMdast` /
    *  `prevHast` and `boundary` by the caller; null runs every pass in full. */
-  resume?: SplicePrefixCache | null;
+  resume?: SplicePrefixCacheInternal | null;
 }
 
-export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastRoot; cache: SplicePrefixCache } | null {
+export function spliceTrees(
+  input: SpliceInput
+): { mdast: MdastRoot; hast: HastRoot; cache: SplicePrefixCacheInternal } | null {
   const { prevMdast, prevHast, tailMdast, tailHast, content, boundary, injectionPrefix, injectedSegments } = input;
   const resume = input.resume ?? null;
 
@@ -420,7 +431,7 @@ export function spliceTrees(input: SpliceInput): { mdast: MdastRoot; hast: HastR
   // returned hast is the aligned cut the alignment snapshot describes. The
   // attribution state is the one after the cut's last content node — its
   // trailing separators are position-less, so it holds at `outLen` too.
-  const cache: SplicePrefixCache = {
+  const cache: SplicePrefixCacheInternal = {
     boundary,
     roots: { mdast, hast },
     lines: prefixLines,

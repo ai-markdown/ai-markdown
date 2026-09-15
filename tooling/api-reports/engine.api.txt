@@ -78,6 +78,9 @@ interface PrefixInjectionPlan {
 interface CachedInjectionPlan extends PrefixInjectionPlan {
     boundary: number;
 }
+interface SplicePrefixCache {
+    readonly '~splicePrefixCache'?: never;
+}
 interface IncrementalParseState {
     content: string;
     phantomSuffix: string;
@@ -86,6 +89,7 @@ interface IncrementalParseState {
     stableBoundary: number;
     scanCheckpoint: FreezeScanCheckpoint | null;
     injectionPlan: CachedInjectionPlan | null;
+    spliceCache: SplicePrefixCache | null;
     depsKey: readonly unknown[];
 }
 type IncrementalStage = 'scan' | 'parse' | 'transform';

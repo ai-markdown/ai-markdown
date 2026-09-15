@@ -64,6 +64,7 @@ import {
   tailMentionsTerminator,
   type CachedInjectionPlan,
   type SplicePrefixCache,
+  type SplicePrefixCacheInternal,
 } from './spliceParse';
 
 /** The phantom label sets ride on the merged remark-rehype options (the
@@ -289,7 +290,8 @@ export function advanceIncrementalParse(
   // from and for a boundary that did not move back (its passes ran to
   // `cache.boundary`; a later boundary only appends work). Anything else
   // runs the passes in full — same output, more work.
-  const cache = prev!.spliceCache;
+  // The state stores the public brand; only this module reads the fields.
+  const cache = prev!.spliceCache as SplicePrefixCacheInternal | null;
   const resume =
     cache !== null && cache.roots.mdast === prev!.mdast && cache.roots.hast === prev!.hast && cache.boundary <= boundary
       ? cache
