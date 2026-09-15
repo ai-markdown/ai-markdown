@@ -157,6 +157,48 @@ describe('additive Providers — extension-group transport', () => {
     ).toThrow('useAIMarkdownBehaviors must be used within');
   });
 
+  test('a forged core key in a Provider stacked OUTSIDE <AIMarkdown> satisfies the guard, with the dev warning', () => {
+    // Pinned as the current behaviour: the guard reads core-key presence,
+    // and only <AIMarkdown>'s CoreProvider overwrites a forged key (runtime
+    // lock #2). Outside the tree nothing overwrites it, so the hook returns
+    // the forged value instead of throwing. The type lock (#1) forbids the
+    // key and the dev warning (#3) reports it; a stricter runtime guard
+    // would need a marker only CoreProvider can set.
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    let state: ReturnType<typeof useAIMarkdownState> | null = null;
+    const BareState = () => {
+      // eslint-disable-next-line react-hooks/globals
+      state = useAIMarkdownState();
+      return null;
+    };
+    expect(() =>
+      renderToString(
+        <AIMarkdownStateProvider value={{ streaming: true } as never}>
+          <BareState />
+        </AIMarkdownStateProvider>
+      )
+    ).not.toThrow();
+    expect(state).toEqual({ streaming: true });
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain('core key `streaming`');
+    let behaviors: ReturnType<typeof useAIMarkdownBehaviors> | null = null;
+    const BareBehaviors = () => {
+      // eslint-disable-next-line react-hooks/globals
+      behaviors = useAIMarkdownBehaviors();
+      return null;
+    };
+    expect(() =>
+      renderToString(
+        <AIMarkdownBehaviorsProvider value={{ blockMemo: false, codeBlock: CODE_BLOCK } as never}>
+          <BareBehaviors />
+        </AIMarkdownBehaviorsProvider>
+      )
+    ).not.toThrow();
+    expect(behaviors).toEqual({ blockMemo: false, codeBlock: CODE_BLOCK });
+    expect(warn).toHaveBeenCalledTimes(2);
+    // Under <AIMarkdown> the same forged value is overwritten (the test above).
+  });
+
   test('type-level core-key lock', () => {
     // @ts-expect-error — `blockMemo` is a locked core key of the behaviors context.
     <AIMarkdownBehaviorsProvider value={{ blockMemo: { on: true } }}>x</AIMarkdownBehaviorsProvider>;
