@@ -18,6 +18,8 @@ This patch release aligns engine, core, React, Mantine, and Vue at `3.0.2`. The 
 
 The scanner contracts and their Chinese translations have been updated to explain the optional grammar setting.
 
+Validation passed for 2,140 unit tests, the full release CI, and Node 20/22/24 packed consumers. A fresh release-profile engine soak with seed `202609150` passed all six legs and **84/84 shards** in 10,334 seconds. The evidence was validated against the exact `v3.0.2` tag commit before npm publishing was approved.
+
 ## 3.0.1 — Rendering and streaming correctness
 
 ### 3.0.1
