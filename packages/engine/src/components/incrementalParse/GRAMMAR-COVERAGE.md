@@ -464,9 +464,13 @@ from a channel that is broken.
 
 An assertion is a GATE, not a GAUGE. Its message arrives once the limit is
 already crossed, so it cannot show a ratio drifting toward its threshold —
-which matters for `fullyBlindDocs/documentsProbed < 0.08`, the one limit in
+which matters for `fullyBlindDocs/documentsProbed < 0.12`, the one limit in
 this package that is an absolute constant calibrated from observed ratios
-(hazard 3.70-5.54%, ×1.44) rather than a relative bound. Every other floor is
+(hazard 5.79-8.14% on the 3.1.0 corpus, ×1.47; it was 0.08 over the 3.0.x
+corpus's 3.70-5.54%, and the v3.1.0 release soak crossed that at 8.22% once
+the tab, tag-name-prefix and task-list hazard families joined the pool — the
+`blind docs by marker` readout attributes each sweep's blind documents to
+their families) rather than a relative bound. Every other floor is
 relative (`incrementalProbes >= spliceable/2`) or mutation-verified, and
 relative bounds do not rot when their channel goes quiet.
 

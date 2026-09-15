@@ -63,7 +63,7 @@ import {
 } from './conformanceOracles';
 import { REALISTIC_DOCS, pinnedFuzzDocs } from './pinnedCorpus';
 import { testEnv } from './spliceArbiterHarness';
-import { benignDocArb, hazardDocArb, type FuzzDoc } from './fuzzGenerators';
+import { COVERAGE_MARKERS, benignDocArb, hazardDocArb, type FuzzDoc } from './fuzzGenerators';
 import { soakBeat } from './soakHeartbeat';
 
 describe('oracle self-tests (must fire / must stay quiet)', () => {
@@ -431,10 +431,25 @@ describe('oracle sweep — fuzz corpus (env-scaled)', () => {
       const infoBuckets = new Map<string, number>();
       const infoExamples = new Map<string, string[]>();
       const beat = soakBeat(name, docs.length);
+      // Attribution for the blindness floor below: which generator families
+      // (by COVERAGE_MARKERS) the documents the gate never compared belong
+      // to. A document is blind when the gate cannot speak about it at any
+      // position, so the tally names the corpus shapes that never freeze
+      // and lets a threshold move be checked against the generator change
+      // that caused it instead of against the number alone.
+      const blindByMarker = new Map<string, number>();
+      const blindExamples: string[] = [];
       docs.forEach((d, i) => {
         beat.tick();
         const config = CATALOG[d.configIndex % CATALOG.length];
+        const blindBefore = stats.fullyBlindDocs;
         const findings = oracleCheckDoc(d.doc, config, stats, 0, ORACLE_OPTS);
+        if (stats.fullyBlindDocs > blindBefore) {
+          for (const [marker, re] of Object.entries(COVERAGE_MARKERS)) {
+            if (re.test(d.doc)) blindByMarker.set(marker, (blindByMarker.get(marker) ?? 0) + 1);
+          }
+          if (blindExamples.length < 6) blindExamples.push(`doc#${i}=${JSON.stringify(d.doc).slice(0, 100)}`);
+        }
         for (const f of findings.filter((f) => f.severity === 'info')) {
           // Aggregate by layer + probe: at soak scale the classification
           // question is "which exemption family", not "which sample" — but
@@ -463,9 +478,9 @@ describe('oracle sweep — fuzz corpus (env-scaled)', () => {
       // Real stream, not `console.log`: this readout only ever speaks on a
       // PASSING run, which is exactly the output vitest 4 drops here (see the
       // channel note in `vitest.config.ts`). It is also the only place
-      // `fullyBlindDocs` is reported on a green run, and the 0.08 limit below
+      // `fullyBlindDocs` is reported on a green run, and the 0.12 limit below
       // is an absolute constant calibrated from observed ratios (hazard
-      // 3.70-5.54%) — so without this line nobody can watch that ratio drift
+      // 5.79-8.14% on the 3.1.0 corpus) — so without this line nobody can watch that ratio drift
       // toward its own threshold. An assertion is a gate, not a gauge: its
       // message arrives only once the limit is already crossed.
       emit(
@@ -475,6 +490,15 @@ describe('oracle sweep — fuzz corpus (env-scaled)', () => {
           buckets
             .map(([k, n]) => `  ${k} ×${n}\n${(infoExamples.get(k) ?? []).map((e) => `    ${e}`).join('\n')}`)
             .join('\n') +
+          '\n'
+      );
+      emit(
+        `[oracle ${name}] blind docs by marker: ` +
+          [...blindByMarker.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .map(([k, n]) => `${k}=${n}`)
+            .join(' ') +
+          (blindExamples.length ? `\n${blindExamples.map((e) => `    ${e}`).join('\n')}` : '') +
           '\n'
       );
       expect(failures, failures.join('\n---\n').slice(0, 6000)).toEqual([]);
@@ -532,13 +556,27 @@ describe('oracle sweep — fuzz corpus (env-scaled)', () => {
         // gate can speak is a property of the document, not of the probe,
         // so counting silent documents is the whole instrument.
         //
-        // Threshold 8% against 12 shards x 4000 runs (seeds 20400400+i):
-        // benign 0.23-1.37% (mean 0.74), hazard 3.70-5.54% (mean 4.50).
-        // 1.44x the worst observed, which is thinner than the floors above
-        // — but at n≈1200 documents per sweep the sampling sd is 0.6pp, so
-        // 8% sits ~5.8 sd out and noise cannot reach it. Only a corpus
-        // change can, and a corpus change that moves this by 78% is worth
-        // the investigation it would trigger.
+        // Threshold 12% against 12 shards x 4000 runs (seeds 20401200+i,
+        // 2026-09-16, the 3.1.0 corpus): benign 0.70-1.75% (mean 1.27),
+        // hazard 5.79-8.14% (mean 7.01). 1.47x the worst observed; at
+        // n≈1050 documents per sweep the sampling sd is 0.8pp, so 12% sits
+        // ~6.3 sd out and noise cannot reach it. The previous constant, 8%,
+        // was calibrated on the 3.0.x corpus (seeds 20400400+i: benign
+        // 0.23-1.37% mean 0.74, hazard 3.70-5.54% mean 4.50) and the v3.1.0
+        // release soak crossed it at 8.22% on one shard. The corpus change
+        // behind that is the 3.1.0 generator additions — tab-indented
+        // hazards, prefix-colliding tag names and the task-list reclaim /
+        // late-definition families — a share of which are documents that
+        // never freeze at any position; the `blind docs by marker` readout
+        // above attributes each sweep's blind documents to those families.
+        // One 4000-run sweep (seed 20401300): hazard 75/1044 blind, of
+        // which taskLateDef=49 tabIndent=34 taskBox=30 taskEmptyMarker=6
+        // taskSetextReclaim=5 tagNamePrefix=4 taskLazyMarker=4
+        // taskTableReclaim=3 (markers overlap; proseBracketTaint=71 and
+        // loneCr=52 are the pre-existing shapes the new ones combine with).
+        // The hazard denominator also moved down (1010-1082 per sweep, from
+        // 1120-1150): it sits close to the 1000 sample guard, so a sweep
+        // that lands under it announces NOT APPLIED rather than gating.
         //
         // THE SAMPLE GUARD IS NOT OPTIONAL, and this floor shipped without
         // it for one commit. `ORACLE_RUNS` scales the corpus, and fast-check
@@ -599,7 +637,7 @@ describe('oracle sweep — fuzz corpus (env-scaled)', () => {
             stats.fullyBlindDocs / stats.documentsProbed,
             `the gate compared nothing at all on ${stats.fullyBlindDocs}/${stats.documentsProbed} documents — ` +
               `a per-document blinding the corpus-wide ratios cannot see`
-          ).toBeLessThan(0.08);
+          ).toBeLessThan(0.12);
         } else {
           emit(
             `[oracle ${name}] blindness floor NOT APPLIED: ${stats.fullyBlindDocs}/${stats.documentsProbed} ` +
