@@ -16,7 +16,7 @@ Once the first render works, continue to [React streaming chat](streaming-chat-e
 
 ## Current release
 
-ai-markdown renders accumulated Markdown in React 19 or Vue 3.5. Both adapters use the same parsing engine and shared orchestration; their components, customization and lifecycle APIs follow their host framework. This guide targets the `3.0.2` package train. For a stable release, install without a dist-tag to select `latest`. Pin an exact version and retain your lockfile for reproducible integrations; prerelease testing requires an explicit candidate version.
+ai-markdown renders accumulated Markdown in React 19 or Vue 3.5. Both adapters use the same parsing engine and shared orchestration; their components, customization and lifecycle APIs follow their host framework. This guide targets the `3.1.0` package train. For a stable release, install without a dist-tag to select `latest`. Pin an exact version and retain your lockfile for reproducible integrations; prerelease testing requires an explicit candidate version.
 
 ## Choose a package
 

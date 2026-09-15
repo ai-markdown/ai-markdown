@@ -1,6 +1,6 @@
 {
   "name": "@ai-markdown/react",
-  "version": "3.0.2",
+  "version": "3.1.0",
   "description": "React rendering, streaming components and hooks for ai-markdown.",
   "publishConfig": {
     "access": "public"

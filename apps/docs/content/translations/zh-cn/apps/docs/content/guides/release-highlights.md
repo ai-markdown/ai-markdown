@@ -6,6 +6,48 @@
 
 验证测试数量属于对应候选版本报告的历史数据，并非针对本次文档修订重新执行的测试。同样，零缺陷的模糊测试（fuzz）或压测轮次仅能证明其受测输入族与配置下的表现；后续条目将说明在扩展这些输入族时发现的其他缺陷。
 
+## 3.1.0 — 评审修复、任务列表增量解析与适配器对齐
+
+### 3.1.0
+
+本次次版本将 engine、core、React、Mantine 和 Vue 同步升级至 `3.1.0`。独立发布的高亮插件仍为 `1.0.2`。本版本修复了对五个包全面评审的全部发现，为增量解析器加入显式的语法能力声明，并使 Vue 适配器在文档协调上与 React 对齐。
+
+#### 引擎
+
+- **任务列表不再钉住增量边界。** `- [x]` 复选框此前一直作为未解析的 `[x]` 引用候选保留，直到出现 `[x]:` 定义，因此任务列表之后的每一帧都是全量解析。新增的容器与段落跟踪器在段落不可逆关闭后（已确认的空行、fence 或数学开启符、html 块、无歧义的同级项或子列表），且 setext 下划线、GFM 表格分隔行、定义列表回溯都无法再触及该段落时，按精确源位置认证复选框；模型之外的结构一律保留 taint。`- [x] done` 后接 400 个段落分 60 帧流式输入，从 1,005 毫秒且无一帧拼接降到 45 毫秒、59 帧拼接。
+- **显式语法能力。** `AdvanceOptions` 与 `FreezeBoundaryOptions` 新增可选的 `gfmTaskListItems` 和 `mathFlow`，两者都进入 checkpoint 配置和 deps key。`gfmTaskListItems` 启用上述认证；`mathFlow: true` 声明有 remark-math，`false` 声明没有，省略时按两种语法的保守并集扫描（`$$` 区域保留 fence 阻断，同时其中的行仍会扫描引用与 html）。core 的 `PipelineFrameOptions` 透传这两个字段；React 与 Vue 适配器都声明为 true，因为内置链始终包含 remark-gfm 和 remark-math。边界 oracle 测试证明未声明配置的冻结边界不会超过任一声明配置。
+- **线性扫描。** 定义标签的快速探测改为手写扫描，替换了标签体可跨行的正则（40,000 行 `[a` 从 5.7 秒降到 45 毫秒）。`\(` / `\[` 分隔符转换显式查找闭合符（40,000 个未闭合开启符从 0.6–1.3 秒降到 4 毫秒以内）。
+- **后缀货币。** `5$`、`1,000.50$`、`US$`、`A$ 5` 和 `5 $ now` 视为货币而非行内数学。此前用 `US$` 充当游离 `$` 的测试夹具改用 `lone $`。
+- **拼接守卫匹配完整标签名。** `<col-md-6>`、`<td-cell>` 之类的自定义元素不再每帧强制全量解析，`<header>` 不再命中 `<head` 回溯守卫。新增测试把守卫正则与扫描器名单钉在一起。
+- **每帧开销。** 状态中保留的拼接前缀缓存消除了每帧对全部顶层块的遍历：64,000 个块时每个追加 token 从 28.8 毫秒降到 4.1 毫秒。
+- **两处拼接分歧** 由新的 fuzz 轴（制表符缩进、前缀碰撞标签名）发现：parse5 特殊元素之上的 `</span>` 等普通闭合标签现在按 parse5 的规则丢弃且该区域不可冻结；正文以未闭合 fence、数学或 html 块结尾的冻结脚注定义在回放时保持与全量解析相同的页脚位置。
+- **公开面。** `sanitizeCrossChunkUrl` 标记弃用，改用 `resolveCrossChunkReference`；seal-release 计数器与扫描器名单移出生产包；tsup 开启 treeshake（ESM 从 230 KB 降到 225 KB）。`hasLatexTrigger` 的早退和未闭合 `<code>`/`<pre>` 的字面内容保护作为既定行为写入文档，未改动。
+
+#### Core 与 React
+
+- 吞入后续兄弟节点的原始 HTML 块在 32 位摘要相同后再比较精确的被吞源文本，哈希碰撞不会再返回旧内容。
+- 从注册表解析出的跨块链接和图片现在与块内元素一样经过 `customComponents`。
+- `documentScopeCache` 在缺少 `WeakRef` 或 `FinalizationRegistry` 时回退为强引用；兼容性一节记录了该要求。`urlTransform={null}` 的语义记录为等同默认转换。
+
+#### Vue
+
+- `enginePlugins` 与 `sanitizeSchema` 在 prop 边界做深比较稳定化，父组件传入内联字面量不再重建插件链或重新解析。
+- 顶层节点带源偏移 key，与 React 的块计划一致；切换 `documentId` 只解析一次，不再出现旧注册表配新前缀的帧。
+- `node`、`streaming`、`metadata` 只传给声明了它们的组件；以 `.` 或 `^` 开头的属性键在 DOM sink 检查前直接拒绝。
+- `AIMarkdownDocuments` 新增 `preserveOrphanReferences`（默认 `true`），与 React 一样覆盖每个块自身的 prop。
+
+#### Mantine
+
+- 发布包以 `'use client'` 开头，dist 断言脚本会检查它。
+- `mermaid.initialize` 读回站点配置后只合并必需的键，宿主的主题、字体和 `sandbox` 级别得以保留；渲染错误以文本显示原因；超过配置 `maxTextSize` 的图在解析前即报错。
+- `codeBlock.mermaidIntervalMs`（默认 300）在流式期间节流图表渲染。
+- 通过 `useSyncExternalStore` 读取计算后的配色，`auto` 配合深色系统时首个客户端帧即为深色。
+- `highlight.js` 变为可选 peer：语言自动检测使用 `codeBlock.highlightJs` 传入的实例或加载函数，字面量导入已移除。启用 `autoDetectUnknownLanguage` 的使用者必须提供它，否则检测保持关闭并给出一次警告。
+
+#### 验证
+
+全部 2,758 项单元测试通过，同时通过拼接 fuzz、Storybook 套件、打包消费者、document-lifetime 与 Vue 浏览器检查。每项引擎改动都经第二个 agent 独立复核，其复现用例已成为常驻测试（`taskListTaint`、`taskListMathCapability`、`mathCapabilityOracle`、`tagNameBoundary`、`tabIndentAxis`、`tagNamePrefixAxis`）。
+
 ## 3.0.2 — 跨块引用与流式光标修复
 
 ### 3.0.2

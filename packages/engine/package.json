@@ -1,6 +1,6 @@
 {
   "name": "@ai-markdown/engine",
-  "version": "3.0.2",
+  "version": "3.1.0",
   "description": "Framework-independent Markdown parsing, incremental transforms, preprocessing and document registries for ai-markdown.",
   "publishConfig": {
     "access": "public"

@@ -76,7 +76,7 @@ Mantine 集成基于 React 适配器构建，不直接依赖共享 core。Vue �
 {
   "react": "^19.0.0",
   "react-dom": "^19.0.0",
-  "@ai-markdown/react": "^3.0.2",
+  "@ai-markdown/react": "^3.1.0",
   "@mantine/core": "^9.0.0",
   "@mantine/code-highlight": "^9.0.0",
   "highlight.js": "^11.11.2"

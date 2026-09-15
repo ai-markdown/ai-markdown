@@ -6,6 +6,48 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.1.0 — Review fixes, task-list incremental parsing and adapter parity
+
+### 3.1.0
+
+This minor release aligns engine, core, React, Mantine and Vue at `3.1.0`. The independently versioned highlight plugin remains at `1.0.2`. It closes the findings of a full review of the five packages, adds explicit grammar capabilities to the incremental parser, and brings the Vue adapter to parity with React on document coordination.
+
+#### Engine
+
+- **Task lists no longer pin the incremental boundary.** A `- [x]` checkbox was kept as an unresolved `[x]` reference candidate until a `[x]:` definition arrived, so every frame after a task list was a full parse. A new container and paragraph tracker certifies a checkbox by its exact source position once its paragraph has closed irreversibly (a confirmed blank line, a fence or math opener, an html block, an unambiguous sibling or sublist) and no setext underline, GFM table delimiter or definition-list back-claim can still reach it; anything outside the modelled subset keeps the taint. `- [x] done` followed by 400 paragraphs streamed in 60 frames drops from 1,005 ms with no spliced frame to 45 ms with 59.
+- **Explicit grammar capabilities.** `AdvanceOptions` and `FreezeBoundaryOptions` gain `gfmTaskListItems` and `mathFlow`, both optional and part of the checkpoint profile and the deps key. `gfmTaskListItems` enables the certification above; `mathFlow: true` declares remark-math, `false` declares its absence, and an omitted value is scanned as the conservative union of both grammars (a `$$` region keeps its fence blocker and its lines are still scanned for references and html). Core's `PipelineFrameOptions` passes both through; the React and Vue adapters declare both because the built-in chain always includes remark-gfm and remark-math. A boundary oracle proves the undeclared profile never freezes past either declared one.
+- **Linear scans.** The definition-label fast path is a hand-written scan instead of a regex whose label body spanned lines (40,000 lines of `[a` from 5.7 s to 45 ms). The `\(` / `\[` delimiter conversion searches closers explicitly (40,000 unclosed openers from 0.6–1.3 s to under 4 ms).
+- **Suffix currency.** `5$`, `1,000.50$`, `US$`, `A$ 5` and `5 $ now` are currency, not inline math. Fixtures that used `US$` as a stray `$` now use `lone $`.
+- **Splice guards match complete tag names.** `<col-md-6>`, `<td-cell>` and similar custom elements no longer force a full parse every frame, and `<header>` no longer matches the `<head` retroactive guard. A test pins the guard regexes to the scanner's name lists.
+- **Per-frame cost.** A splice prefix cache retained in the state removes the per-frame walks over every top-level block: 64,000 blocks drop from 28.8 ms to 4.1 ms per appended token.
+- **Two splice divergences** found by new fuzz axes (tab indentation, prefix-colliding tag names): a generic end tag such as `</span>` above a parse5 special element is now dropped like parse5 does and the region cannot freeze; a frozen footnote definition whose body ends in an unclosed fence, math or html block is replayed so the footer's rebased positions equal a full parse.
+- **Public surface.** `sanitizeCrossChunkUrl` is deprecated in favour of `resolveCrossChunkReference`; seal-release counters and scanner name lists left the production bundle; tsup treeshake is on (ESM 230 KB to 225 KB). The `hasLatexTrigger` early exit and the literal-content protection of an unclosed `<code>`/`<pre>` tag are documented rather than changed.
+
+#### Core and React
+
+- A raw-HTML block that swallowed following siblings is validated by the exact swallowed source after its 32-bit digest matches, so a hash collision cannot serve stale content.
+- Cross-chunk links and images resolved from the registry now go through `customComponents` like same-chunk elements.
+- `documentScopeCache` falls back to strong references where `WeakRef` or `FinalizationRegistry` is missing; the compatibility section documents the requirement. `urlTransform={null}` is documented as equivalent to the default transform.
+
+#### Vue
+
+- `enginePlugins` and `sanitizeSchema` are deep-equal stabilized at the prop boundary, so an inline literal from the parent no longer rebuilds the chain or re-parses.
+- Top-level nodes carry source-offset keys, matching the React block plan; a `documentId` switch parses once with no frame mixing an old registry and a new prefix.
+- `node`, `streaming` and `metadata` are passed only to components that declare them; property keys with a `.` or `^` prefix are rejected before the DOM sink check.
+- `AIMarkdownDocuments` accepts `preserveOrphanReferences` (default `true`), which overrides each chunk's prop as in React.
+
+#### Mantine
+
+- The published bundle starts with `'use client'`; the dist assertion checks it.
+- `mermaid.initialize` reads the site configuration back and merges the required keys, so host themes, fonts and a `sandbox` level survive; render errors show their message as text; oversized diagrams fail before parse using the configured `maxTextSize`.
+- `codeBlock.mermaidIntervalMs` (default 300) throttles diagram renders while streaming.
+- The computed color scheme is read through `useSyncExternalStore`, so `auto` with a dark system renders dark on the first client frame.
+- `highlight.js` is an optional peer: language auto-detection uses the instance or loader supplied through `codeBlock.highlightJs`; the literal import is gone. Consumers that enable `autoDetectUnknownLanguage` must supply it, otherwise detection stays off with one warning.
+
+#### Verification
+
+All 2,758 unit tests pass together with the splice fuzz, the Storybook suites, the packed consumers, the document-lifetime and Vue browser checks. Each engine change was reviewed independently by a second agent, whose reproductions became permanent tests (`taskListTaint`, `taskListMathCapability`, `mathCapabilityOracle`, `tagNameBoundary`, `tabIndentAxis`, `tagNamePrefixAxis`).
+
 ## 3.0.2 — Cross-chunk definitions and cursor positioning
 
 ### 3.0.2
