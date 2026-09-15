@@ -35,7 +35,8 @@ const EMPTY_SEGMENTS: InjectedSegment[] = [];
  * while tail-native nodes (inline content and tail-defined footnotes) take
  * the ordinary tail shift. Dispatch is per POINT with CLOSED segment bounds:
  * END offsets are exclusive, so a node ending exactly at a segment's last
- * byte has offset === injEnd (segments are '\n\n'-separated — unambiguous).
+ * byte has offset === injEnd (at least one line ending separates segments
+ * and the next one starts past it — unambiguous).
  * Column is invariant under both rules (defs are sliced from line start).
  */
 export function rebaseTreeDual(

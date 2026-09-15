@@ -15,8 +15,8 @@
  * stray table part, a doctype, an inline block-level element that splits
  * the paragraph) or a known over-block, and owe equivalence only.
  *
- * Probing this axis also surfaced an open divergence under STANDARD names
- * — see the skipped block at the end of the file.
+ * Probing this axis also surfaced F29, a divergence under STANDARD names
+ * — see the last describe block and specialElementEndTag.test.ts.
  */
 import { describe, expect, test } from 'vitest';
 
@@ -122,33 +122,38 @@ describe('tag-name prefix axis: every frame equals a full parse', () => {
 });
 
 /**
- * OPEN DIVERGENCE (found 2026-09-15 while probing this axis; production is
- * deliberately not edited here).
+ * F29 (found 2026-09-15 while probing this axis, fixed the same day; see
+ * GRAMMAR-COVERAGE.md and specialElementEndTag.test.ts).
  *
  * parse5 "any other end tag": walking the open-element stack from the top,
  * a SPECIAL element (div, pre, p, ul, section, …) met before the matching
  * element discards the token. In `<span>\n<div>\n</span>\n</div>` the
  * `</span>` is dropped, `</div>` pops the div, and the span stays OPEN —
- * every later block nests inside it. The scanner's name→count bag reads
- * the pair as balanced and grants the boundary; the splice appends the
- * tail at root. Formatting names (`a`, `b`, `em`) take the adoption-agency
- * path and are unaffected; an outer `<div>` wrapper closes everything and
- * is unaffected. `sup` and `kbd` behave like `span`. The unknown names of
- * this axis (`<prefix>\n<pre>\n</prefix>\n</pre>`) walk the same path, but
- * sanitize strips the element and hoists its children, which hides the
- * nesting from the hast contract — the divergence is only visible under a
+ * every later block nests inside it. The scanner's scope walk stopped only
+ * at the barrier subset, read the pair as balanced and granted the
+ * boundary; the splice appended the tail at root. Formatting names (`a`,
+ * `b`, `em`) take the adoption-agency path and are unaffected; an outer
+ * `<div>` wrapper closes everything and is unaffected. `sup` and `kbd`
+ * behave like `span`. The unknown names of this axis
+ * (`<prefix>\n<pre>\n</prefix>\n</pre>`) walk the same path, but sanitize
+ * strips the element and hoists its children, which hides the nesting from
+ * the hast contract — the divergence was only visible under a
  * sanitize-allowed name.
  *
  * Minimal input, 31 bytes, baseline config, single-byte schedule, frame
  * 29 (snapshot `"<span>\n<div>\n</span>\n</div>\n\np"`, incremental=true):
  *   observed  root > [span > ["\n", div > "\n\n"], "\n", p > "p"]
  *   expected  root > [span > ["\n", div > "\n\n", "\n", p > "p"]]
- * The one-line form `<span><div></span></div>\n\npara\n` diverges at frame
+ * The one-line form `<span><div></span></div>\n\npara\n` diverged at frame
  * 27 (`…\n\npa`): observed root > [p > span, div, "\n", p > "pa"], expected
  * root > [p > span, div, p, "\n", p > "pa"] — the synthesized empty `<p>`
- * is missing on the spliced side.
+ * was missing on the spliced side.
+ *
+ * The walk now stops at any special element for names outside parse5's
+ * named end-tag cases, so the span stays on `openStack` and no candidate
+ * past it survives. Equivalence only: the shapes never splice.
  */
-describe('special-element end-tag discard (open divergence, 2026-09-15)', () => {
+describe('special-element end-tag discard (F29)', () => {
   const CASES: Array<[string, string]> = [
     ['span/div block', '<span>\n<div>\n</span>\n</div>\n\npara\n'],
     ['span/div one line', '<span><div></span></div>\n\npara\n'],
@@ -159,8 +164,15 @@ describe('special-element end-tag discard (open divergence, 2026-09-15)', () => 
     ['kbd/div block', '<kbd>\n<div>\n</kbd>\n</div>\n\n*b*\n'],
   ];
   for (const [name, doc] of CASES) {
-    test.skip(`${name}: every frame equals a full parse`, () => {
-      assertStreamEquivalence(name, scheduleSnapshots(doc, [1]), CATALOG[0], { minIncrementalFrames: 0 });
+    test(`${name}: every frame equals a full parse`, () => {
+      for (const config of CATALOG) {
+        assertStreamEquivalence(name, scheduleSnapshots(doc, [1]), config, { minIncrementalFrames: 0 });
+      }
+    });
+    test(`${name}: the scanner keeps the element open`, () => {
+      // The end tag is discarded, so nothing past the first start tag may
+      // freeze: the boundary sits at or before the html block's first line.
+      expect(computeFreezeBoundary(doc, { defListEnabled: false }).boundary).toBeLessThanOrEqual(doc.indexOf('\n') + 1);
     });
   }
   // Controls that hold today and must keep holding once the divergence is fixed.

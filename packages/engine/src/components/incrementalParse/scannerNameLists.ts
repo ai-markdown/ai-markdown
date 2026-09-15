@@ -19,6 +19,8 @@ import {
   DOCUMENT_STRUCTURE_NAMES,
   FOREIGN_ROOT_NAMES,
   NO_ELEMENT_NAMES,
+  P5_FORMATTING_NAMES,
+  P5_SPECIAL_NAMES,
   RAW_TEXT_ELEMENTS,
   SCOPE_BARRIER_NAMES,
   TABLE_PART_NAMES,
@@ -41,4 +43,9 @@ export const SCANNER_NAME_LISTS: ReadonlyArray<readonly [string, ReadonlySet<str
   ['tablePart', TABLE_PART_NAMES],
   ['scopeBarrier', SCOPE_BARRIER_NAMES],
   ['foreignRoot', new Set(FOREIGN_ROOT_NAMES)],
+  // Added with F29: the end-tag walk now stops at any special element for
+  // names outside parse5's named cases, and the formatting names are the
+  // one named group that is not special.
+  ['p5Special', P5_SPECIAL_NAMES],
+  ['p5Formatting', P5_FORMATTING_NAMES],
 ];

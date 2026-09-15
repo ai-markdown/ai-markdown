@@ -619,7 +619,8 @@ describe('construct axis: the facts the templates are derived from', () => {
       renamed: noElementAtRoot.filter((n) => atRoot.get(n) === 'renamed'),
       erased: noElementAtRoot.filter((n) => atRoot.get(n) === 'no-element'),
     }).toEqual({
-      poolSize: 146,
+      // 146 until F29 added `p5Special` / `p5Formatting` to the lists.
+      poolSize: 150,
       missingFromList: [],
       listedButBuilds: [],
       contextSplit: [],

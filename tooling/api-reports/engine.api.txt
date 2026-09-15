@@ -66,6 +66,7 @@ type InjectionEvent = {
     source: string;
     origStart: number;
     origLine: number;
+    concreteEnd: boolean;
 } | {
     kind: 'refs';
     tokens: string[];

@@ -194,6 +194,150 @@ export const SCOPE_BARRIER_NAMES = new Set([
 /** The two foreign-namespace roots markdown can reach. */
 export const FOREIGN_ROOT_NAMES = ['svg', 'math'];
 
+/** parse5's `SPECIAL_ELEMENTS`, all three namespaces flattened (7.3.0, the
+ *  version behind `hast-util-raw`; `specialElementEndTag.test.ts` pins the
+ *  set against the installed copy). Namespace is not tracked on
+ *  `openStack`, so an SVG-only name (`desc`, `foreignobject`) counts as
+ *  special in HTML content too. That over-claims, which only widens the
+ *  discard below — the over-blocking side.
+ *
+ *  Why the scanner needs it (F29): parse5's "any other end tag" rule walks
+ *  the open-element stack from the top and DISCARDS the token when a
+ *  special element is met before the match. `<span>\n<div>\n</span>\n
+ *  </div>` therefore leaves the span OPEN — `</span>` is dropped, `</div>`
+ *  pops the div — and every later block nests inside it. The scope-barrier
+ *  walk (F7) stops only at the barrier subset, so the bag read the pair as
+ *  balanced and granted a boundary the full parse contradicts. */
+export const P5_SPECIAL_NAMES = new Set([
+  'address',
+  'applet',
+  'area',
+  'article',
+  'aside',
+  'base',
+  'basefont',
+  'bgsound',
+  'blockquote',
+  'body',
+  'br',
+  'button',
+  'caption',
+  'center',
+  'col',
+  'colgroup',
+  'dd',
+  'details',
+  'dir',
+  'div',
+  'dl',
+  'dt',
+  'embed',
+  'fieldset',
+  'figcaption',
+  'figure',
+  'footer',
+  'form',
+  'frame',
+  'frameset',
+  'h1',
+  'h2',
+  'h3',
+  'h4',
+  'h5',
+  'h6',
+  'head',
+  'header',
+  'hgroup',
+  'hr',
+  'html',
+  'iframe',
+  'img',
+  'input',
+  'li',
+  'link',
+  'listing',
+  'main',
+  'marquee',
+  'menu',
+  'meta',
+  'nav',
+  'noembed',
+  'noframes',
+  'noscript',
+  'object',
+  'ol',
+  'p',
+  'param',
+  'plaintext',
+  'pre',
+  'script',
+  'section',
+  'select',
+  'source',
+  'style',
+  'summary',
+  'table',
+  'tbody',
+  'td',
+  'template',
+  'textarea',
+  'tfoot',
+  'th',
+  'thead',
+  'title',
+  'tr',
+  'track',
+  'ul',
+  'wbr',
+  'xmp',
+  // MathML and SVG members.
+  'mi',
+  'mo',
+  'mn',
+  'ms',
+  'mtext',
+  'annotation-xml',
+  'foreignobject',
+  'desc',
+]);
+
+/** parse5's formatting names: their end tags run the adoption agency
+ *  instead of the generic walk (`endTagInBody`, the first `case` group). */
+export const P5_FORMATTING_NAMES = new Set([
+  'a',
+  'b',
+  'big',
+  'code',
+  'em',
+  'font',
+  'i',
+  'nobr',
+  's',
+  'small',
+  'strike',
+  'strong',
+  'tt',
+  'u',
+]);
+
+/** The other end-tag names `endTagInBody` handles by name that are NOT
+ *  special: they take the address-like rule (in-scope walk, then pop
+ *  through), never the generic one. Every remaining named case (`p`, `li`,
+ *  `dd`, `dt`, `h1`-`h6`, `br`, `body`, `html`, `form`, `applet`,
+ *  `object`, `marquee`, `template`, the block names) is special. */
+const P5_NAMED_END_TAGS_NOT_SPECIAL = new Set(['dialog', 'search']);
+
+/** True when parse5 resolves this end tag by the "any other end tag" rule:
+ *  the stack walk stops at ANY special element, not only at a scope
+ *  barrier. Special names are excluded even where parse5 would route some
+ *  of them here (`</table>` in body mode): those names carry their own
+ *  insertion-mode handling the line model does not have, and the
+ *  `definitelyInsideTable` reader needs `table` to be popped exactly, not
+ *  over-counted. */
+export function takesGenericEndTagRule(name: string): boolean {
+  return !P5_SPECIAL_NAMES.has(name) && !P5_FORMATTING_NAMES.has(name) && !P5_NAMED_END_TAGS_NOT_SPECIAL.has(name);
+}
+
 /** CommonMark type-1 block start names — start tags only. */
 export const TYPE1_NAMES = new Set(['script', 'pre', 'style', 'textarea']);
 

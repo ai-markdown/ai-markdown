@@ -448,6 +448,23 @@ describe('splice equivalence — fuzz-found regressions', () => {
     ['review-242-fu-stray-td-table-in-tail', '<td>s</td>\n\npara\n\n| a |\n| - |\n\nx\n\ny\n', [1, 1], 0],
     ['review-242-fu-stray-td-math-table-in-tail', '<td>s</td>\n\n$$\na\n$$\n\n| a |\n| - |\n\nx\n\ny\n', [1, 1], 1],
     ['review-241-p1b-cross-line-full-ref', 'see [text\nmore][foo] end\n\nx\n\ny\n\n[foo]: /url\n', [4], 0],
+    // F29 (2026-09-15): parse5's "any other end tag" walk stops at a SPECIAL
+    // element, so `</span>` under an open `<div>` is dropped and the span
+    // swallows the rest of the document. The scope walk stopped at barriers
+    // only and read the pair as balanced. Boundary 0 now — the fixture pins
+    // the poison plus the full path.
+    ['f29-span-div-block', '<span>\n<div>\n</span>\n</div>\n\npara\n', [1], 0],
+    ['f29-span-div-one-line', '<span><div></span></div>\n\npara\n', [1], 0],
+    ['f29-sup-pre-block-defaults', '<sup>\n<pre>\n</sup>\n</pre>\n\n*b*\n', [3, 30], 1],
+    // F30 (2026-09-15, fuzz seeds 20260916 / 20260917): a footnote body
+    // ending in an OPEN fence puts the definition's end one line ending past
+    // the fence line; the '\n\n' replay join added a blank line inside the
+    // fence and the footer's positions rebased by the tail delta. These
+    // splice, and must keep splicing.
+    ['f30-footnote-open-fence-tab', '[^a]: b\n\n\t```\n\n<b>x</b>\n\np\n', [1], 0],
+    ['f30-footnote-open-fence-spaces-defaults', '[^a]: b\n\n    ```\n\n<b>x</b>\n\np\n', [4, 4, 4, 1], 1],
+    ['f30-footnote-open-math', '[^a]: b\n\n\t$$\n\n<b>x</b>\n\np\n', [3, 30], 2],
+    ['f30-footnote-open-fence-container-closer', '[^a]: b\n\n\t```\n\n[^c]: d\n\n<b>x</b>\n\np\n', [1], 0],
   ];
 
   // Many of these shapes have since been poisoned to boundary 0 by a later

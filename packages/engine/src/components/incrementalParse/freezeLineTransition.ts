@@ -12,6 +12,8 @@ import {
   RAW_TEXT_ELEMENTS,
   NO_ELEMENT_NAMES,
   SCOPE_BARRIER_NAMES,
+  P5_SPECIAL_NAMES,
+  takesGenericEndTagRule,
   TABLE_PART_NAMES,
   commentEitherOpen,
   mdHtml,
@@ -356,13 +358,21 @@ export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineR
       // Walk down for the match, stopping at a scope barrier. No match in
       // scope means parse5 DISCARDS this end tag and the element stays open —
       // so the counts must not move either.
+      //
+      // A name outside parse5's named end-tag cases takes the "any other
+      // end tag" rule, whose walk stops at ANY special element, not only at
+      // a barrier (F29): `<span>\n<div>\n</span>\n</div>` drops the
+      // `</span>`, and the span swallows the rest of the document. The
+      // special set is a superset of the barriers, so this only discards
+      // more — the over-blocking side.
+      const generic = takesGenericEndTagRule(tag);
       let idx = -1;
       for (let i = cp.openStack.length - 1; i >= 0; i--) {
         if (cp.openStack[i] === tag) {
           idx = i;
           break;
         }
-        if (SCOPE_BARRIER_NAMES.has(cp.openStack[i])) break;
+        if (SCOPE_BARRIER_NAMES.has(cp.openStack[i]) || (generic && P5_SPECIAL_NAMES.has(cp.openStack[i]))) break;
       }
       if (idx === -1) {
         // parse5's "any other end tag" rule reached its end: no element to

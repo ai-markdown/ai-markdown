@@ -77,32 +77,40 @@ describe('tab axis: every frame equals a full parse', () => {
 });
 
 /**
- * OPEN DIVERGENCE (fresh-seed fuzz finds 20260916 and 20260917 at 2000
- * runs, 2026-09-15; production is deliberately not edited here).
+ * F30 (fresh-seed fuzz finds 20260916 and 20260917 at 2000 runs,
+ * 2026-09-15; fixed the same day in `buildInjectionPrefix`, see
+ * GRAMMAR-COVERAGE.md).
  *
  * A footnote definition, a blank line, then a ``` line indented to column
  * 4 — by a tab or by four spaces — opens a fence INSIDE the footnote body.
- * The next column-0 line ends the footnote with the fence unclosed, so in
- * a full parse the footnote's empty code node ends on the opener line
- * (`end: {line: 3, column: 5, offset: 13}` for the tab form). The spliced
- * tree keeps the end the node had while the fence still ran to EOF and
- * rebases it, so the footnotes section carries a negative `end.offset` on
- * the code, pre and li nodes. mdast is equal; only hast positions differ.
- * Two blank-separated blocks have to follow the opener line for the
- * divergence to show (`[^a]: b\n\n\t```\nx\n\n<b>x</b>\n` holds); an
- * indented plain continuation (`\tcont`) holds, a column-0 ``` holds, and
- * a `\t$$` math opener diverges the same way — so the unclosed fence in
- * the footnote body is the hazard and the tab only made the composition
- * reachable. `tabBenignArb` therefore leaves the `\t```` shape out until
- * this pin is green.
+ * The next column-0 line ends the footnote with the fence unclosed. An
+ * open fence absorbs every blank line but the last, so the definition's
+ * end lands at the START of that last blank line (`{line: 4, column: 1,
+ * offset: 14}` for the tab form) and the sliced injection source ends with
+ * a line ending. The replay then joined it to the terminator with `'\n\n'`,
+ * which put a second blank line inside the still-open fence: the tail's
+ * copy of the definition ended one line later than the frozen original,
+ * fell outside its injected segment, and took the tail delta instead of
+ * the segment's — a negative `end.offset` on the footer's li, pre and code
+ * nodes. mdast was equal (the tail's copy is dropped); only the regenerated
+ * footer's hast positions differed. An indented plain continuation
+ * (`\tcont`) holds, a column-0 ``` holds, and a `\t$$` math opener
+ * diverged the same way — the unclosed concrete block in the footnote body
+ * was the hazard and the tab only made the composition reachable.
  *
  * Minimal input, 19 bytes, baseline config, single-byte schedule, frame 18
  * (snapshot `"[^a]: b\n\n\t```\n\nq\n\np"`, incremental=true). On the
  * 27-byte html form (`…\t```\n\n<b>x</b>\n\np\n`, frame 25):
  *   observed  section.footnotes > ol > li[end -33] > pre[end -33] > code[end -33]
  *   expected  section.footnotes > ol > li[end 14]  > pre[end 14]  > code[end 14]
+ *
+ * A definition whose body ends in a code / math / html block is now joined
+ * with ONE line ending, so the replay reproduces the original's structure
+ * (measured exact for open and closed fences, `$$`, indented code, type-6
+ * and comment html blocks, and a fence nested in a list item). The shapes
+ * must engage the splice, or the pin would only prove the fallback.
  */
-describe('footnote body fence opened by a column-4 ``` (open divergence, 2026-09-15)', () => {
+describe('footnote body fence opened by a column-4 ``` (F30)', () => {
   const CASES: Array<[string, string, number[]]> = [
     ['minimal, tab-indented opener', '[^a]: b\n\n\t```\n\nq\n\np\n', [1]],
     ['tab-indented opener before an html block', '[^a]: b\n\n\t```\n\n<b>x</b>\n\np\n', [1]],
@@ -122,9 +130,52 @@ describe('footnote body fence opened by a column-4 ``` (open divergence, 2026-09
     ],
   ];
   for (const [name, doc, sizes] of CASES) {
-    test.skip(`${name}: every frame equals a full parse`, () => {
-      for (const schedule of [sizes, [...sizes].reverse()]) {
-        assertStreamEquivalence(name, scheduleSnapshots(doc, schedule), CATALOG[0], { minIncrementalFrames: 0 });
+    test(`${name}: every frame equals a full parse and the splice engages`, () => {
+      let incremental = 0;
+      for (const config of CATALOG) {
+        for (const schedule of [sizes, [...sizes].reverse()]) {
+          incremental += assertStreamEquivalence(name, scheduleSnapshots(doc, schedule), config, {
+            minIncrementalFrames: 0,
+          }).incrementalFrames;
+        }
+      }
+      expect(incremental, `${name}: the incremental path never ran`).toBeGreaterThan(0);
+    });
+  }
+  // The same hazard without the tab: an open fence closed by a line with no
+  // blank before it, a closed fence, and a fence inside a nested list item.
+  // Every one puts the definition's end where the old two-newline join
+  // could not reproduce it, or exercises the single-newline join on a body
+  // it must not disturb.
+  const JOIN_CASES: Array<[string, string]> = [
+    ['open fence closed by the next line', '[^a]: b\n\n\t```\nq\n\n<b>x</b>\n\np\n'],
+    ['closed fence then a heading', '[^a]: b\n\n\t```\n\tx\n\t```\n# h\n\n<b>x</b>\n\np\n'],
+    ['closed fence then blanks', '[^a]: b\n\n\t```\n\tx\n\t```\n\n\n<b>x</b>\n\np\n'],
+    ['open fence in a nested list item', '[^a]: b\n\n\t- item\n\n\t  ```\n\n<b>x</b>\n\np\n'],
+    ['open comment block', '[^a]: b\n\n\t<!--\n\n<b>x</b>\n\np\n'],
+    ['type-6 html block', '[^a]: b\n\n\t<div>\n\n<b>x</b>\n\np\n'],
+    ['indented code', '[^a]: b\n\n\t    code\n\n\n<b>x</b>\n\np\n'],
+    ['open fence, three blank lines', '[^a]: b\n\n\t```\n\n\n\n<b>x</b>\n\np\n'],
+    ['open fence, CRLF', '[^a]: b\r\n\r\n\t```\r\n\r\n<b>x</b>\r\n\r\np\r\n'],
+    ['open fence, lone CR', '[^a]: b\r\r\t```\r\r<b>x</b>\r\rp\r'],
+    ['paragraph body ending in inline html', '[^a]: b <br>\n\n<b>x</b>\n\np\n'],
+    // Container closers put the definition's end at their own line start
+    // (blank line included); a heading closes it with no blank at all.
+    ['two definitions, the first ending in an open fence', '[^a]: b\n\n\t```\n\n[^c]: d\n\n<b>x</b>\n\np\n'],
+    ['open fence closed by a footnote def, no blank', '[^a]: b\n\n\t```\n[^c]: d\n\n<b>x</b>\n\np\n'],
+    ['open fence closed by a list item', '[^a]: b\n\n\t```\n\n- item\n\n<b>x</b>\n\np\n'],
+    ['open fence closed by a blockquote', '[^a]: b\n\n\t```\n\n> q\n\n<b>x</b>\n\np\n'],
+    ['open fence closed by a heading', '[^a]: b\n\n\t```\n# h\n\n<b>x</b>\n\np\n'],
+    ['open fence closed by a link def', '[^a]: b\n\n\t```\n\n[x]: /u\n\nsee [x]\n\n<b>x</b>\n\np\n'],
+    ['open fence, then references, then a def', '[^a]: b\n\n\t```\n\nsee [^a] and [^c]\n\n[^c]: d\n\n<b>x</b>\n\np\n'],
+    ['nested list fence closed by a footnote def', '[^a]: b\n\n\t- item\n\n\t  ```\n\n[^c]: d\n\n<b>x</b>\n\np\n'],
+  ];
+  for (const [name, doc] of JOIN_CASES) {
+    test(`join: ${name}`, () => {
+      for (const config of CATALOG) {
+        for (const schedule of [[1], [4, 4, 4, 1], [3, 30]]) {
+          assertStreamEquivalence(name, scheduleSnapshots(doc, schedule), config, { minIncrementalFrames: 0 });
+        }
       }
     });
   }

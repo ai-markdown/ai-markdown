@@ -11,8 +11,10 @@ export type InjectionEvent =
   /** Link/image definition — parse-time resolution only, zero hast. */
   | { kind: 'def'; source: string }
   /** Footnote definition — sliced from the PHYSICAL LINE START (column
-   *  invariance for the footer position rebase). */
-  | { kind: 'footnoteDef'; source: string; origStart: number; origLine: number }
+   *  invariance for the footer position rebase). `concreteEnd`: the body's
+   *  last block is a code / math / html node, so the definition's END moves
+   *  with the blank lines that follow it (see `endsInConcreteBlock`). */
+  | { kind: 'footnoteDef'; source: string; origStart: number; origLine: number; concreteEnd: boolean }
   /** Consecutive footnote references, verbatim source tokens. Seeds
    *  footnoteOrder (first-encounter) and footnoteCounts (backref -N ids). */
   | { kind: 'refs'; tokens: string[] };
@@ -119,6 +121,7 @@ export function collectPrefixInjection(
         source: content.slice(lineStart, end),
         origStart: lineStart,
         origLine: start.line,
+        concreteEnd: endsInConcreteBlock(node),
       });
       return; // body refs replay at footer time via the injected text
     }
@@ -172,6 +175,59 @@ export function collectPrefixInjection(
     visit(child, false);
   }
   return { events, uninjectable, cacheable };
+}
+
+/** Flow containers whose LAST child decides where the container's own end
+ *  lands. `defList*` are remark-definition-list's nodes; a container type
+ *  outside this set stops the walk and reads as non-concrete, which keeps
+ *  the old two-newline join for it. */
+const FLOW_CONTAINER_TYPES = new Set([
+  'footnoteDefinition',
+  'list',
+  'listItem',
+  'blockquote',
+  'defList',
+  'defListDescription',
+]);
+
+/** Block nodes micromark closes only at the container's end: an unclosed
+ *  fence, `$$` block or html block (types 1-5) keeps consuming blank lines
+ *  until a non-continuing line arrives. */
+const CONCRETE_BLOCK_TYPES = new Set(['code', 'math', 'html']);
+
+/**
+ * Does the definition's body END in a code / math / html block (through any
+ * nesting of lists and blockquotes)?
+ *
+ * micromark places a footnote definition's end at the point where its flow
+ * was closed. A paragraph-like last block closes at the end of its last
+ * content line, and blank lines after it never move that end, so any
+ * number of blank lines before the next injected block reproduces it — the
+ * `'\n\n'` join. A concrete block left OPEN (`\t```` inside the body, never
+ * closed) absorbs the blank lines that follow it, so the definition's end
+ * moves with them: a non-container closer leaves the end at the start of
+ * the last blank line, a container closer (another footnote def, a list
+ * item) at its own line start, and with no blank line at all the end sits
+ * mid-line after the fence. The `'\n\n'` join put a second blank line
+ * inside the still-open fence, the tail's copy of the definition ended one
+ * line later than the frozen original, fell outside its injected segment,
+ * and the footer's `<li>` / `<pre>` / `<code>` positions came back rebased
+ * by the tail delta instead of the segment's (observed `end.offset: -33`
+ * for `[^a]: b\n\n\t```\n\n<b>x</b>\n\np\n`; fuzz seeds 20260916 /
+ * 20260917). `buildInjectionPrefix` closes such a definition with one line
+ * ending and a non-container line instead. A CLOSED fence, an indented
+ * code block and a type-6 html block all end mid-line and cannot lazily
+ * continue, so the same closing is exact for them too (measured on every
+ * shape, 2026-09-15). A trailing inline html node inside a paragraph must
+ * NOT count: the paragraph would lazily continue into the closing line —
+ * hence the walk descends through flow containers only.
+ */
+function endsInConcreteBlock(def: UnistNode): boolean {
+  let node = def as TreeWithChildren;
+  while (FLOW_CONTAINER_TYPES.has(node.type) && node.children !== undefined && node.children.length > 0) {
+    node = node.children[node.children.length - 1] as TreeWithChildren;
+  }
+  return CONCRETE_BLOCK_TYPES.has(node.type);
 }
 
 /** Cached plans are shared with the previous state — clone the array, and
@@ -239,18 +295,33 @@ export function tailMentionsTerminator(tailSource: string): boolean {
  *  def coordinate segments). Blocks are '\n\n'-joined: a def line directly
  *  after a ref paragraph would be a paragraph CONTINUATION (A2, literal
  *  text), and anything unindented after a footnote def line would join its
- *  body. */
+ *  body.
+ *
+ *  A footnote def whose body ends in a concrete block (`endsInConcreteBlock`)
+ *  is closed differently: ONE line ending, then a copy of the terminator
+ *  line, then the usual blank line. The def's end in the tail depends on
+ *  what closes it, and a non-container closer one line ending after the
+ *  sliced source reproduces the original end in every case: a source that
+ *  ends mid-line (no blank followed it) is closed directly, one that ends
+ *  at a line start (blank lines followed it, the last one excluded) gets
+ *  that blank line back, and one that ends after a blank line (a container
+ *  closed it, blank included) gets one more blank line, which the
+ *  non-container closer excludes again. The next injected event would not
+ *  do: a footnote def closing it puts the end at its own line start
+ *  instead, one line later than a blank-line closer. */
 export function buildInjectionPrefix(events: InjectionEvent[]): InjectionPrefix {
   if (events.length === 0) return { text: '', segments: [] };
   let text = '';
   // Rolling line number of the text end — recounting the accumulated text
   // per event would be O(events × textLength) (final-review R3).
   let line = 1;
+  // Separator owed before the next block by the event just written.
+  let separator = '';
   const segments: InjectedSegment[] = [];
   for (const event of events) {
     if (text.length > 0) {
-      text += '\n\n';
-      line += 2;
+      text += separator;
+      line += countNewlines(separator);
     }
     const injStart = text.length;
     const source = event.kind === 'refs' ? event.tokens.join(' ') : event.source;
@@ -264,6 +335,19 @@ export function buildInjectionPrefix(events: InjectionEvent[]): InjectionPrefix 
     }
     text += source;
     line += countNewlines(source);
+    separator =
+      event.kind === 'footnoteDef' && event.concreteEnd
+        ? `${singleLineEnding(source)}${INJECTION_TERMINATOR}\n\n`
+        : '\n\n';
   }
-  return { text: `${text}\n\n${INJECTION_TERMINATOR}\n\n`, segments };
+  // A concrete-ending last event already carries its terminator line.
+  const closing = separator === '\n\n' ? `\n\n${INJECTION_TERMINATOR}\n\n` : separator;
+  return { text: text + closing, segments };
+}
+
+/** One line ending after `source`. A source ending in a lone `\r` would fuse
+ *  with a following `\n` into one CRLF ending, so it gets `\r\n` — two
+ *  endings to micromark, one blank line, the same as `\n` after `\n`. */
+function singleLineEnding(source: string): string {
+  return source.endsWith('\r') ? '\r\n' : '\n';
 }
