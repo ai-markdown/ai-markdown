@@ -154,6 +154,9 @@ export interface IncrementalParseState {
    *  other deps change: the retained trees were spliced against under the
    *  old profile and must not survive into the new one. */
   gfmTaskListItems: boolean;
+  /** Whether remark-math was declared for these trees (see
+   *  `AdvanceOptions.mathFlow`); a flip is a G0 miss like the above. */
+  mathFlow: boolean;
 }
 
 export type IncrementalStage = 'scan' | 'parse' | 'transform';
@@ -170,9 +173,21 @@ export interface AdvanceOptions {
   /** Whether the chain parses GFM task-list items (remark-gfm). Default
    *  `false`, the conservative profile; the engine's own chain builders
    *  always include remark-gfm, so the adapters pass `true`. See
-   *  `FreezeBoundaryOptions.gfmTaskListItems`. Participates in the G0
-   *  deps check on top of `depsKey`. */
+   *  `FreezeBoundaryOptions.gfmTaskListItems`. Certifying a box whose
+   *  paragraph a `$$` opener closed additionally requires `mathFlow:
+   *  true`. Participates in the G0 deps check on top of `depsKey`. */
   gfmTaskListItems?: boolean;
+  /** Whether the chain parses `$$` flow math (remark-math). Default
+   *  `false`. The boundary scanner assumes `$$` opens a fence either way
+   *  (its standing over-block default for candidates, unchanged); `true`
+   *  additionally lets the task-list tracker certify a box whose paragraph
+   *  a `$$` opener closed. Without remark-math that line is paragraph
+   *  text and a later setext underline can still turn the box into a
+   *  reference, so an undeclared `$$` inside an item keeps the taint. The
+   *  engine's own chain builders always include remark-math, so the
+   *  adapters pass `true`. Participates in the G0 deps check on top of
+   *  `depsKey`. */
+  mathFlow?: boolean;
   /** Cross-chunk phantom-definition suffix (coordinated mode) — appended to
    *  the parse input but NEVER frozen: the append gate, boundary scan, and
    *  prefix cut all see `content` alone, and the suffix re-parses with the
@@ -223,8 +238,12 @@ export function advanceIncrementalParse(
   const measure = options.measure ?? identityMeasure;
   const phantomSuffix = options.phantomSuffix ?? '';
   const gfmTaskListItems = options.gfmTaskListItems ?? false;
+  const mathFlow = options.mathFlow === true;
   const sameDeps =
-    prev !== null && depsKeyEqual(prev.depsKey, options.depsKey) && prev.gfmTaskListItems === gfmTaskListItems;
+    prev !== null &&
+    depsKeyEqual(prev.depsKey, options.depsKey) &&
+    prev.gfmTaskListItems === gfmTaskListItems &&
+    prev.mathFlow === mathFlow;
 
   // Zero-scan short-circuit — identical content AND suffix reuse the whole
   // previous state verbatim (registry version bumps, unrelated re-renders).
@@ -250,10 +269,12 @@ export function advanceIncrementalParse(
   // instead of re-lexing the whole document (E2); everything else scans
   // fresh. The checkpoint is mutable and single-consumer — this state
   // lineage owns it.
+  // Only a declaration travels: left out, the scanner keeps its `$$`
+  // fence default and the tracker certifies nothing on such a line.
   const scan = measure('scan', () =>
     computeFreezeBoundary(
       content,
-      { defListEnabled: options.defListEnabled, gfmTaskListItems },
+      { defListEnabled: options.defListEnabled, gfmTaskListItems, ...(mathFlow ? { mathFlow } : {}) },
       appendOnly ? prev!.scanCheckpoint : null
     )
   );
@@ -288,6 +309,7 @@ export function advanceIncrementalParse(
       spliceCache,
       depsKey: options.depsKey,
       gfmTaskListItems,
+      mathFlow,
     },
   });
 

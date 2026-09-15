@@ -49,8 +49,15 @@ export interface PipelineFrameOptions {
   /** Whether `remarkPlugins` parses GFM task-list items. Default `false`
    *  (the boundary scanner keeps every `[x]` as reference taint). The
    *  adapters pass `true` because they build the chain with
-   *  `buildCoreRemarkPlugins`, which always includes remark-gfm. */
+   *  `buildCoreRemarkPlugins`, which always includes remark-gfm. A box
+   *  whose paragraph a `$$` opener closed is released only when
+   *  `mathFlow` is `true` as well. */
   gfmTaskListItems?: boolean;
+  /** Whether `remarkPlugins` parses `$$` flow math (remark-math). Default
+   *  `false`: the scanner still treats `$$` as a fence opener, but the
+   *  task-list release does not trust that assumption. The adapters pass
+   *  `true` because `buildCoreRemarkPlugins` always includes remark-math. */
+  mathFlow?: boolean;
   measure?: AdvanceOptions['measure'];
 }
 const unmeasured: NonNullable<AdvanceOptions['measure']> = (_stage, fn) => fn();
@@ -121,6 +128,7 @@ export function createPipelineSession(): PipelineSession {
       incrementalParse,
       defListEnabled,
       gfmTaskListItems = false,
+      mathFlow = false,
       measure: measureHere = unmeasured,
     }: PipelineFrameOptions) {
       // The suffix is APPENDED (the engine treats it as an always-tail
@@ -238,9 +246,11 @@ export function createPipelineSession(): PipelineSession {
             // under one profile must not survive into frames under the other.
             defListEnabled,
             gfmTaskListItems,
+            mathFlow,
           ],
           defListEnabled,
           gfmTaskListItems,
+          mathFlow,
           phantomSuffix,
           measure: measureHere,
         });

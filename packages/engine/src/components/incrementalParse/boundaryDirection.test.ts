@@ -25,7 +25,8 @@ import fc from 'fast-check';
 import isEqual from 'lodash-es/isEqual';
 
 import { attributeHastChildren } from './attributeHastChildren';
-import { computeFreezeBoundary } from './computeFreezeBoundary';
+import { abstractSignature } from './checkpointAbstraction';
+import { computeFreezeBoundary, type FreezeScanCheckpointInternal } from './computeFreezeBoundary';
 import { CATALOG, scannerProfile } from './testPluginCatalog';
 import { runFull, testEnv } from './spliceArbiterHarness';
 import { benignDocArb, hazardDocArb, type FuzzDoc } from './fuzzGenerators';
@@ -135,5 +136,40 @@ describe(`boundary direction battery (runs=${RUNS} seed=${SEED}, futures=${FUTUR
     beat.finish();
     // The battery must have tested real boundaries, not skipped everything.
     expect(boundaries).toBeGreaterThan(RUNS / 8);
+  });
+});
+
+/**
+ * Two list items the checkpoint abstraction used to merge (2026-09-15
+ * review, section 4): `- [x] a` (content column 2) and `-   [x] a`
+ * (content column 4). A two-column setext underline reaches the first
+ * paragraph and turns its box into a reference; under the second it is
+ * lazy text, the box stays a task and the boundary clears the list. The
+ * second's frozen region must then hold under the late-definition futures
+ * — the direction claim the abstraction's `taskItemSize` field keeps
+ * searchable.
+ */
+describe('task-list content column', () => {
+  test('`- [x] a` and `-   [x] a` are distinct states and answer a two-column setext future differently', () => {
+    const config = CATALOG[0];
+    const profile = scannerProfile(config);
+    const future = '  ===\n\noutside\n\nnext\n\n';
+    const narrow = '- [x] a\n';
+    const wide = '-   [x] a\n';
+    const signature = (doc: string): string =>
+      abstractSignature(computeFreezeBoundary(doc, profile).checkpoint as FreezeScanCheckpointInternal);
+    expect(signature(narrow)).not.toBe(signature(wide));
+
+    expect(computeFreezeBoundary(narrow + future, profile).boundary).toBe(0);
+    const boundary = computeFreezeBoundary(wide + future, profile).boundary;
+    expect(boundary).toBeGreaterThan((wide + future).indexOf('outside'));
+
+    const base = frozenRegion(wide + future, boundary, config);
+    expect(base.count).toBeGreaterThan(0);
+    for (const late of ['[x]: /late\n', '\n[X]: /late "t"\n', '\n\n[x]: /late\n', '  ===\n']) {
+      const extended = frozenRegion(wide + future + late, boundary, config);
+      expect(extended.count, late).toBe(base.count);
+      expect(isEqual(extended.children, base.children), late).toBe(true);
+    }
   });
 });

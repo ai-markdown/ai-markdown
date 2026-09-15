@@ -16,6 +16,16 @@ export interface FreezeBoundaryOptions {
    * comment running to `-->`/EOF (a candidate after it would let a
    * standalone tail parse invent ghost defs). With `false`, `$$` lines take
    * the ordinary text path and comments/fences inside are scanned.
+   *
+   * The task-list tracker (`gfmTaskListItems`) reads the field as a
+   * DECLARATION: a `$$` opener closes an item's paragraph for good only
+   * when the chain really has remark-math, so it certifies a box on that
+   * line only when this is explicitly `true`. Omitted keeps the fence
+   * default for candidates but declares nothing, and the tracker forgets
+   * the item at the `$$` line instead (2026-09-15 review N-TASK-1: a
+   * remark-gfm-only caller had its box certified, then `===` turned the
+   * paragraph into a heading whose `[x]` a late definition retargeted).
+   * Both readings are part of the checkpoint profile.
    */
   mathFlow?: boolean;
   /**
@@ -39,7 +49,8 @@ export interface FreezeBoundaryOptions {
    * exact source position (see `taskListContext.ts`). Callers that build
    * the engine's own chain (`buildCoreRemarkPlugins`) pass `true`; a
    * caller with an arbitrary chain must not, unless it knows the chain
-   * has the construct. Part of the checkpoint profile: a checkpoint built
+   * has the construct. Certifying on a `$$` opener additionally requires
+   * `mathFlow: true`. Part of the checkpoint profile: a checkpoint built
    * under one value is not resumable under the other.
    */
   gfmTaskListItems?: boolean;
@@ -171,6 +182,11 @@ export interface FreezeScanCheckpointInternal extends FreezeScanCheckpoint {
   /** Grammar-profile switches baked at creation — a checkpoint is only
    *  resumable under the exact profile that built it. */
   mathFlow: boolean;
+  /** `FreezeBoundaryOptions.mathFlow === true`: the caller declared
+   *  remark-math. `mathFlow` above is the scanner's fence assumption
+   *  (on by default); this is the certification licence the task-list
+   *  tracker needs before a `$$` line may close a paragraph. */
+  mathDeclared: boolean;
   referenceTaint: boolean;
   gfmTaskListItems: boolean;
   /** `referenceTaint && gfmTaskListItems`: the task-list tracker runs. The
@@ -396,15 +412,22 @@ export interface FreezeScanCheckpointInternal extends FreezeScanCheckpoint {
  *  endings are value bytes there, only the matching quote leaves it. */
 export type TagAttrState = 'outside' | 'afterEq' | 'unquoted' | '"' | "'";
 
-export function freshCheckpoint(
-  defListEnabled: boolean,
-  mathFlow: boolean,
-  referenceTaint: boolean,
-  gfmTaskListItems: boolean
-): FreezeScanCheckpointInternal {
+/** The grammar profile a checkpoint is built under (the switches
+ *  `computeFreezeBoundary` derives from `FreezeBoundaryOptions`). */
+export interface CheckpointProfile {
+  defListEnabled: boolean;
+  mathFlow: boolean;
+  mathDeclared: boolean;
+  referenceTaint: boolean;
+  gfmTaskListItems: boolean;
+}
+
+export function freshCheckpoint(profile: CheckpointProfile): FreezeScanCheckpointInternal {
+  const { defListEnabled, mathFlow, mathDeclared, referenceTaint, gfmTaskListItems } = profile;
   return {
     defListEnabled,
     mathFlow,
+    mathDeclared,
     referenceTaint,
     gfmTaskListItems,
     taskTracking: referenceTaint && gfmTaskListItems,

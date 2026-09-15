@@ -630,7 +630,8 @@ is part of the checkpoint profile and of the advance deps check):
   a blank is a reference — the paragraph ended at `]`; `- [x]text`,
   `- [x]` + U+00A0 are references);
 - block identity: the paragraph closed irreversibly. A blank line, an
-  interrupting block (ATX, fence, `$$`, thematic break, html types 1-6,
+  interrupting block (ATX, fence, `$$` only under a declared `mathFlow:
+true`, thematic break, html types 1-6,
   a lazy type-7 line, a footnote definition), a new container or a
   sibling item. Under the definition-list profile a blank-closed paragraph
   waits for the back-claim window: the next non-blank line must not be a
@@ -638,6 +639,33 @@ is part of the checkpoint profile and of the advance deps check):
   preceding paragraph across at most one `lineEndingBlank` of the same
   flow. A `:` line, whether it would really claim or not (measured: inside
   a list item it never forms a term), drops the box.
+
+**Math is a declared capability, not an assumption (2026-09-15 review of
+bf9dc64, N-TASK-1).** The scanner reads a `$$` line as a fence opener when
+`mathFlow` is omitted, which only over-blocks candidates, but the tracker
+had taken that default as proof that the line closed the item's paragraph.
+A caller with remark-gfm and no remark-math — `$$` is paragraph text there
+— got `- [x] a` / `  $$` / `  $$` / `  ===` / blank / `p` certified at the
+first `$$` (boundary 28), while the full parse of that document plus a late
+`[x]: /u` has a setext heading holding a `linkReference`; the spliced tree
+kept the literal `[x]`. `mathFlow` is now an explicit field on
+`AdvanceOptions` and core's `PipelineFrameOptions` (default `false`; the
+adapters pass `true` next to `gfmTaskListItems`, because
+`buildCoreRemarkPlugins` always includes remark-math). The checkpoint
+records whether it was DECLARED (`mathDeclared` — part of the profile
+check, of the advance G0 check and of core's deps key, like
+`gfmTaskListItems`), and the tracker certifies on a `$$` opener only under
+the declaration; without it the `$$` line forgets the item, so the box
+keeps its taint and that prefix has boundary 0 in both grammars. The
+scanner's own fence default is unchanged, so no existing boundary moved
+(boundaryDiff: 0 increases, 0 decreases). Pinned in
+`taskListMathCapability.test.ts` (the review's two-frame reproduction and
+its controls) and `taskListDecisions.test.ts` (the review's decision
+probes, kept as facts). The checkpoint abstraction also gained
+`taskItemSize`, the innermost item's content column: `- [x] a` and
+`-   [x] a` shared a signature although a two-column `===` future is a
+heading for the first and lazy text for the second (review section 4;
+direction case in `boundaryDirection.test.ts`).
 
 Fixed counterexamples the proof must reject, each pinned in
 `taskListTaint.test.ts` against a remark-gfm oracle and at every character
@@ -681,8 +709,8 @@ construct's continuation survives that shape): any html-owned line
 (either grammar, before or after the line), a `<` line that opens an html
 block, a footnote definition, a definition-list description, a fence or
 `$$` the tracker sees but the scanner does not (behind a `>` prefix, or at
-four raw columns inside an item) or vice versa, and every line at or past
-`phasePoisonedAt`. The existing gates are untouched: a certified box
+four raw columns inside an item) or vice versa, a `$$` line without the
+math declaration, and every line at or past `phasePoisonedAt`. The existing gates are untouched: a certified box
 lifts only its own candidate, and `hazardVerdict` still rejects the
 candidate right after the list until a column-0 block clears it — the
 payoff is the run of root paragraphs AFTER the list, not the list's own

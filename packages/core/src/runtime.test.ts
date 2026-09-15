@@ -1,6 +1,7 @@
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, test, vi } from 'vitest';
+import remarkGfm from 'remark-gfm';
 import { visit } from 'unist-util-visit';
 import {
   EngineRawHtmlDepthError,
@@ -83,6 +84,52 @@ describe('framework-neutral pipeline consumer', () => {
       }
       expect(preprocessAIMDContent(raw)).toBe(body);
     }
+  });
+
+  test('a remark-gfm chain without remark-math keeps a `$$`-closed task box tainted (review N-TASK-1)', () => {
+    // Under this chain `$$` is paragraph text and `===` makes a heading
+    // whose `[x]` the late definition retargets; with no math declaration
+    // nothing before the box may be reused across the two frames.
+    const gfmOnly: PipelineFrameOptions = {
+      ...options,
+      remarkPlugins: [remarkGfm],
+      rehypePlugins: [],
+      remarkRehypeOptions: {},
+      gfmTaskListItems: true,
+    };
+    const fullOf = (content: string) => {
+      const parsed = parseStage({ ...gfmOnly, children: content });
+      return { mdast: parsed.mdast, hast: transformStage(parsed) };
+    };
+    const head = '- [x] a\n  $$\n  $$\n  ===\n\np\n\n';
+    const source = head + '[x]: /u\n\n';
+    const session = createPipelineSession();
+    expect(session.parse({ ...gfmOnly, content: head })).toEqual(fullOf(head));
+    const second = session.parse({ ...gfmOnly, content: source });
+    expect(second).toEqual(fullOf(source));
+    let references = 0;
+    visit(second.mdast, 'linkReference', () => {
+      references += 1;
+    });
+    expect(references).toBe(1);
+  });
+
+  test('the math declaration reaches the engine deps key: a flip drops retained trees', () => {
+    const content = '- [x] a\n  $$\n  $$\n\noutside\n\nnext\n\n';
+    const declared: PipelineFrameOptions = { ...options, gfmTaskListItems: true, mathFlow: true };
+    const session = createPipelineSession();
+    const a = session.parse({ ...declared, content });
+    const b = session.parse({ ...declared, content: content + 'Tail.\n\n' });
+    // The built-in chain has remark-math: the `$$`-closed box is certified
+    // and the list is reused by the append frame.
+    expect(b.mdast.children[0]).toBe(a.mdast.children[0]);
+    const c = session.parse({ ...declared, mathFlow: false, content: content + 'Tail.\n\n' });
+    expect(c.mdast.children[0]).not.toBe(b.mdast.children[0]);
+    expect(c).toEqual(full(content + 'Tail.\n\n'));
+    // Undeclared, the box stays tainted and no later frame reuses the list.
+    const d = session.parse({ ...declared, mathFlow: false, content: content + 'Tail.\n\nMore.\n\n' });
+    expect(d.mdast.children[0]).not.toBe(c.mdast.children[0]);
+    expect(d).toEqual(full(content + 'Tail.\n\nMore.\n\n'));
   });
 
   test('reset and a one-shot frame both discard retained parse trees', () => {

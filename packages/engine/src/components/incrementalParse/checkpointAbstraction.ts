@@ -162,6 +162,22 @@ export const SIGNATURE_DOMAIN: readonly SignatureField[] = [
       return inner.kind === 'quote' ? 'quote' : `item:${inner.firstContent}`;
     },
   },
+  // The innermost item's content column relative to the parent prefix
+  // (`size`). A setext underline or a table delimiter row converts the
+  // paragraph only at that column, so `- [x] a` and `-   [x] a` answer
+  // the same `  ===` future differently and must not share a signature
+  // (2026-09-15 review, section 4). Bullets start at 2, ordered items at
+  // 3; marker width and marker whitespace push it up to 17, which the
+  // bucket caps.
+  {
+    name: 'taskItemSize',
+    values: ['none', '2', '3', '4', '5', '6+'],
+    of: (cp) => {
+      const inner = cp.taskTracking ? cp.task.stack[cp.task.stack.length - 1] : undefined;
+      if (inner === undefined || inner.kind !== 'item') return 'none';
+      return inner.size >= 6 ? '6+' : String(inner.size);
+    },
+  },
   {
     name: 'taskParagraph',
     values: ['none', 'open', 'await'],

@@ -48,7 +48,10 @@
  *    `gfmTaskListItems` profile a checked task-list box (`- [x] text`) is
  *    released from the taint by exact position once `taskListContext.ts`
  *    has proved it sits where micromark's `tasklistCheck` consumes it and
- *    its paragraph can no longer become a heading or a table head.
+ *    its paragraph can no longer become a heading or a table head. A `$$`
+ *    opener counts as such a close only under a DECLARED `mathFlow: true`;
+ *    the scanner's own `$$` default is an assumption that over-blocks
+ *    candidates, not evidence about the caller's grammar.
  * 6. **Raw-remnant seam** — an html FLOW run can swallow non-tag lines
  *    (e.g. a `$$` math fence glued under `</details>`); once tag balance
  *    returns to zero, that remnant becomes FLOATING text that parse5/
@@ -155,6 +158,9 @@ export function computeFreezeBoundary(
   resume?: FreezeScanCheckpoint | null
 ): FreezeScanResult {
   const mathFlow = options.mathFlow ?? true;
+  // The default above is the scanner's fence assumption; the task-list
+  // tracker may lean on `$$` only when the caller said the chain has it.
+  const mathDeclared = options.mathFlow === true;
   const referenceTaint = options.referenceTaint ?? true;
   const gfmTaskListItems = options.gfmTaskListItems ?? false;
   const prev = resume as FreezeScanCheckpointInternal | null | undefined;
@@ -165,11 +171,18 @@ export function computeFreezeBoundary(
     prev &&
     prev.defListEnabled === options.defListEnabled &&
     prev.mathFlow === mathFlow &&
+    prev.mathDeclared === mathDeclared &&
     prev.referenceTaint === referenceTaint &&
     prev.gfmTaskListItems === gfmTaskListItems &&
     prev.confirmedOffset <= text.length
       ? prev
-      : freshCheckpoint(options.defListEnabled, mathFlow, referenceTaint, gfmTaskListItems);
+      : freshCheckpoint({
+          defListEnabled: options.defListEnabled,
+          mathFlow,
+          mathDeclared,
+          referenceTaint,
+          gfmTaskListItems,
+        });
 
   // ── advance the checkpoint over newly-CONFIRMED lines ──
   let start = cp.confirmedOffset;

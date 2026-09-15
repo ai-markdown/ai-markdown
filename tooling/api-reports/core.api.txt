@@ -132,6 +132,7 @@ interface PipelineFrameOptions {
     incrementalParse: boolean;
     defListEnabled: boolean;
     gfmTaskListItems?: boolean;
+    mathFlow?: boolean;
     measure?: AdvanceOptions['measure'];
 }
 declare function createPipelineSession(): PipelineSession;

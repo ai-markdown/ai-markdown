@@ -39,11 +39,12 @@
  *     line was html-owned or inside a verbatim block the scanner tracks.
  *
  * Anything else — an html block, a footnote definition, a definition-list
- * description, a fence the scanner does not track, a setext or delimiter
- * shape while the paragraph is open — either drops the pending box (it
- * stays an ordinary reference) or puts the tracker into `unknown`, where it
- * proves nothing until a root sync point (a confirmed blank line followed
- * by a column-0 line the scanner does not own). A missed certificate costs
+ * description, a fence the scanner does not track, a `$$` line without
+ * remark-math declared (`cp.mathDeclared`), a setext or delimiter shape
+ * while the paragraph is open — either drops the pending box (it stays an
+ * ordinary reference) or puts the tracker into `unknown`, where it proves
+ * nothing until a root sync point (a confirmed blank line followed by a
+ * column-0 line the scanner does not own). A missed certificate costs
  * only performance; a wrong one changes frozen output, so every doubt
  * resolves to "keep the taint".
  *
@@ -537,6 +538,15 @@ function processLine(cp: FreezeScanCheckpointInternal, t: TaskContext, ln: LineR
   const rest = text.slice(at.i);
   const open = t.paragraph !== null;
   const kind = classifyFlow(cp.mathFlow, rest, rel, open, lazy);
+  if (kind === 'math' && !cp.mathDeclared) {
+    // The scanner reads `$$` as a fence opener by default, which only
+    // over-blocks candidates. A certificate needs the caller's real
+    // grammar: without remark-math the line is paragraph text, a later
+    // setext underline can still take the box, and the scanner's phase
+    // and this model part company here. Prove nothing until a root sync.
+    forget(t);
+    return true;
+  }
   if (open) {
     if (kind === 'continuation') {
       continueParagraph(t);
