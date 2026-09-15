@@ -25,7 +25,8 @@ export interface CrossChunkUrlPolicy {
   urlTransform: UrlTransform;
   /** Resolved sanitize schema — caller's prop or the library default. */
   sanitizeSchema: SanitizeSchema;
-  /** Element overrides for materialized footnote marks. */
+  /** Element overrides for materialized footnote marks and for the `a` /
+   *  `img` elements that cross-chunk link and image references resolve to. */
   components?: Components;
 }
 

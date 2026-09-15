@@ -1,8 +1,9 @@
 import { describe, test, expect } from 'vitest';
+import fc from 'fast-check';
 import {
   collectDefLabels,
   createDefLabelScanner,
-  DEF_LINE_START_RE,
+  hasDefLineStart,
   lastRegionStart,
   type DefLabels,
   type DefLabelGrammarOptions,
@@ -242,25 +243,100 @@ describe('createDefLabelScanner', () => {
   test('fast-path trigger requires the full `]:` def signature, not just a line-start bracket', () => {
     // Mid-line brackets — the shape AI prose is dense with — must NOT
     // knock the stream off the fast path.
-    expect(DEF_LINE_START_RE.test('See [the docs](https://e.com) and [1] for details')).toBe(false);
-    expect(DEF_LINE_START_RE.test('prose line\nmore [citation] prose')).toBe(false);
+    expect(hasDefLineStart('See [the docs](https://e.com) and [1] for details')).toBe(false);
+    expect(hasDefLineStart('prose line\nmore [citation] prose')).toBe(false);
     // Line-START brackets without the `]:` signature are links, task boxes
     // or references — grammar-verified non-defs, and exactly what the
     // Documents+smooth cliff streamed. They must stay on the fast path.
-    expect(DEF_LINE_START_RE.test('- [Title](https://e.com)')).toBe(false);
-    expect(DEF_LINE_START_RE.test('  - [maybe][ref]')).toBe(false); // `][` adjacency: not a def
-    expect(DEF_LINE_START_RE.test('1. [ordered](u)')).toBe(false);
-    expect(DEF_LINE_START_RE.test('- [x] task item')).toBe(false);
-    expect(DEF_LINE_START_RE.test('[x')).toBe(false); // incomplete: no def until `]:` lands (region re-checks)
-    expect(DEF_LINE_START_RE.test('[x]\n: /url')).toBe(false); // colon must be ADJACENT (grammar-verified)
+    expect(hasDefLineStart('- [Title](https://e.com)')).toBe(false);
+    expect(hasDefLineStart('  - [maybe][ref]')).toBe(false); // `][` adjacency: not a def
+    expect(hasDefLineStart('1. [ordered](u)')).toBe(false);
+    expect(hasDefLineStart('- [x] task item')).toBe(false);
+    expect(hasDefLineStart('[x')).toBe(false); // incomplete: no def until `]:` lands (region re-checks)
+    expect(hasDefLineStart('[x]\n: /url')).toBe(false); // colon must be ADJACENT (grammar-verified)
     // Anything that CAN be a definition must trigger.
-    expect(DEF_LINE_START_RE.test('[x]: /url')).toBe(true);
-    expect(DEF_LINE_START_RE.test('prose\n[^fn]: body')).toBe(true);
-    expect(DEF_LINE_START_RE.test('> [q]: /q')).toBe(true);
-    expect(DEF_LINE_START_RE.test('- [li]: /url')).toBe(true); // defs nest in lists
-    expect(DEF_LINE_START_RE.test('[a\\]b]: /url')).toBe(true); // escaped bracket inside label
-    expect(DEF_LINE_START_RE.test('[a\\\\]: /url')).toBe(true); // escaped backslash then close
-    expect(DEF_LINE_START_RE.test('[foo\nbar]: /url')).toBe(true); // labels may span lines
+    expect(hasDefLineStart('[x]: /url')).toBe(true);
+    expect(hasDefLineStart('prose\n[^fn]: body')).toBe(true);
+    expect(hasDefLineStart('> [q]: /q')).toBe(true);
+    expect(hasDefLineStart('- [li]: /url')).toBe(true); // defs nest in lists
+    expect(hasDefLineStart('[a\\]b]: /url')).toBe(true); // escaped bracket inside label
+    expect(hasDefLineStart('[a\\\\]: /url')).toBe(true); // escaped backslash then close
+    expect(hasDefLineStart('[foo\nbar]: /url')).toBe(true); // labels may span lines
+  });
+
+  test('def-signature probe is linear on a region of unclosed line-start brackets (was quadratic)', () => {
+    // '[a\n' repeated: every line starts a candidate label and none ever
+    // closes. The regex probe rescanned from every line start to the end
+    // of the region — 1.4 s at 20k lines, 5.7 s at 40k. The single pass
+    // stops at the first candidate: no later one can close either.
+    const source = '[a\n'.repeat(40000);
+    const t = performance.now();
+    expect(hasDefLineStart(source)).toBe(false);
+    const scanned = createDefLabelScanner().scan(source);
+    const elapsed = performance.now() - t;
+    expect(elapsed, `40000 lines: ${elapsed.toFixed(1)} ms`).toBeLessThan(300);
+    expect(scanned.footnoteLabels.size).toBe(0);
+    expect(scanned.linkLabels.size).toBe(0);
+    // Labels closed without a colon resume after each `]`; linear as well.
+    const closed = '- [a] b\n'.repeat(40000);
+    const t2 = performance.now();
+    expect(hasDefLineStart(closed)).toBe(false);
+    const elapsed2 = performance.now() - t2;
+    expect(elapsed2, `40000 closed lines: ${elapsed2.toFixed(1)} ms`).toBeLessThan(300);
+    // The answer still agrees with the parser (checked at a size the full
+    // parse affords).
+    const small = '[a\n'.repeat(2000);
+    expect(asPlain(createDefLabelScanner().scan(small))).toEqual(asPlain(collectDefLabels(small)));
+    const closing = `${small}[b]: /u\n`;
+    expect(hasDefLineStart(closing)).toBe(true);
+    expect(asPlain(createDefLabelScanner().scan(closing))).toEqual(asPlain(collectDefLabels(closing)));
+  });
+
+  test('labels at micromark’s size limit: 999 chars are detected, 1000 agree with collectDefLabels', () => {
+    // The probe has no length bound of its own. A bound would have to
+    // count as micromark does — the footnote's `^` is not part of the
+    // label, escapes count per its rules — or it under-matches, which
+    // skips a definition scan. So the 999-char labels below must trigger
+    // the probe AND be found, and the longer ones must simply agree with
+    // the full parse (over-matching only costs a redundant parse).
+    const fn999 = `[^${'a'.repeat(999)}]: body`;
+    const link999 = `[${'a'.repeat(999)}]: /url`;
+    expect(hasDefLineStart(fn999)).toBe(true);
+    expect(hasDefLineStart(link999)).toBe(true);
+    expect(collectDefLabels(fn999).footnoteLabels.size).toBe(1);
+    expect(collectDefLabels(link999).linkLabels.size).toBe(1);
+    for (const source of [
+      fn999,
+      link999,
+      `[^${'a'.repeat(1000)}]: body`,
+      `[${'a'.repeat(1000)}]: /url`,
+      `[^${'a'.repeat(1001)}]: body`,
+      `[${'\\]'.repeat(500)}]: /url`,
+    ]) {
+      // Both cold and as the completing append of a stream: the fast path
+      // must never hide the definition.
+      expect(asPlain(createDefLabelScanner().scan(source))).toEqual(asPlain(collectDefLabels(source)));
+      const scanner = createDefLabelScanner();
+      scanner.scan('intro\n\n');
+      scanner.scan(`intro\n\n${source.slice(0, -3)}`);
+      expect(asPlain(scanner.scan(`intro\n\n${source}`))).toEqual(asPlain(collectDefLabels(`intro\n\n${source}`)));
+    }
+  });
+
+  test('def-signature probe agrees with the regex it replaced', () => {
+    // The regex (quadratic on unclosed line-start brackets) is kept here as
+    // the oracle for the predicate the scan must still decide.
+    const legacy = /^[ \t>*+\d.)-]*\[(?:[^\]\\]|\\[\s\S])*\]:/m;
+    const alphabet = ['[', ']', ':', '\\', '\n', '\r', ' ', '-', '>', '1', '.', ')', 'a', '^', '!', '('];
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom(...alphabet), { maxLength: 28 }).map((chars) => chars.join('')),
+        (source) => {
+          expect(hasDefLineStart(source)).toBe(legacy.test(source));
+        }
+      ),
+      { numRuns: 4000 }
+    );
   });
 
   test('bulleted link lists and task lists stream entirely on the fast path', () => {

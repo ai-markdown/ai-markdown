@@ -307,7 +307,8 @@ const BlockMemoizedRenderer = memo(
     // Cache-memoization pattern documented above is an established exception
     // to the React Compiler purity check (rule renamed across react-hooks
     // plugin versions, so the previous block disable no longer suppresses
-    // anything in v7+). See design `/tmp/phase5-block-memo-decisions.md` §4.
+    // anything in v7+). See "Planning and rendering contracts" in
+    // packages/core/README.md.
     // Every stage measurement in this component MUST carry this instance's
     // documentId — a stageInstanceId-scoped subscriber silently drops
     // unattributed emissions (the panel then shows "0 ms ×0", which reads

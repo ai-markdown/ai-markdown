@@ -73,9 +73,9 @@ export interface BlockInfo {
    *   smaller than the container's end — maxEnd alone misses that case);
    * - the explicit dataFootnotes bit closes the degenerate corner where a
    *   swallowed section and later real children tie on both numbers;
-   * - a hash of the swallowed extent's SOURCE (`[ownEnd, maxEnd)`) catches
-   *   an equal-length, equal-shape single-frame replacement of the
-   *   swallowed siblings, which leaves every count unchanged.
+   * - a hash of the swallowed extent's SOURCE (`[ownEnd, maxEnd)`) quickly
+   *   rejects most equal-length, equal-shape replacements. A matching hash
+   *   still requires an exact {@link BlockInfo.swallowedSource} comparison.
    *
    * Markdown-native blocks (paragraph/list/math/code/…) never receive
    * reparented content — every hast descendant derives from their own mdast
@@ -83,6 +83,14 @@ export interface BlockInfo {
    * per-frame cost away from huge deterministic subtrees like KaTeX output.
    */
   hastDigest?: string;
+  /**
+   * Exact source in the swallowed interval `[ownEnd, maxEnd)` of a raw-HTML
+   * block. The FNV-1a 32-bit hash in `hastDigest` can collide for different
+   * equal-length contents, so a cache hit must compare this string too.
+   * Empty when the block swallowed no source; absent for markdown-native
+   * blocks. Optional to keep existing public block-plan producers compatible.
+   */
+  swallowedSource?: string;
   /** A raw-HTML container that swallowed the synthesized
    *  `<section data-footnotes>` (rehype-raw reparents the following siblings
    *  into an unclosed `<details>` / `<div>` mid-stream). The footer is then
@@ -190,7 +198,8 @@ export function computeHtmlBlockDigestWithExtent(
   // equal-shape replacement of the swallowed siblings (`Answer: 42` →
   // `Answer: 43` inside an unclosed <details>, single-frame — v2.4.2 review
   // P2-1); the container's own `raw` is unchanged, so the cache hit kept
-  // rendering the old text. Hashing the swallowed extent's source closes it.
+  // rendering the old text. The hash is a fast rejection; buildBlocks also
+  // retains the exact swallowed source for collision-safe cache validation.
   const swallowed = source !== undefined && ownEnd !== undefined && maxEnd > ownEnd ? source.slice(ownEnd, maxEnd) : '';
   return { digest: `${maxEnd}:${count}:${hasFootnoteSection ? 1 : 0}:${fnv1a(swallowed)}`, maxEnd };
 }
@@ -572,10 +581,12 @@ export function buildBlocks(
     // skip the walk (their subtrees derive purely from their own source
     // range, already covered by `raw` + position).
     let hastDigest: string | undefined;
+    let swallowedSource: string | undefined;
     let swallowedTaint = false;
     if (isRawHtmlBlock) {
       const d = computeHtmlBlockDigestWithExtent(el, source, mdastPos.end.offset);
       hastDigest = d.digest;
+      swallowedSource = source.slice(mdastPos.end.offset, d.maxEnd);
       // Did the container swallow a reference or definition? The hast scan
       // above sees coordinated placeholders and standalone footnote marks,
       // but a STANDALONE link/image reference renders as a plain `<a href>` /
@@ -617,6 +628,7 @@ export function buildBlocks(
       startColumn: mdastPos.start.column,
       hasReference,
       ...(hastDigest !== undefined ? { hastDigest } : {}),
+      ...(swallowedSource !== undefined ? { swallowedSource } : {}),
       ...(swallowed?.hasFootnoteSection ? { containsFootnoteSection: true } : {}),
       ...(hasReference
         ? {

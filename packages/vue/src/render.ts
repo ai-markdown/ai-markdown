@@ -1,4 +1,4 @@
-import { h, type VNodeChild, type Slots } from 'vue';
+import { Fragment, h, isVNode, cloneVNode, type VNodeChild, type Slots } from 'vue';
 import type { Element, Root, RootContent } from 'hast';
 import { find, html, svg } from 'property-information';
 import { visit } from 'unist-util-visit';
@@ -6,6 +6,7 @@ import { cloneHastForRender } from '@ai-markdown/core';
 import {
   buildTransform,
   footnoteSafeId,
+  isFootnoteSection,
   resolveCrossChunkReference,
   type Registry,
   type SanitizeSchema,
@@ -31,8 +32,41 @@ const positive = (value: unknown) => {
 const text = (node: RootContent): string =>
   node.type === 'text' ? node.value : 'children' in node ? node.children.map(text).join('') : '';
 
+/** Key of a top-level child, the same scheme React's block planner uses.
+ * Positioned nodes key by source start offset, so an append leaves every
+ * earlier block's key in place and a same-offset rewrite keeps its
+ * instance; a prepend shifts every offset and remounts the shifted blocks
+ * rather than moving a block's component state onto its new neighbour,
+ * which is what Vue's positional pairing of unkeyed siblings did. The
+ * footnote section carries no position and there is at most one per root
+ * (the local one or the aggregate), so it takes a fixed key; any other
+ * position-less child keys by index. */
+function blockKey(node: RootContent, index: number): string {
+  if (node.type === 'element' && isFootnoteSection(node)) return '__footnote_section__';
+  const offset = node.position?.start.offset;
+  if (offset === undefined) return `inline-i${index}`;
+  return node.type === 'element' ? `block-${offset}` : `inline-${offset}`;
+}
+
+/** Attach a key to what `convert` produced for a top-level child. Text and
+ * nothing cannot carry a key; a slot that returned several children is
+ * wrapped in one keyed fragment. */
+function keyedChild(child: VNodeChild, key: string): VNodeChild {
+  if (child === null || child === undefined || typeof child !== 'object') return child;
+  if (isVNode(child)) return cloneVNode(child, { key });
+  return h(Fragment, { key }, child);
+}
+
 /** Clone before final URL conversion: render must not mutate parser or registry trees. */
 export function renderTree(tree: Root, options: RenderOptions): VNodeChild[] {
+  return convertTree(tree, options, true);
+}
+
+/** `keyed` only for a frame root: the children of the wrapper `div` are
+ * the siblings Vue pairs across frames. Placeholder subtrees materialized
+ * inside a block (footnote marks) must stay unkeyed, otherwise two marks
+ * in one paragraph would share a key. */
+function convertTree(tree: Root, options: RenderOptions, keyed: boolean): VNodeChild[] {
   const root = cloneHastForRender(tree);
   visit(
     root,
@@ -97,7 +131,7 @@ export function renderTree(tree: Root, options: RenderOptions): VNodeChild[] {
       const safe = footnoteSafeId(label);
       // Materialized placeholders must use the same URL policy and element
       // overrides as ordinary HAST, including after mounted coordination.
-      return renderTree(
+      return convertTree(
         {
           type: 'root',
           children: [
@@ -121,7 +155,8 @@ export function renderTree(tree: Root, options: RenderOptions): VNodeChild[] {
             },
           ],
         },
-        options
+        options,
+        false
       );
     }
     if (node.tagName === 'cross-chunk-link' || node.tagName === 'cross-chunk-image') {
@@ -156,5 +191,8 @@ export function renderTree(tree: Root, options: RenderOptions): VNodeChild[] {
     }
     return element(node, children, inSvg || node.tagName === 'svg');
   }
-  return root.children.map((node) => convert(node));
+  return root.children.map((node, index) => {
+    const child = convert(node);
+    return keyed ? keyedChild(child, blockKey(node, index)) : child;
+  });
 }

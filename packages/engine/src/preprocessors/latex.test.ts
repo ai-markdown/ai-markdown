@@ -1,9 +1,24 @@
 import { describe, expect, test } from 'vitest';
+import fc from 'fast-check';
 import type { Root as MdastRoot } from 'mdast';
 import remarkMath from 'remark-math';
 import remarkParse from 'remark-parse';
 import { unified } from 'unified';
-import { createIncrementalLatexPreprocessor, preprocessLaTeX, splitByProtectedRegions } from './latex';
+import { visit } from 'unist-util-visit';
+import {
+  convertLatexDelimiters,
+  createIncrementalLatexPreprocessor,
+  preprocessLaTeX,
+  splitByProtectedRegions,
+} from './latex';
+import { parseStage, transformStage } from '../components/markdown';
+import {
+  buildCoreRehypePlugins,
+  buildCoreRemarkPlugins,
+  buildCoreRemarkRehypeOptions,
+} from '../components/pluginChain';
+import { sanitizeSchema } from '../components/sanitizeSchema';
+import { defaultEnginePlugins, definitionList } from '../plugins/catalog';
 
 const hasLineEnding = (text: string): boolean => text.includes('\n') || text.includes('\r');
 
@@ -772,34 +787,38 @@ y$ which spans lines`;
   // used to: `findUnclosedDelimiterStart('both')` toggled on every `$` in the
   // whole run, and one `US$` in a sentence turned every `|` of a table three
   // paragraphs later into `\vert{}`.
+  //
+  // The stray `$` here is `lone $`. It used to be `US$`, which no longer
+  // stays bare: a currency code before a `$` is escaped as currency (see
+  // CURRENCY_SUFFIX_REGEX), and an escaped `$` cannot open anything.
 
   test('a stray single $ on an earlier line leaves a later table intact', () => {
-    const content = 'Prices are quoted in US$ per unit.\n\n| a | b |\n|---|---|\n| 1 | 2 |';
+    const content = 'Prices are quoted in lone $ per unit.\n\n| a | b |\n|---|---|\n| 1 | 2 |';
     expect(preprocessLaTeX(content)).toBe(content);
   });
 
   test('a stray single $ mid-line leaves pipes on the following line alone', () => {
-    const content = 'US$ today\nx | y';
+    const content = 'lone $ today\nx | y';
     expect(preprocessLaTeX(content)).toBe(content);
   });
 
   test('a genuine inline $a | b$ on one line still escapes its pipe', () => {
     expect(preprocessLaTeX('$a | b$')).toBe('$$a \\vert{} b$$');
-    expect(preprocessLaTeX('US$ first\n$a | b$ later')).toBe('US$ first\n$$a \\vert{} b$$ later');
+    expect(preprocessLaTeX('lone $ first\n$a | b$ later')).toBe('lone $ first\n$$a \\vert{} b$$ later');
   });
 
   test('an unclosed inline $ on the LAST line still escapes the pipes after it (streaming)', () => {
-    expect(preprocessLaTeX('US$ first\n\n$a | b')).toBe('US$ first\n\n$a \\vert{} b');
+    expect(preprocessLaTeX('lone $ first\n\n$a | b')).toBe('lone $ first\n\n$a \\vert{} b');
   });
 
   test('a closed $$…$$ spanning lines still escapes the pipes inside it', () => {
-    const content = 'US$ first\n\n$$\n| a | b |\n$$\n\n| c | d |';
-    const expected = 'US$ first\n\n$$\n\\vert{} a \\vert{} b \\vert{}\n$$\n\n| c | d |';
+    const content = 'lone $ first\n\n$$\n| a | b |\n$$\n\n| c | d |';
+    const expected = 'lone $ first\n\n$$\n\\vert{} a \\vert{} b \\vert{}\n$$\n\n| c | d |';
     expect(preprocessLaTeX(content)).toBe(expected);
   });
 
   test('an unclosed line-start $$ spanning lines still escapes and truncates', () => {
-    expect(preprocessLaTeX('US$ first\n\n$$\n| a | b |\n| c |')).toBe('US$ first');
+    expect(preprocessLaTeX('lone $ first\n\n$$\n| a | b |\n| c |')).toBe('lone $ first');
   });
 
   test('a single $ inside an open $$ block is content, not a closer', () => {
@@ -1741,5 +1760,147 @@ describe('splitByProtectedRegions', () => {
     // model, and protecting 4-space lines would silence math in nested
     // lists. Pinned so a future change is a conscious one.
     expect(preprocessLaTeX('para\n\n    $x$ and $100\n\nafter')).toBe('para\n\n    $$x$$ and \\$100\n\nafter');
+  });
+});
+
+describe('preprocessLaTeX — currency after a number or a currency code', () => {
+  // Only `$`-before-number was currency. A `$` after a number (`5$`), after
+  // a currency code (`US$`, `A$`) or after a number and a space (`5 $ now`)
+  // was left bare, and the single-dollar pass then paired two of them:
+  // `costs 5$ and 10$` became `costs 5$$ and 10$$`, an inlineMath " and 10".
+
+  test.each([
+    ['costs 5$ and 10$', 'costs 5\\$ and 10\\$'],
+    ['Prices in US$ and CA$ differ', 'Prices in US\\$ and CA\\$ differ'],
+    ['A$ 5 and A$ 10', 'A\\$ 5 and A\\$ 10'],
+    ['Pay 5 $ now and 10 $ later', 'Pay 5 \\$ now and 10 \\$ later'],
+    ['1,000.50$ total', '1,000.50\\$ total'],
+    ['HK$ 100, NZ$ 20 and S$ 3', 'HK\\$ 100, NZ\\$ 20 and S\\$ 3'],
+    ['(5$) and 5$.', '(5\\$) and 5\\$.'],
+    ['US$5 and 5$6', 'US\\$5 and 5\\$6'],
+    ['$x$ costs 5$', '$$x$$ costs 5\\$'],
+    ['Let $n = 5$ and pay 5$ or US$ 6', 'Let $$n = 5$$ and pay 5\\$ or US\\$ 6'],
+    ['| 5$ | US$ 10 |\n|---|---|', '| 5\\$ | US\\$ 10 |\n|---|---|'],
+  ])('escapes the trailing form in %j', (content, expected) => {
+    expect(preprocessLaTeX(content)).toBe(expected);
+  });
+
+  test.each([
+    ['$x$', '$$x$$'],
+    ['$5$', '$$5$$'],
+    ['$a$ and $b$', '$$a$$ and $$b$$'],
+    ['$x = 5$', '$$x = 5$$'],
+    ['$2 + 2 = 4$ and $A$', '$$2 + 2 = 4$$ and $$A$$'],
+    ['$8.29 \\text{ B} \\times 4$', '$$8.29 \\text{ B} \\times 4$$'],
+    ['$US$ and $x^A$', '$$US$$ and $$x^A$$'],
+    ['$$x = 5$$', '$$x = 5$$'],
+    ['$$\nx = 5\n$$', '$$\nx = 5\n$$'],
+    ['\\$5 and 5\\$', '\\$5 and 5\\$'],
+    ['xUS$ today', 'xUS$ today'],
+    ['5$x', '5$x'],
+    ['price $5 to $10', 'price \\$5 to \\$10'],
+  ])('keeps math and the leading rule as they were in %j', (content, expected) => {
+    expect(preprocessLaTeX(content)).toBe(expected);
+  });
+
+  test('the incremental entry point agrees on the trailing forms', () => {
+    const doc =
+      'costs 5$ and 10$\n\nPrices in US$ and CA$ differ\n\nA$ 5 and $x = 5$ and 5 $ now\n\n| 5$ | b |\n|---|---|\n';
+    const incremental = createIncrementalLatexPreprocessor({ freezeThreshold: 0, backoff: false });
+    for (let i = 1; i <= doc.length; i++) {
+      const prefix = doc.slice(0, i);
+      expect(incremental(prefix)).toBe(preprocessLaTeX(prefix));
+    }
+  });
+
+  /** What the production chain makes of `markdown` after preprocessing:
+   *  every `inlineMath` / `math` value in the parse-stage mdast, and the
+   *  text of the transformed hast. */
+  function pipeline(markdown: string): { math: string[]; text: string } {
+    const parsed = parseStage({
+      children: preprocessLaTeX(markdown),
+      remarkPlugins: buildCoreRemarkPlugins(defaultEnginePlugins),
+      rehypePlugins: buildCoreRehypePlugins(sanitizeSchema, 'p-', { provenance: 'test' }),
+      remarkRehypeOptions: buildCoreRemarkRehypeOptions(defaultEnginePlugins.includes(definitionList)),
+    });
+    const math: string[] = [];
+    visit(parsed.mdast, (node) => {
+      if (node.type === 'inlineMath' || node.type === 'math') math.push((node as { value: string }).value);
+    });
+    const textOf = (node: { type: string; value?: string; children?: unknown[] }): string => {
+      if (node.type === 'text') return node.value ?? '';
+      return (node.children ?? []).map((child) => textOf(child as never)).join('');
+    };
+    return { math, text: textOf(transformStage(parsed) as never) };
+  }
+
+  test('through the real pipeline the currency examples produce no math nodes', () => {
+    expect(pipeline('costs 5$ and 10$')).toEqual({ math: [], text: 'costs 5$ and 10$' });
+    expect(pipeline('Prices in US$ and CA$ differ')).toEqual({ math: [], text: 'Prices in US$ and CA$ differ' });
+    expect(pipeline('A$ 5 and A$ 10')).toEqual({ math: [], text: 'A$ 5 and A$ 10' });
+    expect(pipeline('Pay 5 $ now and 10 $ later')).toEqual({ math: [], text: 'Pay 5 $ now and 10 $ later' });
+    // …and math around them still does.
+    expect(pipeline('$x = 5$ costs 5$ and $A$').math).toEqual(['x = 5', 'A']);
+    expect(pipeline('$$E = mc^2$$ and US$ 3').math).toEqual(['E = mc^2']);
+  });
+});
+
+describe('convertLatexDelimiters', () => {
+  test.each([
+    ['\\[x\\] and \\(y\\)', '$$x$$ and $y$'],
+    ['!\\[img\\] and \\[t\\](u)', '!\\[img\\] and \\[t\\](u)'],
+    ['\\(a\nb\\)', '\\(a\nb\\)'],
+    ['\\[a\nb\\]', '$$a\nb$$'],
+    ['\\[a\\\\]', '\\[a\\\\]'],
+    ['\\[\\]', '\\[\\]'],
+    ['\\[a\\\\] and \\[\\]', '$$a\\\\] and \\[$$'],
+    ['\\( \\( x \\) and \\[ \\[ y \\]', '$ \\( x $ and $$ \\[ y $$'],
+    ['\\\\[x\\]', '\\$$x$$'],
+    ['\\(\\) \\(\\\\)', '$$ $\\$'],
+    ['open \\( here\nclosed \\(x\\) there', 'open \\( here\nclosed $x$ there'],
+  ])('converts %j', (content, expected) => {
+    expect(convertLatexDelimiters(content)).toBe(expected);
+  });
+
+  test('agrees with the regex it replaced', () => {
+    const legacy = /(?<!!)\\\[([\S\s]*?[^\\])\\](?!\()|\\\((.*?)\\\)/g;
+    const oracle = (text: string): string =>
+      text.replaceAll(legacy, (match: string, square: string | undefined, round: string | undefined) =>
+        square !== undefined ? `$$${square}$$` : round !== undefined ? `$${round}$` : match
+      );
+    const alphabet = ['\\', '[', ']', '(', ')', '!', 'a', ' ', '\n', '\r', '\u2028', '$'];
+    fc.assert(
+      fc.property(
+        fc.array(fc.constantFrom(...alphabet), { maxLength: 24 }).map((chars) => chars.join('')),
+        (text) => {
+          expect(convertLatexDelimiters(text)).toBe(oracle(text));
+        }
+      ),
+      { numRuns: 5000 }
+    );
+  });
+
+  test('is linear in the number of unclosed openers (was quadratic)', () => {
+    // Every unclosed `\(` rescanned to the end of its line and every
+    // unclosed `\[` to the end of the text: 20k bare `\(` took 158 ms, 20k
+    // bare `\[` 310 ms, and 40k took 4x that (626 ms and 1346 ms).
+    const time = (doc: string): number => {
+      const t = performance.now();
+      preprocessLaTeX(doc);
+      return performance.now() - t;
+    };
+    time('\\('.repeat(1000));
+    const cases: [string, string][] = [
+      ['40k bare \\(', '\\('.repeat(40000)],
+      ['40k bare \\[', '\\['.repeat(40000)],
+      ['40k \\( lines closed at the end', `${'\\(\n'.repeat(40000)}\\)`],
+      ['20k \\[ with escaped closers', '\\[ a \\\\] \\['.repeat(20000)],
+    ];
+    for (const [label, doc] of cases) {
+      const elapsed = time(doc);
+      expect(elapsed, `${label}: ${elapsed.toFixed(1)} ms`).toBeLessThan(150);
+    }
+    expect(preprocessLaTeX('\\('.repeat(3))).toBe('\\(\\(\\(');
+    expect(preprocessLaTeX('\\['.repeat(3))).toBe('\\[\\[\\[');
   });
 });

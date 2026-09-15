@@ -178,17 +178,19 @@ describe('createIncrementalLatexPreprocessor — failed-freeze backoff and blank
   });
 
   test('a stray `$` on a finished line is not a hazard: the stream keeps freezing past it', () => {
-    // Inline `$…$` never spans a line ending, so `US$` on a finished line
-    // can never be paired by a later append. It used to keep the delimiter
-    // parity odd for every later slice, so nothing after it ever froze —
-    // and every `|` after it was rewritten to `\vert{}`.
-    const doc = 'intro line one.\n\nprice in US$ today\n\n' + PARA.repeat(120);
+    // Inline `$…$` never spans a line ending, so a bare `$` on a finished
+    // line can never be paired by a later append. It used to keep the
+    // delimiter parity odd for every later slice, so nothing after it ever
+    // froze — and every `|` after it was rewritten to `\vert{}`. The
+    // fixture was `US$`; a currency code before `$` is now escaped as
+    // currency, so `lone $` carries the bare `$` instead.
+    const doc = 'intro line one.\n\nprice in lone $ today\n\n' + PARA.repeat(120);
     const { frozen } = replayCounting(doc, 16);
     expect(frozen).toBeGreaterThan(doc.length - 2 * PARA.length);
     // A table after the stray `$` survives, frame by frame.
-    replayFreezing(['Prices are quoted in US$ per unit.\n\n', '| a | b |\n|---|---|\n', '| 1 | 2 |\n']);
+    replayFreezing(['Prices are quoted in lone $ per unit.\n\n', '| a | b |\n|---|---|\n', '| 1 | 2 |\n']);
     // …while a `$` on the LAST line is still open until its line ends.
-    replay(['US$ first\n\n$a | b', ' | c$\n']);
+    replay(['lone $ first\n\n$a | b', ' | c$\n']);
   });
 
   test('a latent `<b` in prose settles at the next blank line: the stream keeps freezing past it', () => {
@@ -545,8 +547,10 @@ describe('an indented $$ opener bounded by its container: both entry points agre
       '- p\n   $$ x^2\n    $$\\int_0^1 x\\,dx$$\n    price in US$ today\n $4.2M revenue\n',
       '\t | --- | --- |\n$$\n',
     ]);
+    // `US$` is escaped as currency (CURRENCY_SUFFIX_REGEX), like the `$4.2M`
+    // under it; neither changes where the block ends.
     expect(preprocessLaTeX(doc)).toBe(
-      '- p\n   $$ x^2\n    $$\\int_0^1 x\\,dx$$\n    price in US$ today\n \\$4.2M revenue\n\t | --- | --- |'
+      '- p\n   $$ x^2\n    $$\\int_0^1 x\\,dx$$\n    price in US\\$ today\n \\$4.2M revenue\n\t | --- | --- |'
     );
   });
 

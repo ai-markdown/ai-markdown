@@ -26,11 +26,15 @@ export interface ChunkInput {
   content: string;
   documentId: string;
   registry: RegistryController | null;
-  /** Already resolved against any document-level override. */
+  /** Per-chunk policy. Vue has no document-level override: the renderer's
+   * own prop decides, and `AIMarkdownDocuments` takes no such prop. */
   preserveOrphanReferences: boolean;
   incrementalParse: boolean;
   clobberPrefix: string;
   documentIndex?: number;
+  /** Identity-stable: the plugin chain and the engine's retained parse
+   * state are keyed by these references. `AIMarkdown` deep-equal
+   * stabilizes them at the prop boundary; a direct caller must hold them. */
   enginePlugins: readonly AIMarkdownEnginePlugin[];
   sanitizeSchema: SanitizeSchema;
 }
@@ -73,7 +77,7 @@ export function createProvenance(): string {
   }
   fallbackCounter += 1;
   if (process.env.NODE_ENV !== 'production') {
-    console.error(`[ai-react-markdown] ${PROVENANCE_FALLBACK_MESSAGE}`);
+    console.error(`[ai-markdown/vue] ${PROVENANCE_FALLBACK_MESSAGE}`);
   }
   return `fallback-${fallbackCounter}-${Date.now().toString(36)}`;
 }

@@ -1,10 +1,11 @@
 'use client';
 
 import { mermaidRenderQueue } from './renderQueue';
+import { ensureMermaidInitialized } from './initialize';
 
 import React, { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { CodeHighlightControl, CodeHighlightTabs } from '@mantine/code-highlight';
-import { ActionIcon, CopyButton, Flex, Tooltip } from '@mantine/core';
+import { ActionIcon, CopyButton, Flex, Text, Tooltip } from '@mantine/core';
 import type mermaidModule from 'mermaid';
 import { CheckIcon, CodeIcon, DiagramIcon } from './icons';
 import { useAIMarkdownState, useAIMarkdownTheme } from '@ai-markdown/react';
@@ -28,12 +29,33 @@ const PRE_STYLE = { cursor: 'pointer', overflow: 'auto', width: '100%', padding:
  * phase: it overlays any view and flipping it back must restore the prior
  * one unchanged.
  */
-type MermaidView = { kind: 'source' } | { kind: 'diagram'; chartType: string } | { kind: 'error' };
+type MermaidView = { kind: 'source' } | { kind: 'diagram'; chartType: string } | { kind: 'error'; message: string };
 
 /** Equality used to skip no-op view updates — repeat mid-stream successes
  *  of the same chart type must not re-render the host per chunk. */
-const sameView = (a: MermaidView, b: MermaidView): boolean =>
-  a.kind === 'diagram' && b.kind === 'diagram' ? a.chartType === b.chartType : a.kind === b.kind;
+const sameView = (a: MermaidView, b: MermaidView): boolean => {
+  if (a.kind === 'diagram' && b.kind === 'diagram') return a.chartType === b.chartType;
+  if (a.kind === 'error' && b.kind === 'error') return a.message === b.message;
+  return a.kind === b.kind;
+};
+
+/** Longest error text shown under the error tab. mermaid's parse errors are
+ *  a few lines ("Parse error on line 3: ... Expecting ..."); anything longer
+ *  is noise. */
+const ERROR_MESSAGE_MAX_CHARS = 500;
+
+/**
+ * The failure reason as plain text for the error tab, so the user can find
+ * the failing line. Only ever rendered as a text node — never as HTML — and
+ * capped in length. Non-Error throws (mermaid throws strings in places) are
+ * stringified the same way.
+ */
+const describeRenderError = (error: unknown): string => {
+  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  const text = raw.replace(/\r\n?/g, '\n').trim();
+  if (!text) return 'Mermaid could not render this diagram.';
+  return text.length > ERROR_MESSAGE_MAX_CHARS ? `${text.slice(0, ERROR_MESSAGE_MAX_CHARS)}…` : text;
+};
 
 type Mermaid = typeof mermaidModule;
 
@@ -59,52 +81,6 @@ const loadMermaid = (): Promise<Mermaid> => {
     }
   );
   return mermaidPromise;
-};
-
-/** Theme mermaid.initialize was last called with. mermaid's config is a
- *  module-level singleton, so re-asserting an unchanged theme before every
- *  render attempt (each streamed chunk re-runs the effect) is pure waste —
- *  but instances under providers with DIFFERENT schemes must each
- *  re-assert before their own render, so the cache is module-level and
- *  checked per attempt rather than hoisted into a per-instance effect. */
-let initializedTheme: 'dark' | 'light' | null = null;
-
-/**
- * mermaid's config is a module-level singleton shared with the host
- * application when the bundler dedupes the package, and a host that enables
- * `click` interactions calls `mermaid.initialize({ securityLevel: 'loose' })`
- * — the officially documented way. Under `loose` mermaid skips DOMPurify
- * and its output goes into this component's `innerHTML` verbatim: an
- * LLM-authored diagram string could then run script in the page origin.
- * So the theme cache alone is not enough of a guard: before every render
- * the current `securityLevel` is read back (`mermaidAPI.getConfig()` — a
- * config copy, still far cheaper than `initialize`'s merge + theme
- * variables + diagram registration) and a non-strict value forces a
- * re-initialize
- * (2026-08-19 review r2 P2-11; the v2.4.2 "documented premise" made this
- * the host's problem — it is ours, the innerHTML is ours).
- */
-const ensureMermaidInitialized = (mermaid: Mermaid, isDark: boolean) => {
-  const theme = isDark ? 'dark' : 'light';
-  // `getConfig` lives on `mermaid.mermaidAPI` (deprecated in the types, present
-  // at runtime in mermaid 11) — the default export has none, a cast hid that
-  // and the guard never short-circuited (oracle review of the r2 batch).
-  const api = (mermaid as { mermaidAPI?: { getConfig?: () => { securityLevel?: string } } }).mermaidAPI;
-  const currentLevel = api?.getConfig?.().securityLevel;
-  if (initializedTheme === theme && currentLevel === 'strict') return;
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'strict',
-    theme: isDark ? 'dark' : 'base',
-    darkMode: isDark,
-    // Without a svgContainingElement, a draw-phase throw (an error that
-    // got past mermaid.parse) leaves mermaid's temp element orphaned in
-    // document.body — its error path only cleans up when this flag is
-    // set. We render our own error tab anyway, so mermaid's built-in
-    // error diagram is dead weight here regardless.
-    suppressErrorRendering: true,
-  });
-  initializedTheme = theme;
 };
 
 /**
@@ -351,7 +327,7 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
         needsCorrectiveRef.current = false;
         lastSuccessRef.current = { code: props.code, isDark };
         applyView({ kind: 'diagram', chartType: diagramType });
-      } catch {
+      } catch (error) {
         if (cancelled || renderVersion !== renderVersionRef.current) {
           return;
         }
@@ -361,12 +337,13 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
         if (streaming) {
           return;
         }
+        const message = describeRenderError(error);
         // End-of-stream corrective pass: the final source no longer renders,
         // so the error must surface even over a mid-stream diagram. Consume
         // the obligation so later unrelated failures don't inherit it.
         if (needsCorrectiveRef.current) {
           needsCorrectiveRef.current = false;
-          applyView({ kind: 'error' });
+          applyView({ kind: 'error', message });
           return;
         }
         // Static rule: never clobber a rendered diagram (theme-flip
@@ -374,7 +351,7 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
         if (viewRef.current.kind === 'diagram') {
           return;
         }
-        applyView({ kind: 'error' });
+        applyView({ kind: 'error', message });
       }
     };
 
@@ -451,6 +428,23 @@ const MantineAIMMermaidCode = memo((props: { code: string }) => {
           withBorder
           withExpandButton
         />
+      )}
+      {view.kind === 'error' && !showOriginalCode && (
+        // The reason, as a text node only: React escapes it, and nothing here
+        // goes through innerHTML. `pre-wrap` keeps mermaid's line/column
+        // pointer lines aligned so the failing line can be found.
+        <Text
+          component="pre"
+          role="status"
+          className="aim-mantine-mermaid-error"
+          fz="xs"
+          c="red"
+          mt={-10}
+          mb={15}
+          style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
+        >
+          {view.message}
+        </Text>
       )}
       <div
         className={`aim-mantine-mermaid-code ${isDark ? 'dark' : ''}`}

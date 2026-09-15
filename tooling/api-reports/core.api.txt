@@ -11,6 +11,7 @@ interface BlockInfo {
     startColumn: number;
     hasReference: boolean;
     hastDigest?: string;
+    swallowedSource?: string;
     containsFootnoteSection?: boolean;
     taintLabels?: {
         footnoteRefLabels: string[];

@@ -41,8 +41,10 @@ export interface ExtractContributionsOptions {
   // BEFORE the render-time gate could tell blocked (attribute absent) from
   // legally empty (`href=""`), and a rewriting transform ran twice
   // (contribute + render) where standalone runs once. The render-time
-  // `sanitizeCrossChunkUrl` gate is the single point of enforcement and
-  // mirrors the standalone pipeline exactly (v2.4.2 review P1-4).
+  // `resolveCrossChunkReference` gate (schema, hash rebasing, urlTransform)
+  // is the single point of enforcement and mirrors the standalone pipeline
+  // exactly (v2.4.2 review P1-4). `sanitizeCrossChunkUrl` is the older
+  // URL-only helper and is not on the adapters' render path.
 }
 
 export function* extractContributions(

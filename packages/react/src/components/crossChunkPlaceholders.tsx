@@ -234,7 +234,13 @@ function renderFootnoteMark(number: number, properties: Element['properties'], p
 
 /** Convert sanitized HAST properties with the same JSX runtime as regular
  * elements (including required/class/style attributes from custom schemas).
- * Link children are already rendered; retain their component identities. */
+ * Link children are already rendered; retain their component identities.
+ *
+ * The runtime options mirror `renderHastSubtree` (components, passNode,
+ * passKeys, ignoreInvalidStyle) so a `customComponents` override for `a` /
+ * `img` applies to a cross-chunk result exactly as it does to a same-chunk
+ * element. `renderHastSubtree` itself is not used here because it would run
+ * `urlTransform` a second time; the engine already applied it. */
 function renderResolvedReference(
   input: Parameters<typeof resolveCrossChunkReference>[0],
   policy: CrossChunkUrlPolicy | null,
@@ -248,7 +254,18 @@ function renderResolvedReference(
     clobberPrefix
   );
   if (!result.element) return result.keepChildren ? children : null;
-  const rendered = toJsxRuntime(result.element, { Fragment, jsx, jsxs });
+  const rendered = toJsxRuntime(result.element, {
+    Fragment,
+    components: policy?.components,
+    ignoreInvalidStyle: true,
+    jsx,
+    jsxs,
+    passKeys: true,
+    passNode: true,
+  });
+  // `cloneElement` swaps `props.children` whatever the element type is, so a
+  // custom `a` component receives the already-rendered link children the
+  // same way the host `<a>` does.
   return input.tagName === 'a' && isValidElement(rendered) ? cloneElement(rendered, undefined, children) : rendered;
 }
 

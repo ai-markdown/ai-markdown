@@ -47,6 +47,9 @@ export interface BlockCacheEntry {
   /** Mirrors {@link BlockInfo.hastDigest} — must match for raw-HTML blocks
    *  (undefined === undefined for markdown-native blocks). */
   hastDigest?: string;
+  /** Exact source from {@link BlockInfo.swallowedSource}; matching hashes
+   *  alone cannot establish a raw-HTML block's cache identity. */
+  swallowedSource?: string;
   /** Whether the cached node was rendered with the swallowed footnote
    *  section STRIPPED (coordinated mode). Without it in the key the strip
    *  decision is only correct by accident — it happens to co-vary with
@@ -141,11 +144,13 @@ function withoutFootnoteSection(el: HastElement): HastElement {
  * Render the document plan with cache lookup + atomic Cache replacement.
  *
  * Cache identity for a `block` item is `(raw, occurrence index within bucket,
- * ctx, position triple, hastDigest)`. ctx == globalCtx for tainted blocks, ''
- * otherwise (sentinel collapses both paths into one validation). hastDigest
+ * ctx, position triple, hastDigest, swallowedSource)`. ctx == globalCtx for
+ * tainted blocks, '' otherwise (sentinel collapses both paths into one validation). hastDigest
  * is undefined for markdown-native blocks (undefined === undefined passes)
  * and a subtree digest for raw-HTML blocks, so containers that swallowed
  * following siblings mid-stream re-render when the swallowed extent changes.
+ * Exact swallowedSource equality prevents a digest collision from reusing
+ * stale content; it is checked only after the digest matches.
  *
  * The synthesized footnote section is a single-slot cache keyed by globalCtx.
  * Atomic Cache replacement (`cacheRef.current = next`) ensures stale slots
@@ -257,6 +262,7 @@ export function renderBlocksWithCache(
         entry.startLine === block.startLine &&
         entry.startColumn === block.startColumn &&
         entry.hastDigest === block.hastDigest &&
+        entry.swallowedSource === block.swallowedSource &&
         Boolean(entry.strippedFootnoteSection) === stripSection;
 
       let node: ReactNode;
@@ -281,6 +287,7 @@ export function renderBlocksWithCache(
         startLine: block.startLine,
         startColumn: block.startColumn,
         hastDigest: block.hastDigest,
+        swallowedSource: block.swallowedSource,
         strippedFootnoteSection: stripSection,
       });
       rendered.push({ node, key: item.key });
@@ -297,6 +304,7 @@ export function renderBlocksWithCache(
         entry.startLine === block.startLine &&
         entry.startColumn === block.startColumn &&
         entry.hastDigest === block.hastDigest &&
+        entry.swallowedSource === block.swallowedSource &&
         Boolean(entry.strippedFootnoteSection) === stripSection;
       const node = valid ? entry.node : renderHastSubtree(item.el, postOptions);
       bucket.push({
@@ -306,6 +314,7 @@ export function renderBlocksWithCache(
         startLine: block.startLine,
         startColumn: block.startColumn,
         hastDigest: block.hastDigest,
+        swallowedSource: block.swallowedSource,
         strippedFootnoteSection: stripSection,
       });
       rendered.push({ node, key: item.key });

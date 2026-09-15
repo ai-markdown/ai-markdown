@@ -25,6 +25,7 @@ import { useMarkdownChunk } from './useMarkdownChunk';
 import { deriveTailSignal } from '@ai-markdown/core';
 import { AIMarkdownStreamingCursor } from './cursor';
 import { renderTree } from './render';
+import { stableComputed } from './stable';
 import type { AIMarkdownProps } from './types';
 
 export const markdownProps = {
@@ -62,7 +63,16 @@ export const AIMarkdown = defineComponent({
     // client mount twice (fully, then again incrementally once the flag
     // flipped), and hydration rebuilds from empty state either way.
     const client = typeof window !== 'undefined';
-    const plugins = computed(() => (props.enginePlugins ?? defaultEnginePlugins).filter(isEnginePlugin));
+    // Prop boundary for the two parse inputs whose identity keys the engine's
+    // retained state (the depsKey of the incremental parser and the
+    // remark/rehype chain built from them). A parent passing an inline
+    // `[...]` or `{...}` literal hands a new reference every render; the
+    // stabilizers return the previous value when the new one is deep-equal,
+    // so the chunk's computeds never see a change and no re-parse happens.
+    // Below this boundary reference equality is trusted outright, as in the
+    // React adapter's stability firewall.
+    const plugins = stableComputed(() => (props.enginePlugins ?? defaultEnginePlugins).filter(isEnginePlugin));
+    const schema = stableComputed(() => props.sanitizeSchema ?? sanitizeSchema);
     const latex = createIncrementalLatexPreprocessor();
     const content = computed(() => preprocessAIMDContent(props.content, props.contentPreprocessors, latex));
     // Acquire only after mount. Server and hydration's first render have no
@@ -85,7 +95,7 @@ export const AIMarkdown = defineComponent({
       preserveOrphanReferences: props.preserveOrphanReferences ?? false,
       incrementalParse: client && (props.incrementalParse ?? true),
       enginePlugins: plugins.value,
-      sanitizeSchema: props.sanitizeSchema ?? sanitizeSchema,
+      sanitizeSchema: schema.value,
     }));
     return () => {
       const frame = chunk.prepared.value;
@@ -95,8 +105,12 @@ export const AIMarkdown = defineComponent({
         registry: frame.registry,
         sym: frame.sym,
         clobberPrefix: frame.clobberPrefix,
-        sanitizeSchema: props.sanitizeSchema ?? sanitizeSchema,
+        sanitizeSchema: schema.value,
         urlTransform: props.urlTransform ?? defaultUrlTransform,
+        // Not stabilized: the map is only read here, per element, and the
+        // patcher compares the component values it yields, not the map.
+        // An equal map with the same component references keeps every
+        // instance either way; a deep compare would only add cost.
         components: props.components ?? {},
         slots,
         streaming: props.streaming ?? false,

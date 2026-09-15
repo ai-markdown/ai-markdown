@@ -1,6 +1,7 @@
 /** Framework-independent algorithm contracts for ai-markdown adapters.
- * Beta APIs may evolve before stable 3.0.0. Test fixtures and implementation
- * registry storage are intentionally source-only, outside this root entry.
+ * Public contracts follow semantic versioning from 3.0.0. Test fixtures and
+ * implementation registry storage are intentionally source-only, outside
+ * this root entry.
  */
 
 // ── M3: incremental-parse engine + definition machinery ──────────────────

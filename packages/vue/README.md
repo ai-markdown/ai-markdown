@@ -46,6 +46,8 @@ Pass the complete accumulated string as `content`. Your application owns transpo
 
 Vue uses `components` and named element slots for customization. It has no React context hooks, `blockMemo` prop, React typography variants or Mantine integration. Nuxt-specific packaging and KeepAlive/Suspense combinations require separate integration coverage.
 
+Orphan footnote policy differs from React. Each Vue `AIMarkdown` decides for itself through `preserveOrphanReferences`, which defaults to `false`, and `AIMarkdownDocuments` has no document-level override. React's `<AIMarkdownDocuments>` defaults the policy to `true` for every chunk, so a footnote definition whose reference never arrives shows in React's document footer but not in Vue's. Pass `:preserve-orphan-references="true"` on each chunk to get the same output.
+
 ## Documentation
 
 - [Component and composable reference](https://ai-markdown.github.io/docs/vue/).

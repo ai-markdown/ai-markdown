@@ -1,4 +1,10 @@
-import { sanitizeSchema } from '@ai-markdown/engine';
+import {
+  sanitizeSchema,
+  defaultEnginePlugins,
+  extendSanitizeSchema,
+  type AIMarkdownEnginePlugin,
+  type SanitizeSchema,
+} from '@ai-markdown/engine';
 import { createRegistry } from '../../engine/src/components/documentRegistry';
 import { createRenderer, createSSRApp, defineComponent, h, nextTick, shallowRef } from 'vue';
 import { renderToString } from '@vue/server-renderer';
@@ -517,6 +523,142 @@ describe('the resolution snapshot separates url, title and absence', () => {
       expect(doc.link()).toEqual({ href: 'https://example.com/a', title: 't' });
     } finally {
       doc.unmount();
+    }
+  });
+});
+
+describe('deep-equal parse inputs from a parent re-render keep the previous frame', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  const tags = (n: HostNode): string[] => [...(n.tag ? [n.tag] : []), ...n.children.flatMap(tags)];
+
+  test('equal enginePlugins and sanitizeSchema literals do not re-parse; different ones do', async () => {
+    vi.stubGlobal('window', {});
+    parseCounts.length = 0;
+    const tick = shallowRef(0);
+    const plugins = shallowRef<readonly AIMarkdownEnginePlugin[]>(defaultEnginePlugins);
+    const extend = shallowRef<(draft: SanitizeSchema) => void>(() => {});
+    let renders = 0;
+    const root = node();
+    const app = host.createApp({
+      render: () => {
+        void tick.value;
+        return h(AIMarkdown, {
+          content: 'Term\n: Definition',
+          // A parent that inlines both props hands the child a new array
+          // and a new object on every render. The contents are equal until
+          // the refs below change.
+          enginePlugins: [...plugins.value],
+          sanitizeSchema: extendSanitizeSchema(extend.value),
+          onVnodeUpdated: () => {
+            renders += 1;
+          },
+        });
+      },
+    });
+    try {
+      app.mount(root);
+      await settle();
+      expect(parseCounts).toEqual([1]);
+      expect(tags(root)).toContain('dl');
+      // Three parent renders with new-but-equal literals: the child renders
+      // (its props changed identity) but the plugin chain, the schema and
+      // the retained parse state all keep their previous identity, so the
+      // pipeline is not run again.
+      for (let i = 0; i < 3; i++) {
+        tick.value += 1;
+        await settle();
+      }
+      expect(renders).toBe(3);
+      expect(parseCounts).toEqual([1]);
+      // A genuinely different plugin list re-parses and changes the output.
+      plugins.value = [];
+      await settle();
+      expect(parseCounts).toEqual([2]);
+      expect(tags(root)).not.toContain('dl');
+      // A genuinely different schema re-parses as well.
+      extend.value = (draft) => {
+        draft.tagNames?.push('custom-tag');
+      };
+      await settle();
+      expect(parseCounts).toEqual([3]);
+      // And an equal literal after each change is again absorbed.
+      tick.value += 1;
+      await settle();
+      expect(parseCounts).toEqual([3]);
+    } finally {
+      app.unmount();
+    }
+  });
+});
+
+describe('top-level blocks keep their component instances by source offset', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+  const textOf = (n: HostNode): string => n.text + n.children.map(textOf).join('');
+  const paragraphs = (n: HostNode): HostNode[] => [...(n.tag === 'p' ? [n] : []), ...n.children.flatMap(paragraphs)];
+
+  test('appending never remounts earlier blocks and a same-offset rewrite keeps its instance', async () => {
+    vi.stubGlobal('window', {});
+    // Each mapped paragraph records the setup-time instance id it renders
+    // with, so a remount shows up as a new id and a moved instance as an
+    // old id under different text.
+    let nextId = 0;
+    const P = defineComponent({
+      props: ['node', 'streaming', 'metadata'],
+      setup(_props, { slots }) {
+        const id = ++nextId;
+        return () => h('p', { 'data-instance': id }, slots.default?.());
+      },
+    });
+    const content = shallowRef('One\n\nTwo');
+    const root = node();
+    const app = host.createApp({
+      render: () => h(AIMarkdown, { content: content.value, components: { p: P } }),
+    });
+    const snapshot = () => paragraphs(root).map((p) => [p.props['data-instance'], textOf(p)]);
+    try {
+      app.mount(root);
+      await settle();
+      expect(snapshot()).toEqual([
+        [1, 'One'],
+        [2, 'Two'],
+      ]);
+      // Streaming append: every earlier block keeps its offset, so its key
+      // and therefore its instance.
+      content.value = 'One\n\nTwo\n\nThree';
+      await settle();
+      expect(snapshot()).toEqual([
+        [1, 'One'],
+        [2, 'Two'],
+        [3, 'Three'],
+      ]);
+      // Rewriting the first block without changing its length keeps every
+      // offset, so every instance survives.
+      content.value = 'Uno\n\nTwo\n\nThree';
+      await settle();
+      expect(snapshot()).toEqual([
+        [1, 'Uno'],
+        [2, 'Two'],
+        [3, 'Three'],
+      ]);
+      // Keys are source offsets, which is React parity, not content
+      // identity: a rewrite that changes the first block's length shifts
+      // the later blocks' offsets, and those remount. Before keys existed
+      // Vue paired unkeyed siblings by position; the difference shows only
+      // when block order changes, where positional pairing moved a
+      // component's state onto a different block.
+      content.value = 'Primero\n\nTwo\n\nThree';
+      await settle();
+      const shifted = snapshot();
+      expect(shifted.map(([, text]) => text)).toEqual(['Primero', 'Two', 'Three']);
+      expect(shifted[0][0]).toBe(1);
+      expect(shifted[1][0]).toBeGreaterThan(3);
+      expect(shifted[2][0]).toBeGreaterThan(3);
+    } finally {
+      app.unmount();
     }
   });
 });

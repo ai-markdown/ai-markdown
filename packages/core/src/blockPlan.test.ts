@@ -103,6 +103,21 @@ describe('hasMdastSource', () => {
 });
 
 describe('buildBlocks', () => {
+  test('raw HTML retains exact swallowed source when FNV-1a 32-bit digests collide', () => {
+    // FNV-1a 32-bit collision for the swallowed "\n\n" + text interval.
+    const pair = ['0f1yco9044uacz', '01lhtot1bfoy1h'];
+    const blocks = pair.map((text) => {
+      const source = `<details>\n\n${text}\n\n`;
+      const { mdast, hast } = runPipeline(source);
+      return buildBlocks(mdast, hast, source).blocks[0];
+    });
+
+    expect(blocks[0].raw).toBe(blocks[1].raw);
+    expect(blocks[0].hastDigest).toBe('25:3:0:1sn45ex');
+    expect(blocks[1].hastDigest).toBe(blocks[0].hastDigest);
+    expect(blocks.map((block) => block.swallowedSource)).toEqual(pair.map((text) => `\n\n${text}`));
+  });
+
   test('paragraph blocks: 1:1 with mdast top-level', () => {
     const { mdast, hast } = runPipeline('Hello\n\nWorld');
     const built = buildBlocks(mdast, hast, 'Hello\n\nWorld');

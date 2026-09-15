@@ -760,6 +760,31 @@ describe('raw-HTML swallow invalidation (hastDigest)', () => {
     return { built, all };
   }
 
+  test.each([false, true])('FNV-1a 32-bit collision invalidates swallowed content (tainted=%s)', (tainted) => {
+    // These equal-length strings collide after the swallowed "\n\n" prefix.
+    // Appending the same reference suffix preserves that FNV-1a 32-bit collision.
+    const pair = ['0f1yco9044uacz', '01lhtot1bfoy1h'];
+    const source = (text: string) => `<details>\n\n${text}\n\n${tainted ? '[ref][x]\n\n[x]: /url\n' : ''}`;
+    const cacheRef = { current: createCache() };
+    const f1 = rawFrame(source(pair[0]), cacheRef);
+    const d1 = detailsNodeOf(f1.built, f1.all)!;
+    const f2 = rawFrame(source(pair[1]), cacheRef);
+    const d2 = detailsNodeOf(f2.built, f2.all)!;
+
+    expect(f1.built.blocks[0].hasReference).toBe(tainted);
+    expect(f2.built.blocks[0].hasReference).toBe(tainted);
+    expect(f2.built.blocks[0].hastDigest).toBe(f1.built.blocks[0].hastDigest);
+    expect(f2.built.globalCtx).toBe(f1.built.globalCtx);
+    expect(d2.node).not.toBe(d1.node);
+    const html = renderToStaticMarkup(createElement(Fragment, null, d2.node));
+    expect(html).toContain(pair[1]);
+    expect(html).not.toContain(pair[0]);
+
+    // Exact source equality still permits reuse after the corrected render.
+    const f3 = rawFrame(source(pair[1]), cacheRef);
+    expect(detailsNodeOf(f3.built, f3.all)!.node).toBe(d2.node);
+  });
+
   test('unclosed <details> swallowing the footnote section re-renders when the extent changes', () => {
     const cacheRef = { current: createCache() };
     // F1: cut right after the swallowed 内部段落 starts — details contains

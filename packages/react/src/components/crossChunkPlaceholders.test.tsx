@@ -345,6 +345,31 @@ describe('crossChunkPlaceholders — URL sanitization (render-time two-gate)', (
     expect(html).not.toContain('[click]');
   });
 
+  test('localUrl fallback honors policy.components for a and img', () => {
+    const policy: CrossChunkUrlPolicy = {
+      urlTransform: defaultUrlTransform,
+      sanitizeSchema: defaultLibrarySchema,
+      components: {
+        a: ({ node: _node, children, ...props }) => (
+          <a data-custom="a" {...props}>
+            {children}
+          </a>
+        ),
+        img: ({ node: _node, ...props }) => <img data-custom="img" {...props} />,
+      },
+    };
+    const html = renderToString(
+      <WithProvider documentId="doc" policy={policy}>
+        <CrossChunkLink label="own" referenceType="full" localUrl="https://example.com/own">
+          <em>text</em>
+        </CrossChunkLink>
+        <CrossChunkImage label="own" referenceType="full" alt="pic" localUrl="https://example.com/pic.png" />
+      </WithProvider>
+    );
+    expect(html).toContain('<a data-custom="a" href="https://example.com/own"><em>text</em></a>');
+    expect(html).toContain('<img data-custom="img" src="https://example.com/pic.png" alt="pic"/>');
+  });
+
   test('a registry (canonical) def wins over localUrl once it exists', () => {
     function Seed() {
       const ctx = __internalGetContext();

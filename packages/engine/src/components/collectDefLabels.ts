@@ -134,7 +134,7 @@ const BLANK_LINE_RE = /\r?\n[ \t]*\r?\n/g;
 /** Index just past the LAST blank line of `source`, or 0 if none.
  *  Plain non-overlapping scan: for runs of blanks ("\n\n\n") this can land
  *  a newline or two early, but the slack is whitespace-only and whitespace
- *  can never satisfy DEF_LINE_START_RE, so the decision is identical.
+ *  can never satisfy hasDefLineStart, so the decision is identical.
  *  @internal exported for tests only (module path — not on the package barrel) — the fast path is otherwise
  *  indistinguishable from a full parse whose sets came out equal. */
 export function lastRegionStart(source: string): number {
@@ -146,16 +146,44 @@ export function lastRegionStart(source: string): number {
   return start;
 }
 
-/** A line that can START a definition, matched by the FULL def signature:
- *  container prefixes (blockquote `>`, list bullets, ordered-list digits),
- *  then `[label]` with the closing bracket IMMEDIATELY followed by `:` —
- *  remark accepts a definition only with that adjacency (grammar-verified:
- *  `[x]\n: url` and `[x] : url` are paragraphs, and `[a][b]: url` is a
- *  reference because the label's first unescaped `]` isn't followed by
- *  `:`). The label alternation admits escape pairs (`\]` stays inside the
- *  label) and spans newlines (labels may soft-wrap; they cannot cross the
- *  blank line that bounds the region). Both alternatives are disjoint, so
- *  the scan is linear — no backtracking blowup on bracket-dense regions.
+/** Characters that may sit between a line start and a definition's `[`:
+ *  indentation, blockquote `>`, list bullets, ordered-list digits and their
+ *  `.` / `)` — the container prefixes a definition can nest under. */
+const isDefPrefixChar = (c: number): boolean =>
+  c === 0x20 /* space */ ||
+  c === 0x09 /* tab */ ||
+  c === 0x3e /* > */ ||
+  c === 0x2a /* * */ ||
+  c === 0x2b /* + */ ||
+  c === 0x2d /* - */ ||
+  c === 0x2e /* . */ ||
+  c === 0x29 /* ) */ ||
+  (c >= 0x30 && c <= 0x39); /* 0-9 */
+
+/** Does `text` contain a line that can START a definition? Such a line
+ *  carries the FULL def signature: container prefixes (blockquote `>`,
+ *  list bullets, ordered-list digits), then `[label]` with the closing
+ *  bracket IMMEDIATELY followed by `:` — remark accepts a definition only
+ *  with that adjacency (grammar-verified: `[x]\n: url` and `[x] : url` are
+ *  paragraphs, and `[a][b]: url` is a reference because the label's first
+ *  unescaped `]` isn't followed by `:`). The label admits escape pairs
+ *  (`\]` stays inside the label) and spans newlines (labels may soft-wrap;
+ *  they cannot cross the blank line that bounds the region).
+ *
+ *  This predicate used to be the regex
+ *  `/^[ \t>*+\d.)-]*\[(?:[^\]\\]|\\[\s\S])*\]:/m`. Its label subpattern
+ *  spans newlines, so on a region with many line-start `[` and no `]:`
+ *  every line start rescanned to the end of the region — quadratic, 1.4 s
+ *  for 20k lines of `[a`. The single pass below decides the same
+ *  predicate. From a line-start `[` it walks to the first unescaped `]`.
+ *  If that `]` is not followed by `:`, every line-start `[` between the
+ *  two would reach the SAME `]` — an escape pair cannot straddle a
+ *  line-start `[`, because the character before it is a prefix character
+ *  or a line ending, never a backslash — so the scan resumes after the `]`
+ *  instead of revisiting them. If no `]` follows at all, no later
+ *  candidate can close either. Each character is visited once. A `[`
+ *  inside the label is accepted, as the regex did; micromark rejects it,
+ *  so this direction only over-matches.
  *
  *  Requiring the signature (not just a line-start `[`) is what keeps the
  *  streaming-heavy shapes — bulleted link lists `- [t](u)`, task boxes
@@ -165,12 +193,49 @@ export function lastRegionStart(source: string): number {
  *  (`[x` with `]:` still in flight) correctly stays on the fast path too:
  *  the parser sees no definition in it either, and the region re-check on
  *  the completing append flips to the full parse exactly when the answer
- *  can change. The `m` flag also matches at index 0, which is a true line
- *  start (the region begins just past a blank line or at the document
- *  start). Residual over-matching (e.g. `[x]:` inside an open code fence)
- *  is safe: it costs a redundant full parse, never a wrong result.
+ *  can change. Index 0 counts as a line start (the region begins just past
+ *  a blank line or at the document start), and so does the position after
+ *  any `\n` or `\r`, as the regex's `m` flag did. Residual over-matching
+ *  (e.g. `[x]:` inside an open code fence) is safe: it costs a redundant
+ *  full parse, never a wrong result.
  *  @internal exported for tests only (module path — not on the package barrel). */
-export const DEF_LINE_START_RE = /^[ \t>*+\d.)-]*\[(?:[^\]\\]|\\[\s\S])*\]:/m;
+export function hasDefLineStart(text: string): boolean {
+  const n = text.length;
+  // True while every character since the last line start is a prefix
+  // character, i.e. a `[` here is where a definition's label would start.
+  let prefixOk = true;
+  let i = 0;
+  while (i < n) {
+    const c = text.charCodeAt(i);
+    if (c === 0x0a /* \n */ || c === 0x0d /* \r */) {
+      prefixOk = true;
+      i += 1;
+      continue;
+    }
+    if (c === 0x5b /* [ */ && prefixOk) {
+      // Candidate label: find its first unescaped `]`.
+      let k = i + 1;
+      while (k < n) {
+        const d = text.charCodeAt(k);
+        if (d === 0x5c /* \ */) {
+          k += 2;
+          continue;
+        }
+        if (d === 0x5d /* ] */) break;
+        k += 1;
+      }
+      // No `]` after this `[`: no later candidate can close either.
+      if (k >= n) return false;
+      if (text.charCodeAt(k + 1) === 0x3a /* : */) return true;
+      i = k + 1;
+      prefixOk = false;
+      continue;
+    }
+    if (!isDefPrefixChar(c)) prefixOk = false;
+    i += 1;
+  }
+  return false;
+}
 
 export interface DefLabelScanner {
   /** Equivalent to `collectDefLabels(source, options)` at every call, but
@@ -198,7 +263,7 @@ export interface DefLabelScannerOptions extends DefLabelGrammarOptions {
  *
  * Fast path: when the new source merely APPENDS to the previous one, the
  * label set can only differ if the affected region contains a line-start
- * `[label]:` def signature (see DEF_LINE_START_RE — mid-line brackets,
+ * `[label]:` def signature (see hasDefLineStart — mid-line brackets,
  * bulleted links, task boxes and reference lists all lack the adjacent
  * `]:` and stay on the fast path). That region is the previous source's
  * text SINCE ITS LAST BLANK LINE plus the appended text — not just the
@@ -261,7 +326,7 @@ export function createDefLabelScanner(
     scan(source: string): DefLabels {
       if (source === prevSource && prevLabels !== null) return prevLabels;
       // A document-leading BOM is invisible to micromark (dropped before
-      // tokenizing) but not to DEF_LINE_START_RE, whose line-start probe
+      // tokenizing) but not to hasDefLineStart, whose line-start probe
       // sees U+FEFF where the `[` of a line-1 definition sits, nor to the
       // freeze scan, which grants no boundary. Stage A strips every leading
       // BOM before the engine sees the text, so this path is for the
@@ -297,7 +362,7 @@ export function createDefLabelScanner(
           // Joined so a def line straddling the append boundary keeps its
           // line-start context.
           const region = source.slice(previousRegionStart);
-          if (!DEF_LINE_START_RE.test(region)) {
+          if (!hasDefLineStart(region)) {
             prevSource = source;
             return prevLabels;
           }
@@ -316,7 +381,7 @@ export function createDefLabelScanner(
         const slice = source.slice(frozenEnd, boundary);
         // The slice can only add labels if it contains a def signature —
         // the same probe that gates the slow path.
-        if (DEF_LINE_START_RE.test(slice)) {
+        if (hasDefLineStart(slice)) {
           const sliceLabels = parse(slice);
           for (const label of sliceLabels.footnoteLabels) frozenFootnotes.add(label);
           for (const label of sliceLabels.linkLabels) frozenLinks.add(label);
@@ -324,7 +389,7 @@ export function createDefLabelScanner(
         frozenEnd = boundary;
       }
       const tailSource = source.slice(frozenEnd);
-      const tail = DEF_LINE_START_RE.test(tailSource)
+      const tail = hasDefLineStart(tailSource)
         ? parse(tailSource)
         : { footnoteLabels: new Set<string>(), linkLabels: new Set<string>() };
       const next: DefLabels = {

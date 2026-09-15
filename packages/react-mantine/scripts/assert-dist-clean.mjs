@@ -26,3 +26,31 @@ if (offenders.length > 0) {
   );
   process.exit(1);
 }
+
+// Both dist entries must open with the `'use client'` directive. Every
+// export here uses hooks and context, so an RSC consumer that imports the
+// package from a server component needs the boundary marked in the bundle
+// itself. esbuild keeps a directive only from the entry file (src/index.tsx)
+// and drops the ones in nested modules, which is how 3.0.2 shipped without
+// it. The check reads the directive prologue: the leading run of
+// string-literal statements (the CJS build puts "use strict" first), with
+// blank lines and `//` comments skipped.
+const DIRECTIVE = /^["']use client["'];?$/;
+const missingDirective = ['index.js', 'index.cjs'].filter((f) => {
+  const lines = readFileSync(`dist/${f}`, 'utf8').split('\n');
+  for (const line of lines) {
+    const t = line.trim();
+    if (t === '' || t.startsWith('//')) continue;
+    if (DIRECTIVE.test(t)) return false;
+    if (!/^["'][^"']*["'];?$/.test(t)) return true;
+  }
+  return true;
+});
+
+if (missingDirective.length > 0) {
+  console.error(
+    `assert-dist-clean: 'use client' directive missing from ${missingDirective.join(', ')} — ` +
+      'the directive must be the first statement of src/index.tsx, and tsup must not enable `treeshake` (it strips directives).'
+  );
+  process.exit(1);
+}

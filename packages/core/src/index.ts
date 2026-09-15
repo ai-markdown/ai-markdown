@@ -1,4 +1,4 @@
-/** Framework-independent adapter contracts. Beta APIs may evolve before 3.0.0. */
+/** Framework-independent adapter contracts. Public contracts follow semantic versioning from 3.0.0. */
 export {
   buildBlocks,
   computeBlockFingerprint,

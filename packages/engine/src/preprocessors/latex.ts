@@ -381,11 +381,45 @@ function escapeMhchemCommands(text: string) {
   return text.replaceAll('$\\ce{', '$\\\\ce{').replaceAll('$\\pu{', '$\\\\pu{');
 }
 
+/** A `$` that reads as currency from what FOLLOWS it: `$5`, `$1,000.50`,
+ *  `$4.2M`. Decided by the rest of its line (see escapeCurrencyDollarSigns). */
 const CURRENCY_REGEX = /(?<![\\$])\$(?!\$)(?=\d+(?:,\d{3})*(?:\.\d+)?(?:[KMBkmb])?(?:\s|$|[^a-zA-Z\d]))/g;
-// Match \[...\] and \(...\) as LaTeX delimiters, but exclude:
+/** A `$` that reads as currency from what PRECEDES it:
+ *  - right after a number: `5$`, `1,000.50$`;
+ *  - right after a one-to-three-letter uppercase currency code that starts
+ *    a word: `US$`, `CA$`, `A$`, `HK$`, `NZ$`, `S$` (`xUS$` is not one);
+ *  - after a number and one space, before a word: `5 $ now`.
+ *  The first two take the trailing rule of CURRENCY_REGEX (whitespace, end
+ *  or a non-alphanumeric next), so `US$5` and `5$6` stay CURRENCY_REGEX's
+ *  and `5$x` is nobody's. Without this rule these `$` opened inline math:
+ *  `costs 5$ and 10$` became `costs 5$$ and 10$$`, an inlineMath " and 10".
+ *  Decided by the line BEFORE it: a `$` that closes an open inline span
+ *  (`$x = 5$`, `$A$`) is a delimiter, not currency. */
+const CURRENCY_SUFFIX_REGEX =
+  /(?:(?<=\d)|(?<=(?:^|[^A-Za-z\d])[A-Z]{1,3}))\$(?!\$)(?=\s|$|[^A-Za-z\d])|(?<=\d )\$(?= [A-Za-z])/g;
+
+interface CurrencyCandidate {
+  index: number;
+  /** CURRENCY_REGEX form (`$5`): decided by the rest of its line. Otherwise
+   *  a CURRENCY_SUFFIX_REGEX form, decided by the line before it. */
+  leading: boolean;
+  /** Leading form only: where its rest-of-line count stops — the next
+   *  leading candidate, or the end of the text. */
+  restEnd: number;
+}
+// `convertLatexDelimiters` matches \[...\] and \(...\) as LaTeX delimiters,
+// but excludes:
 // - !\[...\] (markdown image)
 // - \[...\]( (markdown link)
-const DELIMITERS_REGEX = /(?<!!)\\\[([\S\s]*?[^\\])\\](?!\()|\\\((.*?)\\\)/g;
+// It used to be this regex, which is still its specification (and the oracle
+// of its differential test):
+//   /(?<!!)\\\[([\S\s]*?[^\\])\\](?!\()|\\\((.*?)\\\)/g
+// The lazy bodies made it quadratic: every unclosed `\(` rescanned to the
+// end of its line and every unclosed `\[` to the end of the text, so 20k
+// bare `\(` took 158 ms and 20k bare `\[` 310 ms, 4x that at 40k. The
+// hand-written scan below finds closers with `indexOf` and remembers
+// where a search failed: a later opener of the same kind searches a suffix
+// of the failed range, so it fails too and is skipped.
 const ARRAY_COL_SPEC_OR_PIPE_REGEX = /(\\begin\{(?:array|tabular[x*]?)\}\{[^}]*\})|(?<!\\)\|/g;
 // Display $$ allows multiline (the blank-line bound on a mid-line opener is
 // applied by the exec loop in escapeLatexPipes, not here); inline $ forbids
@@ -435,11 +469,35 @@ function countBareDollars(str: string, from: number, to: number, prev: string, n
  * expression (e.g. `$8.29 \text{ B} \times 4$`). We detect this by checking
  * whether there is an odd number of unescaped `$` on the same line after the
  * current match — if so, the current `$` is a LaTeX opener, not currency.
+ *
+ * The trailing forms (`5$`, `US$`, `5 $ now`; CURRENCY_SUFFIX_REGEX) use
+ * the mirror check: an odd number of bare `$` on the processed line BEFORE
+ * them means an inline span is open and this `$` closes it. The leading
+ * form's rest-of-line count stops at the next LEADING candidate, as it
+ * always did — a trailing candidate in that stretch is still a bare `$` to
+ * it, so `$8.29 \times 4$` keeps its opener unescaped and its `4$` reads
+ * as the closer.
  */
 function escapeCurrencyDollarSigns(text: string): string {
   const parts: string[] = [];
   let lastIndex = 0;
-  const currencyMatches = Array.from(text.matchAll(CURRENCY_REGEX));
+  const leading = Array.from(text.matchAll(CURRENCY_REGEX), (m) => m.index);
+  const trailing = Array.from(text.matchAll(CURRENCY_SUFFIX_REGEX), (m) => m.index);
+  // Both lists in text order, merged. The two regexes are disjoint by
+  // their lookarounds; should a `$` ever satisfy both, the leading form
+  // decides it.
+  const candidates: CurrencyCandidate[] = [];
+  let t = 0;
+  for (let l = 0; l < leading.length; l++) {
+    const index = leading[l];
+    while (t < trailing.length && trailing[t] < index) {
+      candidates.push({ index: trailing[t], leading: false, restEnd: 0 });
+      t += 1;
+    }
+    if (t < trailing.length && trailing[t] === index) t += 1;
+    candidates.push({ index, leading: true, restEnd: l + 1 < leading.length ? leading[l + 1] : text.length });
+  }
+  for (; t < trailing.length; t++) candidates.push({ index: trailing[t], leading: false, restEnd: 0 });
 
   // Track the processed content of the current line incrementally, as its
   // bare-`$` COUNT plus its last two characters: the parity check below used
@@ -478,9 +536,8 @@ function escapeCurrencyDollarSigns(text: string): string {
     appendToLine(rest);
   };
 
-  for (let i = 0; i < currencyMatches.length; i++) {
-    const match = currencyMatches[i];
-    const segment = text.substring(lastIndex, match.index);
+  for (const candidate of candidates) {
+    const segment = text.substring(lastIndex, candidate.index);
     parts.push(segment);
 
     // Update the line state: keep only content after the last newline.
@@ -496,8 +553,10 @@ function escapeCurrencyDollarSigns(text: string): string {
     // by the next line ending instead of splitting the whole remainder into
     // a line array on every match — O(remainder) per frame on the hot path
     // for the last match (2026-08-19 review).
-    const restStart = match.index + 1;
-    const restEnd = i < currencyMatches.length - 1 ? currencyMatches[i + 1].index : text.length;
+    const restStart = candidate.index + 1;
+    // A trailing form has no rest to count; its verdict comes from the
+    // line before it, below.
+    const restEnd = candidate.leading ? candidate.restEnd : restStart;
     let firstLineBeforeNextMatch = '';
     if (restEnd - restStart > 0) {
       let eol = restEnd;
@@ -525,6 +584,9 @@ function escapeCurrencyDollarSigns(text: string): string {
       if (f0 === '$' && (lineLast === '\\' || lineLast === '$') && firstLineBeforeNextMatch[1] !== '$') whole -= 1;
       if (whole % 2 !== 0) needEscape = false;
     }
+    // Trailing form: currency unless the processed line has an inline span
+    // open (odd bare-`$` count before this one), which this `$` closes.
+    if (!candidate.leading) needEscape = currentLineDollars % 2 === 0;
 
     const replacement = needEscape ? '\\$' : '$';
     parts.push(replacement);
@@ -532,32 +594,110 @@ function escapeCurrencyDollarSigns(text: string): string {
     // see the correct count of unescaped `$` (e.g. a left-as-`$` opener that
     // the next match's check must count).
     appendToLine(replacement);
-    lastIndex = match.index + 1;
+    lastIndex = candidate.index + 1;
   }
   parts.push(text.substring(lastIndex));
   return parts.join('');
+}
+
+/** The line terminators a regex `.` does not match. */
+const isLineTerminator = (c: number): boolean => c === 0x0a || c === 0x0d || c === 0x2028 || c === 0x2029;
+
+/** The closer of a `\[` whose body starts at `bodyStart`: the first `\]` at
+ *  or after `bodyStart + 1` (the body is at least one character) whose
+ *  preceding character is not a backslash and which is not followed by `(`
+ *  — the lazy `([\S\s]*?[^\\])\\](?!\()` of the specification. `-1` when
+ *  there is none. */
+function findSquareCloser(text: string, bodyStart: number): number {
+  let from = bodyStart + 1;
+  for (;;) {
+    const e = text.indexOf('\\]', from);
+    if (e === -1) return -1;
+    if (text.charCodeAt(e - 1) !== 0x5c /* \ */ && text.charCodeAt(e + 2) !== 0x28 /* ( */) return e;
+    from = e + 1;
+  }
 }
 
 /**
  * Convert LaTeX bracket delimiters to dollar sign delimiters.
  * Converts \[...\] to $$...$$ and \(...\) to $...$
  *
+ * Matches are found left to right and never overlap, exactly as the
+ * specification regex quoted above ARRAY_COL_SPEC_OR_PIPE_REGEX would find
+ * them. `\[` bodies may span lines; `\(` bodies may not. An
+ * opener with no closer stays literal. Linear: a failed `\[` search marks
+ * every later `\[` as failed (its range is a suffix of the failed one); a
+ * failed `\(` search records the line terminator that stopped it, so every
+ * `\(` up to that terminator is skipped, and the `\)` it found is reused
+ * for the openers after the terminator.
+ *
  * @param text Input string containing LaTeX expressions
  * @returns String with LaTeX bracket delimiters converted to dollar sign delimiters
  * @modified from https://github.com/lobehub/lobe-ui/blob/master/src/hooks/useMarkdown/latex.ts
+ * @internal exported for tests only (module path — not on the package barrel).
  */
-function convertLatexDelimiters(text: string): string {
-  return text.replaceAll(
-    DELIMITERS_REGEX,
-    (match: string, squareBracket: string | undefined, roundBracket: string | undefined): string => {
-      if (squareBracket !== undefined) {
-        return `$$${squareBracket}$$`;
-      } else if (roundBracket !== undefined) {
-        return `$${roundBracket}$`;
+export function convertLatexDelimiters(text: string): string {
+  const n = text.length;
+  let out = '';
+  let last = 0;
+  // No `\[` at or after this point closes.
+  let squareDead = false;
+  // The first `\)` at or after some earlier point: -2 before the first
+  // search, -1 when there is none (then there is none later either), else
+  // its index, reusable by any opener whose body starts at or before it.
+  let roundCloser = -2;
+  // A line terminator that stopped a `\(` search: openers whose body starts
+  // at or before it see the same terminator before the same `\)`.
+  let roundDeadUntil = -1;
+  let i = text.indexOf('\\');
+  while (i !== -1 && i + 1 < n) {
+    const next = text.charCodeAt(i + 1);
+    if (next === 0x5b /* [ */) {
+      // `![` is an image, not a delimiter.
+      if (!squareDead && text.charCodeAt(i - 1) !== 0x21 /* ! */) {
+        const e = findSquareCloser(text, i + 2);
+        if (e === -1) {
+          squareDead = true;
+        } else {
+          out += `${text.slice(last, i)}$$${text.slice(i + 2, e)}$$`;
+          last = e + 2;
+          i = text.indexOf('\\', e + 2);
+          continue;
+        }
       }
-      return match;
+      // The `[` cannot start a delimiter; resume after it.
+      i = text.indexOf('\\', i + 2);
+      continue;
     }
-  );
+    if (next === 0x28 /* ( */) {
+      const bodyStart = i + 2;
+      if (bodyStart > roundDeadUntil && roundCloser !== -1) {
+        if (roundCloser < bodyStart) roundCloser = text.indexOf('\\)', bodyStart);
+        if (roundCloser !== -1) {
+          let terminator = -1;
+          for (let k = bodyStart; k < roundCloser; k++) {
+            if (isLineTerminator(text.charCodeAt(k))) {
+              terminator = k;
+              break;
+            }
+          }
+          if (terminator === -1) {
+            out += `${text.slice(last, i)}$${text.slice(bodyStart, roundCloser)}$`;
+            last = roundCloser + 2;
+            i = text.indexOf('\\', roundCloser + 2);
+            continue;
+          }
+          roundDeadUntil = terminator;
+        }
+      }
+      i = text.indexOf('\\', i + 2);
+      continue;
+    }
+    // Any other `\` pair: the next character may itself start `\[` / `\(`.
+    i = text.indexOf('\\', i + 1);
+  }
+  if (last === 0) return text;
+  return out + text.slice(last);
 }
 
 /**
@@ -1829,7 +1969,8 @@ const DEFAULT_FREEZE_ATTEMPT_THRESHOLD = 512;
  *   is attempted. Tests pass `0` so SHORT pinned counterexamples actually
  *   exercise the freeze path instead of passing vacuously through the
  *   full-reprocess fallback.
- * @internal Wired by the renderer; not part of the public API.
+ * Public: exported from the package root and used by the React and Vue
+ * adapters; keep one instance per append-only stream.
  */
 /** @soak-entry latex-preprocessor */
 export function createIncrementalLatexPreprocessor(options?: {

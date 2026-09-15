@@ -260,7 +260,7 @@ Sanitization runs in **two independent gates** (defense in depth):
 
 For a private scheme to render, **both gates must permit it**. Allowing only one is the most common pitfall.
 
-**Cross-chunk symmetry.** When `<AIMarkdown>` instances are wrapped in `<AIMarkdownDocuments>`, link/image references resolved across chunks (chunk A defines `[evil]: …`, chunk B writes `[click][evil]`) go through both gates as well — the same `urlTransform` and `sanitizeSchema` you pass to `<AIMarkdown>` apply at render time. The per-attribute key (`'href'` vs `'src'`) is honored: a key-aware policy that permits a scheme on `<a>` but not `<img>` will produce identical behavior whether the reference is in-chunk or cross-chunk.
+**Cross-chunk symmetry.** When `<AIMarkdown>` instances are wrapped in `<AIMarkdownDocuments>`, link/image references resolved across chunks (chunk A defines `[evil]: …`, chunk B writes `[click][evil]`) go through both gates as well — the same `urlTransform` and `sanitizeSchema` you pass to `<AIMarkdown>` apply at render time. The per-attribute key (`'href'` vs `'src'`) is honored: a key-aware policy that permits a scheme on `<a>` but not `<img>` will produce identical behavior whether the reference is in-chunk or cross-chunk. The same holds for `customComponents`: an `a` or `img` override receives the resolved cross-chunk element (with its `node` prop and the already-rendered link children) exactly as it receives a same-chunk one, so a `SafeLink` / `SafeImg` wrapper covers both.
 
 ### Allowing a Custom Scheme
 
