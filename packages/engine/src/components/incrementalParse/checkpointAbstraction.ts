@@ -84,6 +84,12 @@ const p5TokOf = (cp: FreezeScanCheckpointInternal): string => {
   return t.kind;
 };
 
+/* Deliberately absent: `mathHold` and `contentOpenUnknown`, the two
+ * fields of the undeclared-math union (freezeScanState.ts). The search
+ * drives the declared profile (`scannerProfile`), under which both are
+ * constant, so listing them would only add cells no run of this search
+ * can reach. The undeclared profile has its own oracle in
+ * mathCapabilityOracle.test.ts. */
 export const SIGNATURE_DOMAIN: readonly SignatureField[] = [
   {
     name: 'mdBlock',

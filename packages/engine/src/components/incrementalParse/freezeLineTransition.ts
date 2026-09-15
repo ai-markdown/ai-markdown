@@ -39,7 +39,13 @@ import {
   CONTAINER_MARKER_RE,
   RAW_CONSTRUCT_START_RE,
 } from './freezeLineSyntax';
-import { type FreezeScanCheckpointInternal, type LineRec, type P5Tok, type TagAttrState } from './freezeScanState';
+import {
+  type FreezeScanCheckpointInternal,
+  type LineRec,
+  type MathHold,
+  type P5Tok,
+  type TagAttrState,
+} from './freezeScanState';
 import { mdTrimStart, isMdBlank } from './mdLineText';
 import { DEF_RE, FOOTNOTE_DEF_RE, collectRefLine } from './referenceTaint';
 import { assertSealReleaseContained } from './sealReleaseContainment';
@@ -157,6 +163,9 @@ function shouldReleaseSeal(cp: FreezeScanCheckpointInternal, ln: LineRec, isBloc
   // decision table at the end of this function; while it holds, this line
   // belongs to the block above and appends nothing of its own.
   if (cp.prevLineOpenContent) return false;
+  // After an undeclared `$$` closer the two readings disagree about the
+  // content construct until the next blank; UNKNOWN withholds.
+  if (cp.contentOpenUnknown) return false;
   // The one class the line model cannot settle stays UNKNOWN, and UNKNOWN
   // withholds: after a pipe line, whether a GFM table is open decides
   // whether this line is another ROW (no node of its own) or a fresh block.
@@ -218,8 +227,68 @@ const htmlOwnedState = (cp: FreezeScanCheckpointInternal): boolean =>
 export function processConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text: string): void {
   const verbatimBefore = cp.mdBlock.kind === 'fence' || cp.mdBlock.kind === 'math';
   const opaqueBefore = htmlOwnedState(cp);
+  // An undeclared `$$` region closes on the math reading's own rule — a
+  // dollar run at least as long as the opener with nothing after it — no
+  // matter what the text reading makes of that line (it may be inside a
+  // fence or an html block the text reading opened). Decided on the raw
+  // line before the transition and applied after it, so the merge reads
+  // the text reading's settled state for the line.
+  const holdBefore = cp.mathHold;
+  const closesHold = holdBefore !== null && isMathCloser(ln.text, holdBefore.len);
   applyConfirmedLine(cp, ln, text);
-  advanceTaskLine(cp, ln, verbatimBefore, opaqueBefore || htmlOwnedState(cp));
+  const holdOpened = holdBefore === null && cp.mathHold !== null;
+  if (holdOpened) {
+    // The opener line's own block-start verdict is what the math reading
+    // carries through the region (its interior never touches it).
+    cp.mathHold!.hazardAtOpen = cp.hazardVerdict;
+  } else if (closesHold) {
+    closeMathHold(cp, holdBefore!);
+  }
+  // The task tracker cannot own a `$$` line whose grammar is unknown: the
+  // opener may or may not have closed the paragraph, and the closer may
+  // or may not be paragraph text. Both forget the context (root sync
+  // required), exactly like an html-owned line.
+  advanceTaskLine(cp, ln, verbatimBefore, opaqueBefore || htmlOwnedState(cp) || holdOpened || closesHold);
+}
+
+/** The math reading's closer test (`MATH_RUN_RE` at line start, at least
+ *  `len` dollars, only whitespace after), shared by the declared member and
+ *  the undeclared hold. */
+function isMathCloser(lineText: string, len: number): boolean {
+  const close = MATH_RUN_RE.exec(lineText);
+  return close !== null && close[1].length >= len && isMdBlank(lineText.slice(close[0].length));
+}
+
+/**
+ * The closer line of an undeclared `$$` region: merge the math reading
+ * (captured in `hold`) back into the text reading's state. The rule is
+ * written on `MathHold`.
+ */
+function closeMathHold(cp: FreezeScanCheckpointInternal, hold: MathHold): void {
+  cp.mathHold = null;
+  // The text reading must be back where the math reading is — nothing
+  // open, nothing pending, no element opened inside the region still on
+  // the stack (a phantom truncated open counts: it may still be completed
+  // by a later line of the same paragraph under the text reading). Any
+  // difference means the two readings assign every later byte to
+  // different grammars, and no single line model can serve both: poison
+  // from the opener, sticky. Candidates at or before the opener survive.
+  const dirty =
+    cp.mdBlock.kind !== 'none' ||
+    cp.p5Tok.kind !== 'data' ||
+    cp.pendingTag !== null ||
+    cp.pendingTruncatedCloses.length > 0 ||
+    cp.openStack.length !== hold.stackFloor;
+  if (dirty) cp.phasePoisonedAt = Math.min(cp.phasePoisonedAt, hold.start);
+  // Verdicts the text reading may have cleared inside the region and the
+  // math reading kept: the union keeps them (each only rejects candidates
+  // or withholds a release).
+  cp.hazardVerdict = cp.hazardVerdict || hold.hazardAtOpen;
+  cp.p5SealPending = cp.p5SealPending || hold.sealAtOpen;
+  cp.defBlockMaybeOpen = cp.defBlockMaybeOpen || hold.defBlockAtOpen;
+  cp.fnDefResumable = cp.fnDefResumable || hold.fnDefAtOpen;
+  // Content closed (math) versus open (text) until the next blank line.
+  cp.contentOpenUnknown = true;
 }
 
 function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text: string): void {
@@ -294,7 +363,10 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
   /** This line carried an end tag parse5 DISCARDS (F24). Consumed by the
    *  blocker-6 arm below — see the `idx === -1` branch for the rule. */
   let discardedEndTag = false;
-  const applyTag = (tag: string, closing: boolean): void => {
+  /** `revert`: the blank-line undo of a phantom truncated open — the
+   *  scanner's own bookkeeping, not a text-grammar close, so it may pop
+   *  below an undeclared `$$` region's stack floor. */
+  const applyTag = (tag: string, closing: boolean, revert = false): void => {
     // Inside a raw-text element only its own end tag is markup.
     if (inRawTextTok(cp.p5Tok)) {
       // "Script data double escaped" (F6, retired poison → exact ladder):
@@ -392,6 +464,16 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
           break;
         }
         if (SCOPE_BARRIER_NAMES.has(cp.openStack[i]) || (generic && P5_SPECIAL_NAMES.has(cp.openStack[i]))) break;
+      }
+      // Inside an undeclared `$$` region a closing tag matching an element
+      // opened BEFORE the region is the text reading's close only: under
+      // the math reading the tag is math content and the element stays
+      // open, so the two readings disagree about the rest of the document.
+      // Keep the element (the over-blocking side) and poison from the
+      // opener; the token is then treated as discarded below.
+      if (idx !== -1 && !revert && cp.mathHold !== null && idx < cp.mathHold.stackFloor) {
+        cp.phasePoisonedAt = Math.min(cp.phasePoisonedAt, cp.mathHold.start);
+        idx = -1;
       }
       if (idx === -1) {
         // parse5's "any other end tag" rule reached its end: no element to
@@ -600,10 +682,16 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
   // plain-text branch keeps those lines tag-scanned (over-block safe) —
   // but the suppression itself is only certainly right at top level, so it
   // ALSO poisons the phase (see phasePoisonedAt).
-  // Under the scanner profile (mathFlow=false) `$$` is ordinary paragraph
-  // text — no math state, no suppressed-open poison; the line falls through
-  // to the plain-text path where its content stays comment/tag-scanned.
-  const mathRun = cp.mathFlow && !rawOpenAtLineStart ? MATH_RUN_RE.exec(ln.text) : null;
+  // Under the declared-absent profile (mathFlow: false) `$$` is ordinary
+  // paragraph text — no math state, no suppressed-open poison; the line
+  // falls through to the plain-text path where its content stays
+  // comment/tag-scanned. Under the UNKNOWN capability (mathFlow omitted)
+  // the opener ALSO falls through, after recording a `MathHold`: the
+  // region is scanned as text and held closed for candidates at once. A
+  // `$$` line inside an open hold is text to that reading and interior to
+  // the other, so no second hold opens; its closer is decided in
+  // `processConfirmedLine`.
+  const mathRun = cp.mathFlow && cp.mathHold === null && !rawOpenAtLineStart ? MATH_RUN_RE.exec(ln.text) : null;
   if (mathRun) {
     const rest = ln.text.slice(ln.text.indexOf(mathRun[1]) + mathRun[1].length);
     // A `$` anywhere in the rest disqualifies the flow open (meta may not
@@ -613,6 +701,20 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
       if (cp.mdBlock.kind === 'html') {
         // Row 6, math half — same member gate, same kept backstop.
         cp.phasePoisonedAt = Math.min(cp.phasePoisonedAt, ln.start);
+      } else if (!cp.mathDeclared) {
+        // Unknown capability: hold the region, then scan this line as the
+        // paragraph text it is under the other reading (its meta may carry
+        // references or tags). `hazardAtOpen` is filled in after the line.
+        cp.mathHold = {
+          start: ln.start,
+          len: mathRun[1].length,
+          indent: ln.indent,
+          stackFloor: cp.openStack.length,
+          hazardAtOpen: false,
+          sealAtOpen: cp.p5SealPending,
+          defBlockAtOpen: cp.defBlockMaybeOpen,
+          fnDefAtOpen: cp.fnDefResumable,
+        };
       } else {
         if (isBlockStart) {
           const verdict = classifyBlockStart(ln.text, ln.indent, cp.defListEnabled);
@@ -638,7 +740,7 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
     // Line-truncated tag opens that never got their `>` before this blank
     // were prose: revert their phantom opens BEFORE judging balance here.
     if (cp.pendingTruncatedTags.length > 0) {
-      for (const tag of cp.pendingTruncatedTags) applyTag(tag, true);
+      for (const tag of cp.pendingTruncatedTags) applyTag(tag, true, true);
       cp.pendingTruncatedTags = [];
     }
     // Truncated closes that never got their `>` stay UNAPPLIED (see the
@@ -696,29 +798,39 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
     // 2-5 run to their terminators.)
     if (cp.mdBlock.kind === 'html' && cp.mdBlock.type >= 6) cp.mdBlock = { kind: 'none' };
     cp.blankRun += 1;
-    cp.lastBlankStart = ln.start;
-    cp.candidates.push({
-      offset: Math.min(ln.end + 1, text.length),
-      blankRun: cp.blankRun,
-      // The html member covers types 1-5 in one check: an unterminated
-      // type-1 block swallows this blank and everything after it as RAW
-      // content (its tags are invisible to the balance scan — the raw-text
-      // mask suppresses them — which is exactly why `openTotal` reads 0
-      // and the candidate looked safe), and the 2-5 interiors are the
-      // same construct to both grammars.
-      htmlBalanced:
-        cp.openTotal === 0 &&
-        cp.mdBlock.kind !== 'html' &&
-        (cp.p5Tok.kind as P5Tok['kind']) !== 'bogus' &&
-        // A form pointer parse5 may still be holding makes a LATER `<form>`
-        // in the tail vanish from the full parse while a split parse opens
-        // it — forward independence fails with every other condition clean.
-        // See the field doc.
-        !cp.formPointerMaybeSet,
-      hazard: cp.hazardVerdict,
-      seamRisk: cp.p5SealPending,
-      defListSettled: null,
-    });
+    // Both readings of an undeclared `$$` closer agree here: the blank
+    // closes content.
+    cp.contentOpenUnknown = false;
+    // Inside an undeclared `$$` region the blank is math interior under one
+    // reading: no candidate, and no definition settles on it (a settled
+    // definition releases reference taint, which the math reading would
+    // not do here), though the text reading's state above and below still
+    // advances.
+    if (cp.mathHold === null) {
+      cp.lastBlankStart = ln.start;
+      cp.candidates.push({
+        offset: Math.min(ln.end + 1, text.length),
+        blankRun: cp.blankRun,
+        // The html member covers types 1-5 in one check: an unterminated
+        // type-1 block swallows this blank and everything after it as RAW
+        // content (its tags are invisible to the balance scan — the raw-text
+        // mask suppresses them — which is exactly why `openTotal` reads 0
+        // and the candidate looked safe), and the 2-5 interiors are the
+        // same construct to both grammars.
+        htmlBalanced:
+          cp.openTotal === 0 &&
+          cp.mdBlock.kind !== 'html' &&
+          (cp.p5Tok.kind as P5Tok['kind']) !== 'bogus' &&
+          // A form pointer parse5 may still be holding makes a LATER `<form>`
+          // in the tail vanish from the full parse while a split parse opens
+          // it — forward independence fails with every other condition clean.
+          // See the field doc.
+          !cp.formPointerMaybeSet,
+        hazard: cp.hazardVerdict,
+        seamRisk: cp.p5SealPending,
+        defListSettled: null,
+      });
+    }
     cp.paragraphHasUnpairedRun = false;
     cp.openBracket = null;
     // A type-1 block is the one html block a BLANK LINE does not end — its
@@ -880,7 +992,12 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
       // so poison rather than answer — sticky over-block, and the marker
       // disarms at the blank, where the container provably ended and the
       // plain verdict is right again.
-      if (type7Shaped && cp.containerMaybeOpen) {
+      // The THIRD undecidable interrupt input, same treatment: after an
+      // undeclared `$$` closer the content construct is closed under the
+      // math reading and open under the text reading (see
+      // `contentOpenUnknown`), and a type-7 line goes to a different
+      // grammar under each.
+      if (type7Shaped && (cp.containerMaybeOpen || cp.contentOpenUnknown)) {
         cp.phasePoisonedAt = Math.min(cp.phasePoisonedAt, ln.start);
       }
     }
@@ -946,7 +1063,19 @@ function applyConfirmedLine(cp: FreezeScanCheckpointInternal, ln: LineRec, text:
   // at line start, so adding the term could not change a single verdict.
   // The asymmetry is intentional, not an oversight (2026-08-26 review).
   const defRawToMicromark = cp.mdBlock.kind === 'html' || rawOpenAtLineStart || inRawTextTok(cp.p5Tok);
-  const { validLinkDef } = collectRefLine(cp, ln.start, ln.end, scanText, ln.text, defRawToMicromark, isBlockStart);
+  // Inside an undeclared `$$` region a definition exists under one reading
+  // only, and a ghost definition releases reference taint early (the
+  // unsafe direction) — so none registers there. References on the line
+  // are still extracted, which only over-taints.
+  const { validLinkDef } = collectRefLine(
+    cp,
+    ln.start,
+    ln.end,
+    scanText,
+    ln.text,
+    defRawToMicromark || cp.mathHold !== null,
+    isBlockStart
+  );
 
   // Blocker 1: raw-block (types 3–5) state machine, then tag balance.
   // `rawSpans` records the byte ranges this line contributes to raw

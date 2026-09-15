@@ -94,7 +94,7 @@ interface IncrementalParseState {
     spliceCache: SplicePrefixCache | null;
     depsKey: readonly unknown[];
     gfmTaskListItems: boolean;
-    mathFlow: boolean;
+    mathFlow: boolean | undefined;
 }
 type IncrementalStage = 'scan' | 'parse' | 'transform';
 interface AdvanceOptions {

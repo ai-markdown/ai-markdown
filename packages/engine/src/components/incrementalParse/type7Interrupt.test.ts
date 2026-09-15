@@ -28,9 +28,12 @@
  * `html` node type for inline html, so flow-ness is "the parent is not a
  * paragraph". A root-only oracle is blind to exactly the container-held
  * blocks this battery has to see, and pinned the container rows to the
- * wrong answers until 2026-08-26. It also runs remark-math, because the
- * scanner's default profile has `mathFlow` on — an oracle built with a
- * different extension set disagrees for reasons that are not defects.
+ * wrong answers until 2026-08-26. It also runs remark-math, and the
+ * scanner is DECLARED the same grammar (`mathFlow: true`) — an oracle and
+ * a scanner built with different extension sets disagree for reasons that
+ * are not defects (with `mathFlow` omitted the scanner runs the union of
+ * both grammars, where a `$$` closer leaves the content construct
+ * undecided on purpose; see mathCapabilityOracle.test.ts).
  */
 import { describe, expect, test } from 'vitest';
 import { unified } from 'unified';
@@ -43,7 +46,7 @@ import { assertStreamEquivalence } from './spliceArbiterHarness';
 import { scheduleSnapshots } from './fuzzGenerators';
 
 const PROBE = '<x-y/>';
-const OPTS = { defListEnabled: false };
+const OPTS = { defListEnabled: false, mathFlow: true };
 
 interface MdNode {
   type: string;

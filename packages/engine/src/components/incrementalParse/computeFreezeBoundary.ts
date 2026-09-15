@@ -25,8 +25,14 @@
  *    scanned, not skipped as construct interior.
  * 2. **`$$` flow math** — remark-math's flow math swallows blank lines and
  *    runs to EOF when unclosed (verified empirically); its closing fence
- *    must sit at LINE START (a mid-line `$$` does not close it). Math
- *    interiors are treated exactly like fence interiors: no candidates.
+ *    must sit at LINE START (a mid-line `$$` does not close it). Under a
+ *    DECLARED `mathFlow: true` math interiors are treated exactly like
+ *    fence interiors: no candidates, no scanning. Under `mathFlow: false`
+ *    there is no math grammar and `$$` lines are paragraph text. With
+ *    `mathFlow` omitted the capability is unknown and the scanner takes
+ *    the union: the region holds candidates like a fence AND its lines
+ *    are scanned as text, with the two readings merged at the closer
+ *    (`MathHold` in freezeScanState.ts).
  * 3. **Continuation context** — CommonMark lists, footnote definitions, and
  *    indented code blocks are NOT terminated by blank lines; later indented
  *    lines can extend a block that "ended" before the candidate. With the
@@ -50,8 +56,8 @@
  *    has proved it sits where micromark's `tasklistCheck` consumes it and
  *    its paragraph can no longer become a heading or a table head. A `$$`
  *    opener counts as such a close only under a DECLARED `mathFlow: true`;
- *    the scanner's own `$$` default is an assumption that over-blocks
- *    candidates, not evidence about the caller's grammar.
+ *    under the unknown capability the tracker forgets the item at the
+ *    opener and at the closer.
  * 6. **Raw-remnant seam** — an html FLOW run can swallow non-tag lines
  *    (e.g. a `$$` math fence glued under `</details>`); once tag balance
  *    returns to zero, that remnant becomes FLOATING text that parse5/
@@ -157,9 +163,12 @@ export function computeFreezeBoundary(
   options: FreezeBoundaryOptions,
   resume?: FreezeScanCheckpoint | null
 ): FreezeScanResult {
+  // The option's three states, as two profile booleans (see the field
+  // docs on `FreezeScanCheckpointInternal`): `mathFlow` is whether a `$$`
+  // opener holds candidates at all (`true` and omitted), `mathDeclared`
+  // whether the region is verbatim math (`true` only). Omitted is the
+  // union of both grammars.
   const mathFlow = options.mathFlow ?? true;
-  // The default above is the scanner's fence assumption; the task-list
-  // tracker may lean on `$$` only when the caller said the chain has it.
   const mathDeclared = options.mathFlow === true;
   const referenceTaint = options.referenceTaint ?? true;
   const gfmTaskListItems = options.gfmTaskListItems ?? false;

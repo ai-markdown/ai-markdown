@@ -123,13 +123,19 @@ describe('framework-neutral pipeline consumer', () => {
     // The built-in chain has remark-math: the `$$`-closed box is certified
     // and the list is reused by the append frame.
     expect(b.mdast.children[0]).toBe(a.mdast.children[0]);
-    const c = session.parse({ ...declared, mathFlow: false, content: content + 'Tail.\n\n' });
+    // Omitted is the undeclared state and its own deps-key value: the
+    // retained trees are dropped even though the chain did not change.
+    const c = session.parse({ ...declared, mathFlow: undefined, content: content + 'Tail.\n\n' });
     expect(c.mdast.children[0]).not.toBe(b.mdast.children[0]);
     expect(c).toEqual(full(content + 'Tail.\n\n'));
     // Undeclared, the box stays tainted and no later frame reuses the list.
-    const d = session.parse({ ...declared, mathFlow: false, content: content + 'Tail.\n\nMore.\n\n' });
+    const d = session.parse({ ...declared, mathFlow: undefined, content: content + 'Tail.\n\nMore.\n\n' });
     expect(d.mdast.children[0]).not.toBe(c.mdast.children[0]);
     expect(d).toEqual(full(content + 'Tail.\n\nMore.\n\n'));
+    // And back to the declaration: a third deps-key value, a third drop.
+    const e = session.parse({ ...declared, content: content + 'Tail.\n\nMore.\n\n' });
+    expect(e.mdast.children[0]).not.toBe(d.mdast.children[0]);
+    expect(e).toEqual(full(content + 'Tail.\n\nMore.\n\n'));
   });
 
   test('reset and a one-shot frame both discard retained parse trees', () => {

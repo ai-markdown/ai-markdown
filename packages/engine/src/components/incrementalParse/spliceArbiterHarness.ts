@@ -162,6 +162,68 @@ export function assertStreamEquivalence(
   // The production lineage: the adapters' grammar capability on top of the
   // catalog's chain (see ADAPTER_GRAMMAR).
   const options = { ...buildAdvanceOptions(config), ...ADAPTER_GRAMMAR };
+  return runStream(
+    name,
+    snapshots,
+    options,
+    (snapshot) => memoizedOracle(snapshot, config),
+    config.label,
+    streamOptions
+  );
+}
+
+/** Fresh full-pipeline run over a caller-built option set. */
+export function runFullWith(content: string, options: AdvanceOptions): OracleRun {
+  const parsed = parseStage({
+    children: content,
+    remarkPlugins: options.remarkPlugins,
+    rehypePlugins: options.rehypePlugins,
+    remarkRehypeOptions: options.remarkRehypeOptions,
+  });
+  const hast = transformStage(parsed);
+  return { mdast: parsed.mdast, hast };
+}
+
+const optionsOracleMemo = new WeakMap<AdvanceOptions, Map<string, OracleRun>>();
+
+/**
+ * `assertStreamEquivalence` for an option set that is not a catalog cell:
+ * the oracle runs exactly the chain the engine is handed, so a pipeline
+ * without remark-math, or one that leaves a grammar capability undeclared,
+ * is arbitrated against itself. `label` names the cell in failure messages.
+ * The oracle memo is keyed by the options object.
+ */
+export function assertStreamEquivalenceFor(
+  name: string | (() => string),
+  snapshots: string[],
+  options: AdvanceOptions,
+  label: string,
+  streamOptions?: StreamOptions
+): StreamStats {
+  const oracle = (snapshot: string): OracleRun => {
+    let bucket = optionsOracleMemo.get(options);
+    if (!bucket) {
+      bucket = new Map();
+      optionsOracleMemo.set(options, bucket);
+    }
+    const hit = bucket.get(snapshot);
+    if (hit) return hit;
+    const run = runFullWith(snapshot, options);
+    if (bucket.size >= ORACLE_MEMO_CAP) bucket.delete(bucket.keys().next().value!);
+    bucket.set(snapshot, run);
+    return run;
+  };
+  return runStream(name, snapshots, options, oracle, label, streamOptions);
+}
+
+function runStream(
+  name: string | (() => string),
+  snapshots: string[],
+  options: AdvanceOptions,
+  oracle: (snapshot: string) => OracleRun,
+  label: string,
+  streamOptions?: StreamOptions
+): StreamStats {
   const fallbackSample = streamOptions?.fallbackOracleSample ?? 1;
   let state: IncrementalParseState | null = null;
   let incrementalFrames = 0;
@@ -177,21 +239,21 @@ export function assertStreamEquivalence(
       return;
     }
 
-    const expected = memoizedOracle(snapshot, config);
-    const label = () =>
-      `${typeof name === 'function' ? name() : name} [${config.label}] frame=${frame} len=${snapshot.length} boundary=${result.boundary} incremental=${result.usedIncremental}`;
+    const expected = oracle(snapshot);
+    const where = () =>
+      `${typeof name === 'function' ? name() : name} [${label}] frame=${frame} len=${snapshot.length} boundary=${result.boundary} incremental=${result.usedIncremental}`;
     if (!isEqual(result.hast, expected.hast)) {
-      expect.fail(`${label()} — hast mismatch: ${diffLocation(result.hast, expected.hast as never)}`);
+      expect.fail(`${where()} — hast mismatch: ${diffLocation(result.hast, expected.hast as never)}`);
     }
     if (!isEqual(result.mdast, expected.mdast)) {
-      expect.fail(`${label()} — mdast mismatch: ${diffLocation(result.mdast, expected.mdast as never)}`);
+      expect.fail(`${where()} — mdast mismatch: ${diffLocation(result.mdast, expected.mdast as never)}`);
     }
   });
 
   const floor = streamOptions?.minIncrementalFrames ?? 1;
   if (incrementalFrames < floor) {
     expect.fail(
-      `${typeof name === 'function' ? name() : name} [${config.label}] drove ${snapshots.length} frames with incrementalFrames=${incrementalFrames} ` +
+      `${typeof name === 'function' ? name() : name} [${label}] drove ${snapshots.length} frames with incrementalFrames=${incrementalFrames} ` +
         `(floor ${floor}) — the splice never ran, so this pin compared the full path against itself. ` +
         `If zero engagement IS the assertion here, pass { minIncrementalFrames: 0 }.`
     );

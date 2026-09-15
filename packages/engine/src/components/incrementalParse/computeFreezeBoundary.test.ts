@@ -18,8 +18,11 @@ import {
 const computeFreezeBoundary = (text: string, options: FreezeBoundaryOptions): number =>
   scanFreezeBoundary(text, options).boundary;
 
-const OFF = { defListEnabled: false };
-const ON = { defListEnabled: true };
+// The engine profile of these tests: the shipped chain has remark-math,
+// and the declaration is what makes a `$$` region verbatim. Left out, the
+// scanner runs the union of both grammars (mathCapabilityOracle.test.ts).
+const OFF = { defListEnabled: false, mathFlow: true };
+const ON = { defListEnabled: true, mathFlow: true };
 
 describe('computeFreezeBoundary — basics', () => {
   test('single blank line between paragraphs is a boundary', () => {

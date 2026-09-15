@@ -12,7 +12,10 @@
  * tree kept the literal. The declaration (`mathFlow: true`) now travels
  * through `AdvanceOptions` and core's frame options, and the tracker
  * certifies on a `$$` opener only under it; undeclared, it forgets the
- * item at that line, which over-blocks in both grammars.
+ * item at that line, which over-blocks in both grammars. Since the
+ * follow-up review the undeclared scanner also scans the region as text
+ * (the `MathHold` union — mathCapabilityOracle.test.ts), so omitted and
+ * `false` are two profiles and two G0 states.
  *
  * The first test is the review's reproduction, kept as it was written:
  * red on bf9dc64, green once the declaration is wired through.
@@ -132,12 +135,14 @@ describe('math flow is a declared capability for task-list certification', () =>
     expect(declared.mathDeclared).toBe(true);
     expect(xTaint(declared)).toBe(0);
     expect(declared.task.unknown).toBe(false);
-    // Omitted: the scanner still opens its math block (fence default), the
-    // tracker forgets the item and the box stays an ordinary reference.
+    // Omitted: the scanner holds the region (the union's blocker, not the
+    // math member), the tracker forgets the item and the box stays an
+    // ordinary reference.
     const undeclared = scan(source, base);
     expect(undeclared.mathFlow).toBe(true);
     expect(undeclared.mathDeclared).toBe(false);
-    expect(undeclared.mdBlock.kind).toBe('math');
+    expect(undeclared.mdBlock.kind).toBe('none');
+    expect(undeclared.mathHold).toMatchObject({ len: 2, indent: 2 });
     expect(xTaint(undeclared)).toBe(1);
     expect(undeclared.task.unknown).toBe(true);
     // Fence default off as well: `$$` is a continuation line, the paragraph
@@ -165,8 +170,8 @@ describe('math flow is a declared capability for task-list certification', () =>
     const declared = computeFreezeBoundary(prefix, on, undeclared.checkpoint);
     expect(declared.checkpoint).not.toBe(undeclared.checkpoint);
     expect(declared.boundary).toBe(first.boundary);
-    // `false` differs from omitted for the scanner's fence default, so it is
-    // a third profile; neither of the two is a declaration.
+    // `false` differs from omitted (no hold at all versus the union), so it
+    // is a third profile; neither of the two is a declaration.
     const explicitOff = computeFreezeBoundary(prefix, { ...off, mathFlow: false }, declared.checkpoint);
     expect(explicitOff.checkpoint).not.toBe(declared.checkpoint);
     expect(explicitOff.boundary).toBe(0);
@@ -182,7 +187,7 @@ describe('math flow is a declared capability for task-list certification', () =>
     const off = builtIn({ gfmTaskListItems: true });
     const undeclared = advanceIncrementalParse(first.nextState, source, off);
     expect(undeclared.usedIncremental).toBe(false);
-    expect(undeclared.nextState.mathFlow).toBe(false);
+    expect(undeclared.nextState.mathFlow).toBeUndefined();
     expect(undeclared.nextState.stableBoundary).toBe(0);
     expect(undeclared.mdast).toStrictEqual(full(source, off).mdast);
     const declared = advanceIncrementalParse(undeclared.nextState, source, on);
@@ -190,8 +195,8 @@ describe('math flow is a declared capability for task-list certification', () =>
     expect(declared.nextState.mathFlow).toBe(true);
     expect(declared.nextState.stableBoundary).toBe(first.nextState.stableBoundary);
     expect(declared.hast).toStrictEqual(full(source, on).hast);
-    // At this layer only a declaration counts: `false` and omitted are one
-    // profile, so they reuse each other's state.
+    // All three states are distinct at this layer too: `false` and omitted
+    // do not reuse each other's state.
     const explicitOff = advanceIncrementalParse(
       declared.nextState,
       source,
@@ -199,7 +204,11 @@ describe('math flow is a declared capability for task-list certification', () =>
     );
     expect(explicitOff.usedIncremental).toBe(false);
     expect(explicitOff.nextState.mathFlow).toBe(false);
-    expect(advanceIncrementalParse(explicitOff.nextState, source, off).nextState).toBe(explicitOff.nextState);
+    const omittedAgain = advanceIncrementalParse(explicitOff.nextState, source, off);
+    expect(omittedAgain.usedIncremental).toBe(false);
+    expect(omittedAgain.nextState).not.toBe(explicitOff.nextState);
+    expect(omittedAgain.nextState.mathFlow).toBeUndefined();
+    expect(advanceIncrementalParse(omittedAgain.nextState, source, off).nextState).toBe(omittedAgain.nextState);
   });
 
   test('GFM-only stream: every character split stays full-parse equivalent without the declaration', () => {

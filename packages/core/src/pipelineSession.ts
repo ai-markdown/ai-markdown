@@ -53,10 +53,15 @@ export interface PipelineFrameOptions {
    *  whose paragraph a `$$` opener closed is released only when
    *  `mathFlow` is `true` as well. */
   gfmTaskListItems?: boolean;
-  /** Whether `remarkPlugins` parses `$$` flow math (remark-math). Default
-   *  `false`: the scanner still treats `$$` as a fence opener, but the
-   *  task-list release does not trust that assumption. The adapters pass
-   *  `true` because `buildCoreRemarkPlugins` always includes remark-math. */
+  /** Whether `remarkPlugins` parses `$$` flow math (remark-math). Passed
+   *  through to the engine in all three states: `true` declares it (a
+   *  `$$` region is verbatim math), `false` declares its absence (`$$`
+   *  lines are paragraph text), and omitted leaves it unknown — the
+   *  scanner then takes the union of both grammars, which is correct for
+   *  either chain and freezes less around `$$`. The adapters pass `true`
+   *  because `buildCoreRemarkPlugins` always includes remark-math; a
+   *  caller with its own chain should declare the real value and may
+   *  leave it out when unsure. */
   mathFlow?: boolean;
   measure?: AdvanceOptions['measure'];
 }
@@ -128,7 +133,8 @@ export function createPipelineSession(): PipelineSession {
       incrementalParse,
       defListEnabled,
       gfmTaskListItems = false,
-      mathFlow = false,
+      // No default: omitted is its own (undeclared) state at the engine.
+      mathFlow,
       measure: measureHere = unmeasured,
     }: PipelineFrameOptions) {
       // The suffix is APPENDED (the engine treats it as an always-tail

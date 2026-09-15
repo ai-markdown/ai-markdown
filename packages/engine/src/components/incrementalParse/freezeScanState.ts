@@ -7,25 +7,30 @@ export interface FreezeBoundaryOptions {
    *  `enginePlugins` selection includes `definitionList`). Enables blockers 3b/4. */
   defListEnabled: boolean;
   /**
-   * Whether `$$` flow math is in the grammar (remark-math). Default `true`
-   * (the engine's own profile). The def-label scanner runs a PINNED
-   * remark-parse+gfm subset where `$$` is ordinary paragraph text — under
-   * that grammar the math branch is a MASKING hole: `inMath` returns early
-   * without comment/fence scanning, so `$$\n<!--\n$$` reads as a closed
-   * math block here while the subset grammar sees an OPEN type-2 HTML
-   * comment running to `-->`/EOF (a candidate after it would let a
-   * standalone tail parse invent ghost defs). With `false`, `$$` lines take
-   * the ordinary text path and comments/fences inside are scanned.
+   * Whether `$$` flow math is in the grammar (remark-math). Three states:
    *
-   * The task-list tracker (`gfmTaskListItems`) reads the field as a
-   * DECLARATION: a `$$` opener closes an item's paragraph for good only
-   * when the chain really has remark-math, so it certifies a box on that
-   * line only when this is explicitly `true`. Omitted keeps the fence
-   * default for candidates but declares nothing, and the tracker forgets
-   * the item at the `$$` line instead (2026-09-15 review N-TASK-1: a
-   * remark-gfm-only caller had its box certified, then `===` turned the
-   * paragraph into a heading whose `[x]` a late definition retargeted).
-   * Both readings are part of the checkpoint profile.
+   * - `true` declares it. A `$$` region is verbatim math: no candidate
+   *   inside it, its lines are not scanned for anything, and the task-list
+   *   tracker may certify a box whose paragraph a `$$` opener closed. The
+   *   adapters pass this (`buildCoreRemarkPlugins` always includes
+   *   remark-math).
+   * - `false` declares its absence. `$$` lines are ordinary paragraph text,
+   *   scanned like any other line and never a fence. The def-label scanner
+   *   runs this profile (its pinned remark-parse+gfm subset has no math).
+   * - omitted means unknown, and the scanner takes the union of the two
+   *   grammars: a `$$` opener still holds every candidate until its closer
+   *   line (`MathHold`), AND every line of the region is scanned as text —
+   *   references, html and raw-text state, fence openers, the task tracker
+   *   — so nothing the no-math grammar would see is missed. Definitions
+   *   inside the region register in neither reading, and state the two
+   *   readings disagree about at the closer poisons the region. This is
+   *   the safe choice for a caller that does not know its chain, and the
+   *   slower one: a smaller boundary is always acceptable, a larger one
+   *   never (2026-09-15 review of ab0042a: with the old "assume math"
+   *   default a remark-gfm caller without remark-math had `$$\n[x]\n$$`
+   *   frozen while the full parse later turned `[x]` into a reference).
+   *
+   * All three are distinct checkpoint profiles.
    */
   mathFlow?: boolean;
   /**
@@ -172,6 +177,50 @@ export interface FreezeScanCheckpoint {
   readonly '~freezeScanCheckpoint'?: never;
 }
 
+/**
+ * An open `$$` region under the UNKNOWN math capability (`mathFlow`
+ * omitted). The scanner runs the text reading on every line of the region
+ * and keeps this record for the math reading, then merges the two at the
+ * closer line:
+ *
+ * - the text reading only ever adds blockers inside the region (references,
+ *   open elements, poisons), so its state carries out unchanged, except
+ *   that a closing tag may not pop an element opened BEFORE the region
+ *   (`stackFloor`) — under the math reading that element is still open;
+ * - the fields the math reading would have left untouched are OR-ed back
+ *   in from the values captured at the opener (`hazardAtOpen`,
+ *   `sealAtOpen`, `defBlockAtOpen`, `fnDefAtOpen`), so a verdict the text
+ *   reading cleared inside the region still blocks;
+ * - if the text reading is not back in the clean state at the closer (an
+ *   html block, fence, comment, raw-text element or pending tag still
+ *   open, or elements opened inside the region still on the stack), the
+ *   two readings disagree about every later byte and the phase is poisoned
+ *   from `start` (sticky, pure over-block: the boundary may still sit at
+ *   the opener, and the region re-parses in the tail);
+ * - `contentOpenUnknown` is armed for the lines after the closer.
+ *
+ * A region that never closes holds every later candidate, exactly like the
+ * declared math member.
+ */
+export interface MathHold {
+  /** Start offset of the opener line — where a poison from this region lands. */
+  start: number;
+  /** Length of the opening dollar run; a closer needs at least as many. */
+  len: number;
+  /** Indent of the opener line (only a column-0 opener is provably top-level). */
+  indent: number;
+  /** `openStack.length` at the opener, before the opener line's own tags. */
+  stackFloor: number;
+  /** `hazardVerdict` after the opener line, the math reading's value for
+   *  the whole region. */
+  hazardAtOpen: boolean;
+  /** `p5SealPending` / `defBlockMaybeOpen` / `fnDefResumable` at the opener,
+   *  which the math reading carries through the region unchanged. */
+  sealAtOpen: boolean;
+  defBlockAtOpen: boolean;
+  fnDefAtOpen: boolean;
+}
+
 /** Mutable resume state — the real shape behind `FreezeScanCheckpoint`.
  *  Intra-package only (the scanner and its tests); not reachable from the
  *  public entry, so the shape stays out of `dist/index.d.ts`. All fields
@@ -180,13 +229,31 @@ export interface FreezeScanCheckpoint {
 export interface FreezeScanCheckpointInternal extends FreezeScanCheckpoint {
   defListEnabled: boolean;
   /** Grammar-profile switches baked at creation — a checkpoint is only
-   *  resumable under the exact profile that built it. */
+   *  resumable under the exact profile that built it. The two math
+   *  booleans encode the option's three states: `mathFlow` is whether a
+   *  `$$` opener blocks candidates at all (`true` and omitted), and
+   *  `mathDeclared` is `FreezeBoundaryOptions.mathFlow === true` — the
+   *  only state in which a `$$` region is verbatim and the task-list
+   *  tracker may certify on its opener. `mathFlow && !mathDeclared` is
+   *  the unknown state, tracked through `mathHold`. */
   mathFlow: boolean;
-  /** `FreezeBoundaryOptions.mathFlow === true`: the caller declared
-   *  remark-math. `mathFlow` above is the scanner's fence assumption
-   *  (on by default); this is the certification licence the task-list
-   *  tracker needs before a `$$` line may close a paragraph. */
   mathDeclared: boolean;
+  /** The undeclared-math union's blocker: a `$$` region open under the
+   *  unknown capability (`mathFlow && !mathDeclared`). While set, the
+   *  blank branch emits no candidate, closing tags may not pop elements
+   *  opened before the region, and definitions do not register; the
+   *  closer line clears it and merges the two readings (see `MathHold`).
+   *  Null in the declared profiles, where the math member on `mdBlock`
+   *  (declared) or nothing (absent) plays this role. */
+  mathHold: MathHold | null;
+  /** After the closer of an undeclared `$$` region micromark's content
+   *  construct is closed under the math reading and open under the text
+   *  reading (the closer is a paragraph line there). Neither answer is
+   *  conservative for the type-7 interrupt gate or the seal release, so
+   *  while this holds a type-7-shaped line poisons the phase and the seam
+   *  release withholds. Cleared at the next blank line, where both
+   *  readings agree content is closed. */
+  contentOpenUnknown: boolean;
   referenceTaint: boolean;
   gfmTaskListItems: boolean;
   /** `referenceTaint && gfmTaskListItems`: the task-list tracker runs. The
@@ -444,6 +511,8 @@ export function freshCheckpoint(profile: CheckpointProfile): FreezeScanCheckpoin
     formPointerMaybeSet: false,
     openStack: [],
     mdBlock: { kind: 'none' },
+    mathHold: null,
+    contentOpenUnknown: false,
     blankRun: 0,
     lastBlankStart: -1,
     hazardVerdict: false,
@@ -477,6 +546,13 @@ export function freshCheckpoint(profile: CheckpointProfile): FreezeScanCheckpoin
 export function pendingFenceCloser(checkpoint: FreezeScanCheckpoint): string {
   const cp = checkpoint as FreezeScanCheckpointInternal;
   if (cp.phasePoisonedAt !== Infinity) return '';
+  // An undeclared `$$` region takes precedence over anything the text
+  // reading opened inside it: this consumer does not know the grammar
+  // either, and the `$$` closer is what the unknown state produced before
+  // the union (the shipped adapters all have remark-math). Under a chain
+  // without it the closer is a paragraph line in the tail — a display
+  // cost only, since the suffix is never frozen.
+  if (cp.mathHold !== null) return cp.mathHold.indent === 0 ? '$'.repeat(cp.mathHold.len) : '';
   if (cp.mdBlock.kind === 'fence' && cp.mdBlock.indent === 0) return cp.mdBlock.char.repeat(cp.mdBlock.len);
   if (cp.mdBlock.kind === 'math' && cp.mdBlock.indent === 0) return '$'.repeat(cp.mdBlock.len);
   return '';

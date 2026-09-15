@@ -40,7 +40,9 @@
  *
  * Anything else — an html block, a footnote definition, a definition-list
  * description, a fence the scanner does not track, a `$$` line without
- * remark-math declared (`cp.mathDeclared`), a setext or delimiter shape
+ * remark-math declared (`cp.mathDeclared` — the undeclared union scans
+ * the region as text, but which grammar owns the line is still unknown
+ * here), a setext or delimiter shape
  * while the paragraph is open — either drops the pending box (it stays an
  * ordinary reference) or puts the tracker into `unknown`, where it proves
  * nothing until a root sync point (a confirmed blank line followed by a
@@ -539,13 +541,19 @@ function processLine(cp: FreezeScanCheckpointInternal, t: TaskContext, ln: LineR
   const open = t.paragraph !== null;
   const kind = classifyFlow(cp.mathFlow, rest, rel, open, lazy);
   if (kind === 'math' && !cp.mathDeclared) {
-    // The scanner reads `$$` as a fence opener by default, which only
-    // over-blocks candidates. A certificate needs the caller's real
-    // grammar: without remark-math the line is paragraph text, a later
-    // setext underline can still take the box, and the scanner's phase
-    // and this model part company here. Prove nothing until a root sync.
+    // A `$$`-shaped line under the unknown capability. The scanner holds
+    // the region and scans it as text, which only over-blocks candidates;
+    // a certificate needs the caller's real grammar. Without remark-math
+    // the line is paragraph text — it continues an open paragraph, so a
+    // waiting box's `]` + line ending would be inside the paragraph, and
+    // a later setext underline can still take the box; with remark-math
+    // it interrupts. Either way this model cannot say which. Prove
+    // nothing until a root sync. (The scanner's opener and closer lines
+    // reach `advanceTaskLine` as opaque and never get here; this is the
+    // container-aware net for the shapes the line-level hold does not
+    // open, such as `> $$`.)
     forget(t);
-    return true;
+    return false;
   }
   if (open) {
     if (kind === 'continuation') {
@@ -570,7 +578,8 @@ function processLine(cp: FreezeScanCheckpointInternal, t: TaskContext, ln: LineR
  * return path, so the two states never disagree about which line was
  * baked. `verbatimBefore`: a scanner-tracked fence or math block was open
  * at the line start (the line is its interior or closer). `opaque`: the
- * line is html-owned in either grammar, before or after the transition.
+ * line is html-owned in either grammar, before or after the transition,
+ * or it opened or closed a `$$` region whose grammar is undeclared.
  *
  * @soak-entry task-list-release
  */

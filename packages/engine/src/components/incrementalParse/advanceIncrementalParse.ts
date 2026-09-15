@@ -154,9 +154,11 @@ export interface IncrementalParseState {
    *  other deps change: the retained trees were spliced against under the
    *  old profile and must not survive into the new one. */
   gfmTaskListItems: boolean;
-  /** Whether remark-math was declared for these trees (see
-   *  `AdvanceOptions.mathFlow`); a flip is a G0 miss like the above. */
-  mathFlow: boolean;
+  /** The `$$` math capability these trees were frozen under, in all
+   *  three states (`true`, `false`, undefined for undeclared — see
+   *  `AdvanceOptions.mathFlow`); any change between the three is a G0 miss
+   *  like the above. */
+  mathFlow: boolean | undefined;
 }
 
 export type IncrementalStage = 'scan' | 'parse' | 'transform';
@@ -177,16 +179,22 @@ export interface AdvanceOptions {
    *  paragraph a `$$` opener closed additionally requires `mathFlow:
    *  true`. Participates in the G0 deps check on top of `depsKey`. */
   gfmTaskListItems?: boolean;
-  /** Whether the chain parses `$$` flow math (remark-math). Default
-   *  `false`. The boundary scanner assumes `$$` opens a fence either way
-   *  (its standing over-block default for candidates, unchanged); `true`
-   *  additionally lets the task-list tracker certify a box whose paragraph
-   *  a `$$` opener closed. Without remark-math that line is paragraph
-   *  text and a later setext underline can still turn the box into a
-   *  reference, so an undeclared `$$` inside an item keeps the taint. The
-   *  engine's own chain builders always include remark-math, so the
-   *  adapters pass `true`. Participates in the G0 deps check on top of
-   *  `depsKey`. */
+  /** Whether the chain parses `$$` flow math (remark-math). Three states,
+   *  all passed through to the boundary scanner:
+   *  - `true`: declared. A `$$` region is verbatim math — nothing inside
+   *    it is scanned, and the task-list tracker may certify a box whose
+   *    paragraph a `$$` opener closed. The engine's own chain builders
+   *    always include remark-math, so the adapters pass this.
+   *  - `false`: declared absent. `$$` lines are ordinary paragraph text.
+   *  - omitted: unknown. The scanner takes the union of both grammars — a
+   *    `$$` region still holds every candidate until its closer, and its
+   *    lines are also scanned as text for references, html and fences.
+   *    Correct whichever grammar the chain really has, at the cost of
+   *    smaller boundaries around `$$` (and no task-box release there).
+   *    The safe choice when you do not know your chain; declare the real
+   *    value when you do.
+   *  Participates in the G0 deps check on top of `depsKey`: a change
+   *  between any two of the three states drops the retained trees. */
   mathFlow?: boolean;
   /** Cross-chunk phantom-definition suffix (coordinated mode) — appended to
    *  the parse input but NEVER frozen: the append gate, boundary scan, and
@@ -238,7 +246,10 @@ export function advanceIncrementalParse(
   const measure = options.measure ?? identityMeasure;
   const phantomSuffix = options.phantomSuffix ?? '';
   const gfmTaskListItems = options.gfmTaskListItems ?? false;
-  const mathFlow = options.mathFlow === true;
+  // All three states travel: `true`, `false` and undefined are three
+  // scanner profiles, and `undefined === undefined` keeps the G0 check
+  // exact for the undeclared one.
+  const mathFlow = options.mathFlow;
   const sameDeps =
     prev !== null &&
     depsKeyEqual(prev.depsKey, options.depsKey) &&
@@ -269,12 +280,12 @@ export function advanceIncrementalParse(
   // instead of re-lexing the whole document (E2); everything else scans
   // fresh. The checkpoint is mutable and single-consumer — this state
   // lineage owns it.
-  // Only a declaration travels: left out, the scanner keeps its `$$`
-  // fence default and the tracker certifies nothing on such a line.
+  // The math capability reaches the scanner in its three states; an
+  // omitted one stays omitted (the scanner's union profile).
   const scan = measure('scan', () =>
     computeFreezeBoundary(
       content,
-      { defListEnabled: options.defListEnabled, gfmTaskListItems, ...(mathFlow ? { mathFlow } : {}) },
+      { defListEnabled: options.defListEnabled, gfmTaskListItems, ...(mathFlow === undefined ? {} : { mathFlow }) },
       appendOnly ? prev!.scanCheckpoint : null
     )
   );
