@@ -217,7 +217,7 @@ git tag vX.Y.Z
 git push origin main vX.Y.Z
 ```
 
-The five main packages are published as stable 3.0.1 on npm `latest`. Future stable versions use `latest` and a non-prerelease GitHub release; beta/RC versions use their corresponding npm channel and a GitHub prerelease. The independent highlight plugin and code language detector stay on their own stable 1.x lines.
+Stable versions of the five main packages use npm `latest` and a non-prerelease GitHub release; beta/RC versions use their corresponding npm channel and a GitHub prerelease. The independent highlight plugin and code language detector stay on their own stable 1.x lines.
 
 Run `pnpm preflight` before tagging to catch gate failures locally — it is the same check suite the workflow runs, minus the publish. There is deliberately no local publish path: a local `npm publish` cannot attach provenance, so publishing happens only via the tag flow.
 
