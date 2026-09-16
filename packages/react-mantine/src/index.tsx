@@ -33,12 +33,10 @@ export { default as MantineAIMDefaultExtraStyles } from './components/extra-styl
 // --- Types, config, and hooks ---
 
 /** Extended render configuration and metadata types for the Mantine integration. */
-export type {
-  MantineAIMarkdownMetadata,
-  MantineCodeBlockOptions,
-  MantineHighlightJsLike,
-  MantineHighlightJsSource,
-} from './defs';
+export type { MantineAIMarkdownMetadata, MantineCodeBlockOptions } from './defs';
+
+/** The language names code blocks are handed to the highlighter in (`codeBlock.languageFormat`). */
+export { MantineLanguageFormat } from './defs';
 
 // ── v2 surface (props-api v2) ───────────────────────────────────────────────
 
@@ -48,7 +46,7 @@ export { defaultMantineCodeBlockOptions } from './defs';
 /** Narrow hook for the `codeBlock` behavior group — the single assertion site. */
 export { useMantineCodeBlockOptions } from './hooks/useMantineCodeBlockOptions';
 
-/** Optional eager loading of the on-demand code-block assets (mermaid, and highlight.js through a given loader). */
+/** Optional eager loading of the on-demand mermaid module. */
 export { preloadMantineCodeAssets } from './components/customized/PreCode';
 
 /** Widened behaviors factory (core fields + mantine's `codeBlock` group). */

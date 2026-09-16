@@ -1,18 +1,14 @@
 // Generated from the built public declaration. Review changes before updating.
 import * as react from 'react';
 import { AIMarkdownMetadata, AIMarkdownProps, AIMarkdownTypographyProps, AIMarkdownExtraStylesComponent, AIMarkdownBehaviorProps } from '@ai-markdown/react';
-interface MantineHighlightJsLike {
-    highlightAuto: (code: string) => {
-        language?: string;
-    };
+declare enum MantineLanguageFormat {
+    HighlightJs = "highlight-js",
+    Shiki = "shiki"
 }
-type MantineHighlightJsSource = MantineHighlightJsLike | (() => Promise<MantineHighlightJsLike | {
-    default: MantineHighlightJsLike;
-}>);
 interface MantineCodeBlockOptions {
     defaultExpanded: boolean;
     autoDetectUnknownLanguage: boolean;
-    highlightJs?: MantineHighlightJsSource | null;
+    languageFormat?: MantineLanguageFormat;
     formatJson?: boolean;
     expandNestedJson?: boolean;
     highlightIntervalMs?: number;
@@ -29,12 +25,10 @@ declare const _default: typeof MantineAIMarkdownComponent;
 declare const MantineAIMarkdownTypography: react.MemoExoticComponent<({ children, fontSize, style }: AIMarkdownTypographyProps) => react.JSX.Element>;
 declare const MantineAIMDefaultExtraStyles: AIMarkdownExtraStylesComponent;
 declare function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions>;
-declare function preloadMantineCodeAssets(options?: {
-    highlightJs?: MantineHighlightJsSource | null;
-}): Promise<void>;
+declare function preloadMantineCodeAssets(): Promise<void>;
 interface MantineBehaviorProps extends AIMarkdownBehaviorProps {
     codeBlock?: Partial<MantineCodeBlockOptions>;
 }
 declare function defineMantineBehaviors(values: MantineBehaviorProps): Readonly<MantineBehaviorProps>;
 declare const useMantineAIMarkdownMetadata: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>() => TMetadata | undefined;
-export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, type MantineCodeBlockOptions, type MantineHighlightJsLike, type MantineHighlightJsSource, _default as default, defaultMantineCodeBlockOptions, defineMantineBehaviors, preloadMantineCodeAssets, useMantineAIMarkdownMetadata, useMantineCodeBlockOptions };
+export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, type MantineCodeBlockOptions, MantineLanguageFormat, _default as default, defaultMantineCodeBlockOptions, defineMantineBehaviors, preloadMantineCodeAssets, useMantineAIMarkdownMetadata, useMantineCodeBlockOptions };

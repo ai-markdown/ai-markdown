@@ -1,20 +1,16 @@
 /**
- * QA: the code-block renderer's streaming schedule (2026-08 project review,
- * pkg-small-06 follow-up): auto-detection gives an EARLY label, corrects it
- * on doubling, and settles at end of stream; JSON pretty-print lands as soon
- * as the block looks complete rather than when the whole message ends.
- * Runs against the real highlight.js in the browser.
+ * QA: the code-block renderer while a block streams. Auto-detection labels a
+ * block as soon as the evidence is conclusive, never swaps that label for an
+ * unrelated language mid-stream, and starts over when a regenerate replaces
+ * the block; JSON pretty-print lands as soon as the block looks complete
+ * rather than when the whole message ends.
  */
 import { useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor, within, userEvent } from 'storybook/test';
-import hljs from 'highlight.js';
 import MantineAIMarkdown, { type MantineCodeBlockOptions } from '../src/index';
 import { withMantineProvider } from './decorators';
 
-// highlight.js's whole-registry autodetection is noisy by nature (the option
-// is documented as best-effort); this SQL snippet is one it classifies
-// stably at the end (`pgsql`) while guessing differently on short prefixes.
 const SQL_BODY = [
   'SELECT u.id, u.name, COUNT(o.id) AS orders',
   'FROM users u',
@@ -26,12 +22,12 @@ const SQL_BODY = [
   'LIMIT 50;',
 ].join('\n');
 
-/** Unlabelled fence, cut at doubling prefixes; the last frame ends the stream. */
+/** Unlabelled fence, cut at growing prefixes; the last frame ends the stream. */
 const AUTODETECT_FRAMES: Array<{ content: string; streaming: boolean }> = [
-  { content: '```\n' + SQL_BODY.slice(0, 40), streaming: true }, // ≥ 32 chars → early guess
-  { content: '```\n' + SQL_BODY.slice(0, 80), streaming: true }, // doubled → correction
-  { content: '```\n' + SQL_BODY.slice(0, 160), streaming: true }, // doubled again
-  { content: '```\n' + SQL_BODY + '\n```\n\nstill typing prose, done.', streaming: false }, // final verdict
+  { content: '```\n' + SQL_BODY.slice(0, 40), streaming: true },
+  { content: '```\n' + SQL_BODY.slice(0, 80), streaming: true },
+  { content: '```\n' + SQL_BODY.slice(0, 160), streaming: true },
+  { content: '```\n' + SQL_BODY + '\n```\n\nstill typing prose, done.', streaming: false },
 ];
 
 const JSON_DOC = '```json\n{"a": 1, "nested": "{\\"b\\": [1, 2]}"}\n```\n\nThe message keeps going';
@@ -66,31 +62,32 @@ export default meta;
 
 type Story = StoryObj<typeof Harness>;
 
-const AUTODETECT = { autoDetectUnknownLanguage: true, highlightJs: hljs };
+const AUTODETECT = { autoDetectUnknownLanguage: true };
+/** The tab label is the detected language; a block with no language has no tab strip. */
+const tabLabel = (canvasElement: HTMLElement) =>
+  canvasElement.querySelector('.mantine-CodeHighlightTabs-file, [class*="CodeHighlightTabs-file"]')?.textContent ?? '';
 
-export const AutodetectEarlyThenCorrected: Story = {
+export const AutodetectLabelsEarlyAndHolds: Story = {
   render: () => <Harness frames={AUTODETECT_FRAMES} codeBlock={AUTODETECT} />,
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const next = canvas.getByRole('button', { name: 'next frame' });
     const stepIs = (n: number) => waitFor(() => expect(canvas.getByTestId('step').textContent).toBe(String(n)));
-    // The tab label is the detected language; "unknown" is the no-language label.
-    const label = () =>
-      canvasElement.querySelector('.mantine-CodeHighlightTabs-file, [class*="CodeHighlightTabs-file"]')?.textContent ??
-      '';
-    const anyLabel = () => canvasElement.textContent ?? '';
 
-    // Frame 0 (40 chars): an EARLY guess replaces "unknown" before the stream ends.
+    // Every prefix is either still unlabelled or already `sql`: the detector
+    // abstains until the evidence is conclusive and never flips in between.
     await stepIs(0);
-    await waitFor(() => expect(label() || anyLabel()).not.toContain('unknown'), { timeout: 15_000 });
-    await waitFor(() => expect(label()).not.toBe(''), { timeout: 15_000 });
+    expect(['', 'sql']).toContain(tabLabel(canvasElement));
+    for (const step of [1, 2]) {
+      await userEvent.click(next);
+      await stepIs(step);
+      expect(['', 'sql']).toContain(tabLabel(canvasElement));
+    }
+    await waitFor(() => expect(tabLabel(canvasElement)).toBe('sql'));
 
-    // Final frame: the verdict on the full block.
-    await userEvent.click(next);
-    await userEvent.click(next);
     await userEvent.click(next);
     await stepIs(3);
-    await waitFor(() => expect(label()).toBe('pgsql'), { timeout: 15_000 });
+    expect(tabLabel(canvasElement)).toBe('sql');
   },
 };
 
@@ -99,7 +96,7 @@ const PY_BODY = ['import os', 'import sys', '', 'def main(argv):', '    for path
 );
 /** A regenerate on the same block: the SQL block is REPLACED by a same-length
  *  Python block while still streaming (same source offset → same PreCode
- *  instance). The old guess must not survive the swap. */
+ *  instance). The old verdict must not survive the swap. */
 const REGENERATE_FRAMES: Array<{ content: string; streaming: boolean }> = [
   { content: '```\n' + SQL_BODY, streaming: true },
   { content: '```\n' + PY_BODY.padEnd(SQL_BODY.length, ' '), streaming: true }, // same-length replacement must also reset
@@ -112,23 +109,19 @@ export const AutodetectRestartsOnRegenerate: Story = {
     const canvas = within(canvasElement);
     const next = canvas.getByRole('button', { name: 'next frame' });
     const stepIs = (n: number) => waitFor(() => expect(canvas.getByTestId('step').textContent).toBe(String(n)));
-    const label = () =>
-      canvasElement.querySelector('.mantine-CodeHighlightTabs-file, [class*="CodeHighlightTabs-file"]')?.textContent ??
-      '';
 
     await stepIs(0);
-    await waitFor(() => expect(label()).toBe('pgsql'), { timeout: 15_000 });
+    await waitFor(() => expect(tabLabel(canvasElement)).toBe('sql'));
 
-    // Swap to a different, same-length block: the SQL guess must go away.
+    // Swap to a different, same-length block: the SQL verdict must go away,
+    // even though Python sits in another language family.
     await userEvent.click(next);
     await stepIs(1);
-    await waitFor(() => expect(label()).not.toBe('pgsql'), { timeout: 15_000 });
+    await waitFor(() => expect(tabLabel(canvasElement)).toBe('python'));
 
-    // Final verdict is for the Python text, whatever hljs calls it — never pgsql.
     await userEvent.click(next);
     await stepIs(2);
-    await new Promise((r) => setTimeout(r, 500));
-    expect(label()).not.toBe('pgsql');
+    expect(tabLabel(canvasElement)).toBe('python');
   },
 };
 

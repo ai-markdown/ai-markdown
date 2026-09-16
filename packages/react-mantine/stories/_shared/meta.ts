@@ -16,7 +16,7 @@ export const mantineArgTypes: NonNullable<MantineMeta['argTypes']> = {
   codeBlock: {
     control: 'object',
     description:
-      'Code-block behavior group (`defaultExpanded`, `autoDetectUnknownLanguage`, `highlightJs`, `mermaidIntervalMs`, …). ' +
+      'Code-block behavior group (`defaultExpanded`, `autoDetectUnknownLanguage`, `languageFormat`, `mermaidIntervalMs`, …). ' +
       'Replaces atomically; omitted fields fall to the shipped defaults.',
   },
 };

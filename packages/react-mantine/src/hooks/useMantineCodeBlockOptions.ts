@@ -13,7 +13,9 @@
 
 import { useMemo } from 'react';
 import { useAIMarkdownBehaviors } from '@ai-markdown/react';
-import { defaultMantineCodeBlockOptions, type MantineCodeBlockOptions } from '../defs';
+import { defaultMantineCodeBlockOptions, MantineLanguageFormat, type MantineCodeBlockOptions } from '../defs';
+
+const LANGUAGE_FORMATS = new Set<unknown>(Object.values(MantineLanguageFormat));
 
 /**
  * Read the resolved code-block options from the behaviors context.
@@ -46,6 +48,9 @@ export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> 
     }
     if (!Number.isFinite(resolved.mermaidIntervalMs) || resolved.mermaidIntervalMs < 0) {
       resolved.mermaidIntervalMs = defaultMantineCodeBlockOptions.mermaidIntervalMs!;
+    }
+    if (!LANGUAGE_FORMATS.has(resolved.languageFormat)) {
+      resolved.languageFormat = defaultMantineCodeBlockOptions.languageFormat!;
     }
     return resolved;
   }, [group]);
