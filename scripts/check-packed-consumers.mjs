@@ -130,8 +130,9 @@ assert(html.includes('https://example.com'));
 const { MantineProvider } = await import('@mantine/core');
 const { default: MantineMarkdown } = await import('@ai-markdown/react-mantine');
 assert(renderToString(React.createElement(MantineProvider, {}, React.createElement(MantineMarkdown, { content: '**Mantine packed**' }))).includes('<strong>Mantine packed</strong>'));
-// Auto-detection resolves the packed detector dependency during server rendering.
-assert(renderToString(React.createElement(MantineProvider, {}, React.createElement(MantineMarkdown, { content: '\`\`\`\\nfn main() {\\n    let mut total = 0;\\n    println!("{}", total);\\n}\\n\`\`\`', codeBlock: { autoDetectUnknownLanguage: true } }))).includes('>rust<'));
+// Auto-detection resolves the packed detector dependency during server rendering. A detector package tag verifies
+// against the train already on npm, which may predate react-mantine's use of the detector.
+if (require('@ai-markdown/react-mantine/package.json').dependencies?.['@ai-markdown/code-language-detector']) assert(renderToString(React.createElement(MantineProvider, {}, React.createElement(MantineMarkdown, { content: '\`\`\`\\nfn main() {\\n    let mut total = 0;\\n    println!("{}", total);\\n}\\n\`\`\`', codeBlock: { autoDetectUnknownLanguage: true } }))).includes('>rust<'));
 assert.equal(typeof core.createPipelineSession, 'function');
 assert.equal(typeof engine.createRegistry, 'function');
 assert(!('DEFAULT_PAYLOAD' in engine));
