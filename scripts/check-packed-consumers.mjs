@@ -4,16 +4,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { INDEPENDENT, RELEASE_TAG_PATTERN, TRAIN } from './release-packages.mjs';
 
 // Install actual tarballs outside the workspace. No source aliases or symlinks
 // can hide missing dependencies, declaration leaks or broken CSS subpaths.
 const root = resolve(import.meta.dirname, '..');
 const releaseIndex = process.argv.indexOf('--release');
 const releaseTag = releaseIndex < 0 ? null : process.argv[releaseIndex + 1];
-assert(
-  releaseIndex < 0 || /^(?:v|remark-mark-highlight-v)\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(releaseTag ?? ''),
-  'Expected --release <tag>'
-);
+assert(releaseIndex < 0 || RELEASE_TAG_PATTERN.test(releaseTag ?? ''), 'Expected --release <tag>');
 const defaultInstall = process.argv.includes('--default-install');
 assert(!defaultInstall || releaseTag, '--default-install requires --release');
 const manifestFor = (dir) =>
@@ -23,8 +21,7 @@ const manifestFor = (dir) =>
       : readFileSync(join(root, 'packages', dir, 'package.json'), 'utf8')
   );
 const out = mkdtempSync(join(tmpdir(), 'ai-markdown-consumers-'));
-const train = ['engine', 'core', 'react', 'react-mantine', 'vue'];
-const packages = ['remark-mark-highlight', ...train];
+const packages = [...INDEPENDENT, ...TRAIN];
 const dependencies = {};
 for (const dir of packages) {
   const manifest = manifestFor(dir);
@@ -133,15 +130,19 @@ assert(html.includes('https://example.com'));
 const { MantineProvider } = await import('@mantine/core');
 const { default: MantineMarkdown } = await import('@ai-markdown/react-mantine');
 assert(renderToString(React.createElement(MantineProvider, {}, React.createElement(MantineMarkdown, { content: '**Mantine packed**' }))).includes('<strong>Mantine packed</strong>'));
+// Auto-detection resolves the packed detector dependency during server rendering.
+assert(renderToString(React.createElement(MantineProvider, {}, React.createElement(MantineMarkdown, { content: '\`\`\`\\nfn main() {\\n    let mut total = 0;\\n    println!("{}", total);\\n}\\n\`\`\`', codeBlock: { autoDetectUnknownLanguage: true } }))).includes('>rust<'));
 assert.equal(typeof core.createPipelineSession, 'function');
 assert.equal(typeof engine.createRegistry, 'function');
 assert(!('DEFAULT_PAYLOAD' in engine));
-for (const name of ['@ai-markdown/remark-mark-highlight', '@ai-markdown/core', '@ai-markdown/engine', '@ai-markdown/react', '@ai-markdown/react/plugins', '@ai-markdown/react-mantine', '@ai-markdown/vue']) {
+for (const name of ['@ai-markdown/remark-mark-highlight', '@ai-markdown/code-language-detector', '@ai-markdown/core', '@ai-markdown/engine', '@ai-markdown/react', '@ai-markdown/react/plugins', '@ai-markdown/react-mantine', '@ai-markdown/vue']) {
   assert(require(name));
   assert(await import(name));
 }
 for (const name of ['@ai-markdown/react/typography/default.css', '@ai-markdown/react/typography/all.css', '@ai-markdown/react-mantine/styles.css', '@ai-markdown/vue/styles.css']) assert(require.resolve(name).endsWith('.css'));
 assert.equal(typeof require('@ai-markdown/core').createPipelineSession, 'function');
+const detector = require('@ai-markdown/code-language-detector');
+assert.equal(detector.detectLanguage('fn main() {\\n    let mut total = 0;\\n    println!("{}", total);\\n}').language, detector.CodeLanguage.Rust);
 `;
 writeFileSync(join(out, 'probe.mjs'), probe);
 for (const conditions of [[], ['--conditions=development']])
@@ -156,6 +157,10 @@ import AIMarkdown, { AIMarkdownDocuments, createRemendPreprocessor, type AIMarkd
 import MantineAIMarkdown from '@ai-markdown/react-mantine';
 import { createPipelineSession, createSmoothCoordinator, createContributionSession } from '@ai-markdown/core';
 import { createRegistry } from '@ai-markdown/engine';
+import { CodeLanguage, StreamingLanguageDetector, detectLanguage, toHighlightJsLanguage, type LanguageDetectionResult } from '@ai-markdown/code-language-detector';
+const detected: LanguageDetectionResult = new StreamingLanguageDetector().finalize('x');
+const language: CodeLanguage | null = detected.language ?? detectLanguage('x').language;
+if (language) toHighlightJsLanguage(language);
 import * as plugins from '@ai-markdown/react/plugins';
 const props: AIMarkdownProps = { content: 'Example[^x].\\n\\n[^x]: Footnote', contentPreprocessors: [createRemendPreprocessor()], documentId: 'doc' };
 createElement(AIMarkdownDocuments, {}, createElement(AIMarkdown, props));

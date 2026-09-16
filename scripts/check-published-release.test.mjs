@@ -90,6 +90,8 @@ for (const [directory, file, allowed] of [
   ['remark-mark-highlight', 'package.json', false],
   ['remark-mark-highlight', 'LICENSE', false],
   ['remark-mark-highlight', 'src/README.md', false],
+  ['code-language-detector', 'README.md', true],
+  ['code-language-detector', 'src/index.ts', false],
   ['engine', 'README.md', false],
 ]) {
   test(`source equivalence: ${directory}/${file} is ${allowed ? 'allowed' : 'rejected'}`, (t) => {
