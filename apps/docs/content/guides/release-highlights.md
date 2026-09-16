@@ -32,7 +32,11 @@ This minor release aligns engine, core, React, Mantine and Vue at `3.2.0`. Engin
 - Independently versioned packages are listed once, in `scripts/release-packages.mjs` (`remark-mark-highlight`, `code-language-detector`). A train tag publishes them first, then engine, core, React, Mantine and Vue.
 - `code-language-detector-vX.Y.Z` is a valid package tag. The first publication, `code-language-detector-v1.0.0`, bootstraps with `FIRST_PUBLISH_NPM_TOKEN`; after it, the npm trusted publisher must be configured for the new package.
 
-<!-- Verification: fill in at release -->
+#### Verification
+
+All 3,067 unit tests pass (one todo), together with the React (109) and Vue (42) Storybook suites, the packed consumers, the document-lifetime and Vue browser checks including Firefox and WebKit, the public API snapshots, the package export checks, and the documentation site build with its link check. On the pinned GitHub corpus the detector's evidence harnesses report 84.3% coverage and 97.1% strict precision for one-shot detection, and no cross-family flip with 94% correct final verdicts while streaming.
+
+No engine soak campaign was run for this release. `check:soak-impact` requires one because of changes since the 3.1.0 campaign: wider timing bounds in two LaTeX preprocessor unit tests, the `@types/node` development dependency of the highlight plugin, and development toolchain entries in the lockfile (Mantine, sass, yaml, Playwright). Built from the commit that campaign tested and from this candidate, the engine and highlight plugin distributions are byte-identical, and the changed dependencies are not engine runtime dependencies. The maintainer approved the release as an exception on that basis.
 
 ## 3.1.0 — Review fixes, task-list incremental parsing and adapter parity
 

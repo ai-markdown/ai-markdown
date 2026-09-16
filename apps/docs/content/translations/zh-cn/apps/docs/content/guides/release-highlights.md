@@ -32,7 +32,11 @@
 - 独立版本包统一登记在 `scripts/release-packages.mjs`（`remark-mark-highlight`、`code-language-detector`）。统一版本标签会先发布这些包，再依次发布 engine、core、React、Mantine 与 Vue。
 - `code-language-detector-vX.Y.Z` 是有效的包标签。首次发布 `code-language-detector-v1.0.0` 通过 `FIRST_PUBLISH_NPM_TOKEN` 引导完成；此后必须在 npm 上为新包配置 Trusted Publisher。
 
-<!-- Verification: fill in at release -->
+#### 验证
+
+全部 3,067 项单元测试通过（另有 1 项 todo），React（109 项）与 Vue（42 项）Storybook 套件、打包消费者、document-lifetime 与包含 Firefox 和 WebKit 的 Vue 浏览器检查、公开 API 快照、包导出检查，以及文档站构建和链接检查也全部通过。在钉住 commit 的 GitHub 语料上，检测器的 evidence harness 测得：单次检测覆盖率 84.3%、严格 precision 97.1%；流式检测没有出现跨语言家族翻转，最终判定正确率 94%。
+
+本次发布没有运行引擎压测。`check:soak-impact` 判定需要压测，原因是 3.1.0 压测之后有三类改动：两项 LaTeX 预处理器单元测试放宽了计时上限、高亮插件的开发依赖 `@types/node` 升级，以及 lockfile 中的开发工具链条目（Mantine、sass、yaml、Playwright）。分别从上次压测所测的提交和本次候选构建，engine 与高亮插件的产物逐字节相同，变动的依赖也都不是引擎的运行时依赖。维护者据此批准本次发布作为例外。
 
 ## 3.1.0 — 评审修复、任务列表增量解析与适配器对齐
 
