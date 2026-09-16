@@ -1,0 +1,65 @@
+{
+  "name": "@ai-markdown/code-language-detector",
+  "version": "1.0.0",
+  "description": "Zero-dependency heuristic language detection for unlabelled code blocks, built for streamed LLM output: abstains instead of guessing, never flips between language families mid-stream, and maps fence language names to Shiki and highlight.js names.",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": "^20.19.0 || >=22.12.0"
+  },
+  "author": "Brian Lee <aiephoenixbl@gmail.com> (https://github.com/AIEPhoenix)",
+  "homepage": "https://github.com/ai-markdown/ai-markdown/tree/main/packages/code-language-detector#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ai-markdown/ai-markdown.git",
+    "directory": "packages/code-language-detector"
+  },
+  "bugs": {
+    "url": "https://github.com/ai-markdown/ai-markdown/issues"
+  },
+  "keywords": [
+    "language-detection",
+    "code-language",
+    "detect-language",
+    "syntax-highlighting",
+    "code-block",
+    "markdown",
+    "streaming",
+    "llm",
+    "shiki",
+    "highlight.js",
+    "typescript"
+  ],
+  "sideEffects": false,
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": {
+        "import": "./dist/index.d.ts",
+        "require": "./dist/index.d.cts"
+      },
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-dist-clean.mjs",
+    "test": "vitest --run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "evidence": "vitest run --config vitest.evidence.config.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.6",
+    "highlight.js": "^11.11.2",
+    "shiki": "^4.4.3"
+  }
+}
