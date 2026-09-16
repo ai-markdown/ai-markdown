@@ -84,10 +84,47 @@ test('reject tarball bytes differing from provenance subject', () => {
   assert.throws(() => verifyStatement(statement(), Buffer.from('different tarball')));
 });
 
+for (const [name, change, allowed] of [
+  ['a devDependencies update', (manifest) => (manifest.devDependencies['@types/node'] = '^25.9.6'), true],
+  ['a dependencies change', (manifest) => (manifest.dependencies.unified = '^12.0.0'), false],
+  ['a version change', (manifest) => (manifest.version = '1.0.3'), false],
+  ['an exports change', (manifest) => (manifest.exports = './dist/other.js'), false],
+]) {
+  test(`source equivalence: an independent manifest with ${name} is ${allowed ? 'allowed' : 'rejected'}`, (t) => {
+    const cwd = mkdtempSync(join(tmpdir(), 'published-manifest-test-'));
+    t.after(() => rmSync(cwd, { recursive: true, force: true }));
+    const run = (...args) =>
+      execFileSync('git', ['-c', 'user.name=Release test', '-c', 'user.email=test@example.com', ...args], {
+        cwd,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+    run('init');
+    const packageRoot = join(cwd, 'packages', 'remark-mark-highlight');
+    mkdirSync(packageRoot, { recursive: true });
+    const manifest = {
+      name: '@ai-markdown/remark-mark-highlight',
+      version: '1.0.2',
+      exports: './dist/index.js',
+      dependencies: { unified: '^11.0.5' },
+      devDependencies: { '@types/node': '^25.9.5' },
+    };
+    writeFileSync(join(packageRoot, 'package.json'), JSON.stringify(manifest, null, 2));
+    run('add', '.');
+    run('commit', '-m', 'Original published package');
+    const source = run('rev-parse', 'HEAD').toString().trim();
+    change(manifest);
+    writeFileSync(join(packageRoot, 'package.json'), JSON.stringify(manifest, null, 2));
+    run('add', '.');
+    run('commit', '-m', 'Later candidate');
+    const verify = () => verifyPackageSources('remark-mark-highlight', source, 'HEAD', cwd);
+    if (allowed) assert.doesNotThrow(verify);
+    else assert.throws(verify);
+  });
+}
+
 for (const [directory, file, allowed] of [
   ['remark-mark-highlight', 'README.md', true],
   ['remark-mark-highlight', 'src/index.ts', false],
-  ['remark-mark-highlight', 'package.json', false],
   ['remark-mark-highlight', 'LICENSE', false],
   ['remark-mark-highlight', 'src/README.md', false],
   ['code-language-detector', 'README.md', true],
@@ -105,6 +142,8 @@ for (const [directory, file, allowed] of [
     run('init');
     const packageRoot = join(cwd, 'packages', directory);
     mkdirSync(join(packageRoot, 'src'), { recursive: true });
+    // Every published package has a manifest; the independent-package check compares it field by field.
+    writeFileSync(join(packageRoot, 'package.json'), JSON.stringify({ name: `@ai-markdown/${directory}` }));
     const target = join(packageRoot, file);
     writeFileSync(target, 'original package file\n');
     run('add', '.');

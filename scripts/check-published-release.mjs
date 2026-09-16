@@ -45,16 +45,39 @@ const root = resolve(import.meta.dirname, '..');
 const git = (args) =>
   execFileSync('git', args, { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 // An independently versioned package can keep its published version when only
-// its README links change. Its existing tarball and README are still checked
-// against the original provenance; all other package files must stay identical.
+// its README links or its development dependencies change. Its existing tarball
+// and README are still checked against the original provenance; all other
+// package files must stay identical, and so must every other manifest field.
+// devDependencies never reach a consumer's install, so a routine update there
+// does not call for a new version of an unchanged package.
 export function verifyPackageSources(directory, source, target, cwd = root) {
-  const paths = INDEPENDENT.includes(directory)
-    ? [`packages/${directory}`, `:(exclude)packages/${directory}/README.md`]
-    : ['packages', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json'];
-  execFileSync('git', ['diff', '--exit-code', source, target, '--', ...paths], {
-    cwd,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const diff = (paths) =>
+    execFileSync('git', ['diff', '--exit-code', source, target, '--', ...paths], {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+  if (!INDEPENDENT.includes(directory)) {
+    diff(['packages', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json']);
+    return;
+  }
+  const manifest = `packages/${directory}/package.json`;
+  diff([`packages/${directory}`, `:(exclude)packages/${directory}/README.md`, `:(exclude)${manifest}`]);
+  const withoutDevDependencies = (commit) => {
+    const parsed = JSON.parse(
+      execFileSync('git', ['show', `${commit}:${manifest}`], {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      })
+    );
+    delete parsed.devDependencies;
+    return parsed;
+  };
+  assert.deepEqual(
+    withoutDevDependencies(target),
+    withoutDevDependencies(source),
+    `${manifest} changed outside devDependencies`
+  );
 }
 async function get(url, binary = false) {
   assert.equal(new URL(url).protocol, 'https:');
