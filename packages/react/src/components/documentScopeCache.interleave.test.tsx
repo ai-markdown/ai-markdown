@@ -107,6 +107,18 @@ const CHUNK_C = 'See[^n].';
 /** Real macrotasks (the scheduler's MessageChannel work loop) and the
  *  microtasks queued between them. */
 const tick = (ms = 40) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+// The scheduler runs for real here (no act environment), and how long a
+// transition render plus its passive effects take depends on the machine:
+// a fixed 40 ms wait was enough locally and came up empty on a shared CI
+// core. Poll for the rendered text instead; the interleaving the test is
+// about is checked on the event trace, not on the wait.
+const settled = async (predicate: () => boolean, deadlineMs = 5000): Promise<void> => {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > deadlineMs) return;
+    await tick(20);
+  }
+};
 
 /** Starts the transition that mounts chunk B from INSIDE the commit that
  *  unmounts chunk A, so the transition is the pending lane when the next
@@ -170,7 +182,7 @@ describe('document scope cache: release / transition-render / onEmpty interleavi
     // scheduler task, which the layout effect above has just given a
     // transition to render.
     handle.setPhase(1);
-    await tick();
+    await settled(() => container.textContent?.includes('Beta.') === true);
     expect(container.textContent).toContain('Beta.');
 
     // Anti-vacuity: the interleaving the conjecture needs did happen —
@@ -187,7 +199,7 @@ describe('document scope cache: release / transition-render / onEmpty interleavi
 
     // Mount C without re-rendering B.
     handle.setPhase(3);
-    await tick();
+    await settled(() => container.querySelector('sup a[data-footnote-ref]') !== null);
     expect(container.textContent).toContain('See');
 
     // Step 4 must not hold: every chunk alive is registered in ONE
