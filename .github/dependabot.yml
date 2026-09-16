@@ -8,12 +8,15 @@ version: 2
 updates:
   - package-ecosystem: npm
     directory: /
+    # Monthly: the merge cadence has been about once a month (7 of 29 bot
+    # PRs merged since July; the rest were superseded and closed), and a
+    # weekly schedule only churned open-and-close records. Security
+    # updates ignore the schedule and the cooldown.
     schedule:
-      interval: weekly
-      day: monday
+      interval: monthly
       time: '09:00'
       timezone: Asia/Shanghai
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 3
     cooldown:
       # Supply-chain defense: don't auto-PR versions that haven't existed
       # on the registry for at least this many days. Gives the community
@@ -55,18 +58,75 @@ updates:
         update-types:
           - version-update:semver-minor
     groups:
-      # Match families before dependency-type groups: workspace consumers
-      # can classify the same package as production or development.
+      # Family groups come first and the dependency-type groups exclude
+      # them explicitly: workspace consumers classify the same package as
+      # production or development, and without the exclusions Dependabot
+      # split @mantine/core (runtime-deps, #68) from @mantine/hooks
+      # (dev-deps, #69). @mantine/core pins its hooks peer to the exact
+      # version, so a split bump cannot install.
       mantine:
         patterns:
           - '@mantine/*'
         update-types: [minor, patch]
+      # The engine's parsing chain. A merged bump here changes the engine
+      # dependency graph in pnpm-lock.yaml, which makes the next release
+      # require a full engine soak (scripts/soak/impact.mjs), so this group
+      # is merged together with a release, never on its own.
+      engine-parsing:
+        patterns:
+          - 'unified'
+          - 'remark-*'
+          - 'rehype-*'
+          - 'micromark*'
+          - 'mdast-util-*'
+          - 'hast-util-*'
+          - 'unist-util-*'
+          - 'vfile*'
+          - 'devlop'
+          - 'remend'
+          - 'html-url-attributes'
+          - 'property-information'
+          - '@ai-markdown/rehype-raw'
+          - '@ai-markdown/hast-util-*'
+        update-types: [minor, patch]
       dev-deps:
         dependency-type: development
         update-types: [minor, patch]
+        exclude-patterns:
+          - '@mantine/*'
+          - 'unified'
+          - 'remark-*'
+          - 'rehype-*'
+          - 'micromark*'
+          - 'mdast-util-*'
+          - 'hast-util-*'
+          - 'unist-util-*'
+          - 'vfile*'
+          - 'devlop'
+          - 'remend'
+          - 'html-url-attributes'
+          - 'property-information'
+          - '@ai-markdown/rehype-raw'
+          - '@ai-markdown/hast-util-*'
       runtime-deps:
         dependency-type: production
         update-types: [minor, patch]
+        exclude-patterns:
+          - '@mantine/*'
+          - 'unified'
+          - 'remark-*'
+          - 'rehype-*'
+          - 'micromark*'
+          - 'mdast-util-*'
+          - 'hast-util-*'
+          - 'unist-util-*'
+          - 'vfile*'
+          - 'devlop'
+          - 'remend'
+          - 'html-url-attributes'
+          - 'property-information'
+          - '@ai-markdown/rehype-raw'
+          - '@ai-markdown/hast-util-*'
 
   # GitHub Actions used in workflows — major-block only; no lint-plugin lock needed.
   - package-ecosystem: github-actions
