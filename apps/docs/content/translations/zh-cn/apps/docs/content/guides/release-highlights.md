@@ -15,6 +15,7 @@
 #### 引擎
 
 - **任务列表不再钉住增量边界。** `- [x]` 复选框此前一直作为未解析的 `[x]` 引用候选保留，直到出现 `[x]:` 定义，因此任务列表之后的每一帧都是全量解析。新增的容器与段落跟踪器在段落不可逆关闭后（已确认的空行、fence 或数学开启符、html 块、无歧义的同级项或子列表），且 setext 下划线、GFM 表格分隔行、定义列表回溯都无法再触及该段落时，按精确源位置认证复选框；模型之外的结构一律保留 taint。`- [x] done` 后接 400 个段落分 60 帧流式输入，从 1,005 毫秒且无一帧拼接降到 45 毫秒、59 帧拼接。
+- **发布压测发现的认证形状。** 空标记行（`-` 后接 `  [x] a`）一律不认证；根级缩进代码块之后，标记行按 micromark 的打断模式解析，`12. [x] done` 在那里是段落文本，后到的定义会把 `[x]` 变成链接。两种形状都已作为拼接等价与语法用例钉住。
 - **显式语法能力。** `AdvanceOptions` 与 `FreezeBoundaryOptions` 新增可选的 `gfmTaskListItems` 和 `mathFlow`，两者都进入 checkpoint 配置和 deps key。`gfmTaskListItems` 启用上述认证；`mathFlow: true` 声明有 remark-math，`false` 声明没有，省略时按两种语法的保守并集扫描（`$$` 区域保留 fence 阻断，同时其中的行仍会扫描引用与 html）。core 的 `PipelineFrameOptions` 透传这两个字段；React 与 Vue 适配器都声明为 true，因为内置链始终包含 remark-gfm 和 remark-math。边界 oracle 测试证明未声明配置的冻结边界不会超过任一声明配置。
 - **线性扫描。** 定义标签的快速探测改为手写扫描，替换了标签体可跨行的正则（40,000 行 `[a` 从 5.7 秒降到 45 毫秒）。`\(` / `\[` 分隔符转换显式查找闭合符（40,000 个未闭合开启符从 0.6–1.3 秒降到 4 毫秒以内）。
 - **后缀货币。** `5$`、`1,000.50$`、`US$`、`A$ 5` 和 `5 $ now` 视为货币而非行内数学。此前用 `US$` 充当游离 `$` 的测试夹具改用 `lone $`。
@@ -46,7 +47,9 @@
 
 #### 验证
 
-全部 2,758 项单元测试通过，同时通过拼接 fuzz、Storybook 套件、打包消费者、document-lifetime 与 Vue 浏览器检查。每项引擎改动都经第二个 agent 独立复核，其复现用例已成为常驻测试（`taskListTaint`、`taskListMathCapability`、`mathCapabilityOracle`、`tagNameBoundary`、`tabIndentAxis`、`tagNamePrefixAxis`）。
+全部 2,768 项单元测试通过，同时通过拼接 fuzz、Storybook 套件、打包消费者、document-lifetime 与 Vue 浏览器检查，以及包含 Firefox 和 WebKit 的完整 preflight。每项引擎改动都经第二个 agent 独立复核，其复现用例已成为常驻测试（`taskListTaint`、`taskListMathCapability`、`mathCapabilityOracle`、`tagNameBoundary`、`tabIndentAxis`、`tagNamePrefixAxis`）。
+
+使用全新种子 `202609700` 的发布配置引擎压测在提交 `22b05e3` 上通过全部六个分支和 **84/84 个分片**，耗时 10,874 秒。此前对同一候选的两轮压测起到了作用：种子 `202609405`（fuzz）和 `202609711`（方向电池）发现了上述两种认证形状，oracle 分支越过了按 3.0.x 语料校准的 hazard 全盲文档上限（8.22% 对 8%）。该上限已按文档规定的方法重新推导：在 3.1.0 语料上做 12 轮各 4,000 次扫描，测得 5.79% 到 8.14%，上限移至 12%，并为 oracle 增加了按生成器族归因的读数。放行发布前，已对照打标签的提交完成证据校验。
 
 ## 3.0.2 — 跨块引用与流式光标修复
 
