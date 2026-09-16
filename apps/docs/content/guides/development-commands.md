@@ -8,7 +8,7 @@ Run these commands from the repository root after `pnpm install --frozen-lockfil
 | --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
 | `pnpm storybook`                              | Start React, Vue and the composition entry using workspace source. No package build required.                                        |
 | `pnpm storybook:react` / `pnpm storybook:vue` | Start one renderer catalog.                                                                                                          |
-| `pnpm build`                                  | Build all six public packages and execute their distribution assertions. Excludes Storybook and benchmark applications.              |
+| `pnpm build`                                  | Build all seven public packages and execute their distribution assertions. Excludes Storybook and benchmark applications.            |
 | `pnpm lint` / `pnpm lint:fix`                 | Check ESLint rules / apply available fixes.                                                                                          |
 | `pnpm format:check` / `pnpm format`           | Check formatting / rewrite files with Prettier.                                                                                      |
 | `pnpm typecheck`                              | Run both workspace and Storybook typechecks. Build packages first.                                                                   |
@@ -76,15 +76,15 @@ Use [soak coverage](soak-coverage.md) for profiles and evidence requirements. En
 
 ## Performance and versions
 
-| Command                           | Purpose                                                                                                                                                                                        |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm bench:unit`                 | Vitest microbenchmarks; currently the LaTeX preprocessor.                                                                                                                                      |
-| `pnpm bench:web`                  | Production browser benchmark scenarios.                                                                                                                                                        |
-| `pnpm bench:web:selftest`         | Validate the browser benchmark harness itself.                                                                                                                                                 |
-| `pnpm bench:web:scale`            | Document-size scaling with delivery every 24 characters.                                                                                                                                       |
-| `pnpm bench:web:scale:cold`       | Document-size scaling with one complete update.                                                                                                                                                |
-| `pnpm bench:web:scale:steps`      | Document-size scaling with exactly 100 updates.                                                                                                                                                |
-| `pnpm version-packages <version>` | Rewrite the root and five release-train package versions and related references. Highlight remains independently versioned. Does not publish; follow with lockfile synchronization and review. |
+| Command                           | Purpose                                                                                                                                                                                                                             |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm bench:unit`                 | Vitest microbenchmarks; currently the LaTeX preprocessor.                                                                                                                                                                           |
+| `pnpm bench:web`                  | Production browser benchmark scenarios.                                                                                                                                                                                             |
+| `pnpm bench:web:selftest`         | Validate the browser benchmark harness itself.                                                                                                                                                                                      |
+| `pnpm bench:web:scale`            | Document-size scaling with delivery every 24 characters.                                                                                                                                                                            |
+| `pnpm bench:web:scale:cold`       | Document-size scaling with one complete update.                                                                                                                                                                                     |
+| `pnpm bench:web:scale:steps`      | Document-size scaling with exactly 100 updates.                                                                                                                                                                                     |
+| `pnpm version-packages <version>` | Rewrite the root and five release-train package versions and related references. The highlight plugin and code language detector remain independently versioned. Does not publish; follow with lockfile synchronization and review. |
 
 See the [browser benchmark guide](../../../../benchmarks/README.md) before interpreting performance results. Actual npm publication belongs to the release workflow.
 

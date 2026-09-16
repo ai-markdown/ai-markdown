@@ -91,7 +91,10 @@ export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> 
     () => ({
       defaultExpanded: group?.defaultExpanded ?? true,
       autoDetectUnknownLanguage: group?.autoDetectUnknownLanguage ?? false,
-      highlightJs: group?.highlightJs ?? null,
+      languageFormat:
+        group?.languageFormat === MantineLanguageFormat.Shiki
+          ? MantineLanguageFormat.Shiki
+          : MantineLanguageFormat.HighlightJs,
       formatJson: group?.formatJson ?? true,
       expandNestedJson: group?.expandNestedJson ?? true,
       highlightIntervalMs:
@@ -185,6 +188,9 @@ import type {
   MantineCodeBlockOptions,
   MantineBehaviorProps, // widened defineMantineBehaviors input
 } from '@ai-markdown/react-mantine';
+
+// A value export (an enum), also usable as the type of `codeBlock.languageFormat`:
+import { MantineLanguageFormat } from '@ai-markdown/react-mantine';
 ```
 
 ---

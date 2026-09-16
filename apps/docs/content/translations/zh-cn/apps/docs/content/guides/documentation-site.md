@@ -25,7 +25,7 @@ pnpm preview:docs  # Serve the production build locally
 
 - `apps/docs/content/guides/*.md` 与 `apps/docs/content/guides/api/*.md` 是规范的使用指南、架构文档与维护指南。
 - `apps/docs/content/reference/{react,vue,react-mantine}.md` 拥有完整的适配器参考文档。它们的路由保持为 `/docs/react/`、`/docs/vue/` 和 `/docs/react/mantine/`。
-- 适配器相关包的 README 包含安装步骤、最小示例及文档链接。Core、engine 和独立版本发布的高亮插件仍以各自包的 README 作为参考文档源。
+- 适配器相关包的 README 包含安装步骤、最小示例及文档链接。Core、engine，以及独立版本发布的高亮插件和代码语言探测器，仍以各自包的 README 作为参考文档源。
 - `apps/docs/content/` 拥有文档总览、示例目录及翻译文件。英文和中文首页路由共享 `apps/docs/src/components/Home.astro`；示例路由共享 `Examples.astro`。
 - `apps/docs/scripts/content.mjs` 将这些源文件映射为路由，并生成带有规范文件编辑链接的 Starlight frontmatter。适配器参考文档将其旧的 README 路径声明为源别名，以便原有的 README 链接和锚点仍能解析到完整的站点参考文档。
 - `apps/docs/src/content/docs/` 是由脚本生成并被 Git 忽略的目录。请勿手动编辑。开发模式会监视规范源文件，并重新生成发生变动的页面，包括文件的添加与删除。

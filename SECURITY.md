@@ -41,6 +41,7 @@ Out of scope:
 | ------------------------------------------------ | ---------------------------------------------------------------- |
 | `@ai-markdown` 3.x release train                 | Current stable line; update to the latest stable release         |
 | `@ai-markdown/remark-mark-highlight` 1.x         | Independently versioned; update to the latest stable release     |
+| `@ai-markdown/code-language-detector` 1.x        | Independently versioned; update to the latest stable release     |
 | Legacy `@ai-react-markdown` 2.x                  | Deprecated; critical fixes considered as needed, no new features |
 | Older legacy versions and superseded prereleases | Upgrade to the current stable packages                           |
 

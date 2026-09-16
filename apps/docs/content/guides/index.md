@@ -79,12 +79,12 @@ The 1.x-to-2.x migration page and the [July 2026 benchmark](benchmark.md) descri
 
 ## Build an integration
 
-| Task                               | Guide                                                                                                                                                                  |
-| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Build a framework adapter          | [Build a framework adapter](building-an-adapter.md)                                                                                                                    |
-| Rely on the shared packages        | [Core and engine contracts](api/core-engine-contracts.md)                                                                                                              |
-| Ship a React design-system package | [Build a React integration](extending-via-subpackage.md)                                                                                                               |
-| Read the package APIs              | [Core](../../../../packages/core/README.md), [Engine](../../../../packages/engine/README.md), [highlight plugin](../../../../packages/remark-mark-highlight/README.md) |
+| Task                               | Guide                                                                                                                                                                                                                                                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Build a framework adapter          | [Build a framework adapter](building-an-adapter.md)                                                                                                                                                                                                     |
+| Rely on the shared packages        | [Core and engine contracts](api/core-engine-contracts.md)                                                                                                                                                                                               |
+| Ship a React design-system package | [Build a React integration](extending-via-subpackage.md)                                                                                                                                                                                                |
+| Read the package APIs              | [Core](../../../../packages/core/README.md), [Engine](../../../../packages/engine/README.md), [highlight plugin](../../../../packages/remark-mark-highlight/README.md), [code language detector](../../../../packages/code-language-detector/README.md) |
 
 <span id="full-topic-index"></span>
 

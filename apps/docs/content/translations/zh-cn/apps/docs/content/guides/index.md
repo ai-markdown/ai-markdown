@@ -83,12 +83,12 @@
 
 ## 开发集成
 
-| 任务                      | 指南                                                                                                                                                           |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 开发框架适配器            | [开发框架适配器](building-an-adapter.md)                                                                                                                       |
-| 依赖共享包                | [Core 与 Engine 契约](api/core-engine-contracts.md)                                                                                                            |
-| 发布 React 设计系统集成包 | [构建 React 集成包](extending-via-subpackage.md)                                                                                                               |
-| 阅读各包 API              | [Core](../../../../packages/core/README.md)、[Engine](../../../../packages/engine/README.md)、[高亮插件](../../../../packages/remark-mark-highlight/README.md) |
+| 任务                      | 指南                                                                                                                                                                                                                                    |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 开发框架适配器            | [开发框架适配器](building-an-adapter.md)                                                                                                                                                                                                |
+| 依赖共享包                | [Core 与 Engine 契约](api/core-engine-contracts.md)                                                                                                                                                                                     |
+| 发布 React 设计系统集成包 | [构建 React 集成包](extending-via-subpackage.md)                                                                                                                                                                                        |
+| 阅读各包 API              | [Core](../../../../packages/core/README.md)、[Engine](../../../../packages/engine/README.md)、[高亮插件](../../../../packages/remark-mark-highlight/README.md)、[代码语言探测器](../../../../packages/code-language-detector/README.md) |
 
 <span id="full-topic-index"></span>
 

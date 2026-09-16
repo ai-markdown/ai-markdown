@@ -6,6 +6,34 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.2.0 — Code language detector and synchronous Mantine detection
+
+### 3.2.0
+
+This minor release aligns engine, core, React, Mantine and Vue at `3.2.0`. Engine, core, React and Vue are version-aligned only. The independently versioned highlight plugin remains at `1.0.2`, and a new independently versioned package, `@ai-markdown/code-language-detector`, is published at `1.0.0`. Mantine replaces highlight.js auto-detection with the new detector and removes the options that supplied highlight.js to it.
+
+#### Code language detector
+
+- **New package `@ai-markdown/code-language-detector` 1.0.0.** Heuristic language detection for unlabelled code blocks, built for streamed LLM output. It has zero runtime dependencies and ships ESM and CJS builds. When the evidence is insufficient it returns `language: null` instead of guessing, and in streaming mode it never flips between language families.
+- **API.** `CodeLanguage` is an enum of 42 languages whose values are Shiki ids (`CodeLanguage.Rust = 'rust'`, `CodeLanguage.VisualBasic = 'vb'`). `detectLanguage(code)` returns `{ language, confidence, candidates, evidence }`. `StreamingLanguageDetector` takes `update(accumulatedText)` while a block streams and `finalize(text)` when its fence closes, with `reset()` and `current`. `DetectionCache` is exported alongside. `toShikiLanguage` and `toHighlightJsLanguage` map a result to highlighter names; the highlight.js mapping renames `objective-c`, `vb`, `asm`, `jsx` and `tsx` and maps HTML, Vue and Svelte to `xml`. `normalizeCodeLanguage(name)` resolves a name, extension or highlighter alias to a `CodeLanguage`, or `null` when it names none of the 42. See the [package README](../../../../packages/code-language-detector/README.md).
+- **Highlighter names for fence languages.** `normalizeHighlightJsLanguage(name)` and `normalizeShikiLanguage(name)` map a language name as a model writes it on a code fence to the name the highlighter uses, ignoring case and surrounding whitespace. A name of one of the 42 languages resolves through `normalizeCodeLanguage` and the converter (`objc` becomes `objectivec` or `objective-c`, and `vue` becomes `xml` for highlight.js). A small table translates common names outside the 42 that the highlighters spell differently (`txt` becomes `plaintext` or `text`, `console` becomes `shell` or `shellsession`, `makefile` becomes `makefile` or `make`). Any other name comes back lower-cased as written (`haskell`, `jsonc`). The result is a name, not a guarantee that the grammar is loaded or registered.
+
+#### Mantine
+
+- **Detection runs on the new package.** `codeBlock.autoDetectUnknownLanguage` now uses `@ai-markdown/code-language-detector`, a regular dependency of `@ai-markdown/react-mantine`, and needs no highlight.js instance. Detection is synchronous and runs during render, including server rendering, so the detected tab label is in the SSR markup instead of the block painting as "unknown" and upgrading in place.
+- **Streaming policy.** While streaming, a block is labelled once the evidence is conclusive and re-detected only after meaningful growth. The detector never lowers its confidence or swaps to another language family mid-stream. A regenerate — text that does not extend the previous text, including a same-length replacement — starts over, and the end of `streaming` finalizes the verdict. A block the detector abstains on stays plaintext labelled "unknown"; the detector never overrides an explicit fence language. The previous doubling schedule, `highlightAuto`, loader caching and retries, and the missing-instance warning are gone.
+- **New `codeBlock.languageFormat`.** The renderer cannot see which adapter `CodeHighlightAdapterProvider` holds, so this field says which names languages are handed to the highlighter in: `MantineLanguageFormat.HighlightJs` (`'highlight-js'`, the default) or `MantineLanguageFormat.Shiki` (`'shiki'`). It applies to explicit fence languages as well as detected ones: the highlighter receives `normalizeHighlightJsLanguage` or `normalizeShikiLanguage` of the lower-cased name, so under highlight.js ` ```objc ` is highlighted as `objectivec` and ` ```txt ` as `plaintext`, and under Shiki ` ```Makefile ` is highlighted as `make`. The tab label keeps the fence language as written (lower-cased), or the detected language's own name, so a detected Vue component is labelled `vue` and highlighted as `xml` under highlight.js; it reads "unknown" only when a block has no language. JSON pretty-printing and Mermaid rendering still key on the lower-cased name. An unrecognised value falls back to the default. The enum is exported from the package root.
+- **Breaking change in a minor release.** `codeBlock.highlightJs`, the `MantineHighlightJsLike` and `MantineHighlightJsSource` types, and the `options` parameter of `preloadMantineCodeAssets` are removed. `preloadMantineCodeAssets()` now takes no arguments, returns `Promise<void>` and preloads mermaid only. This removal ships in `3.2.0` by maintainer decision rather than waiting for a major version.
+- **Migration.** Delete `highlightJs` from `codeBlock` groups and `defineMantineBehaviors` calls. If you highlight with Mantine's Shiki adapter, set `languageFormat: MantineLanguageFormat.Shiki`, which also applies to blocks with an explicit fence language; the default already matches the highlight.js adapter. Call `preloadMantineCodeAssets()` without arguments. Remove imports of the two deleted types.
+- `highlight.js` remains an optional peer, needed only for Mantine's highlight.js adapter; the package never imports it.
+
+#### Release tooling
+
+- Independently versioned packages are listed once, in `scripts/release-packages.mjs` (`remark-mark-highlight`, `code-language-detector`). A train tag publishes them first, then engine, core, React, Mantine and Vue.
+- `code-language-detector-vX.Y.Z` is a valid package tag. The first publication, `code-language-detector-v1.0.0`, bootstraps with `FIRST_PUBLISH_NPM_TOKEN`; after it, the npm trusted publisher must be configured for the new package.
+
+<!-- Verification: fill in at release -->
+
 ## 3.1.0 — Review fixes, task-list incremental parsing and adapter parity
 
 ### 3.1.0

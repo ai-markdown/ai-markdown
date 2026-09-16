@@ -8,9 +8,9 @@ The Mantine package installs a default `<pre>` renderer (`MantineAIMPreCode`) th
 
 | Code-block flavor                          | Rendered as                 | Notes                                                                                                                                                                                                                                                                                                                                                    |
 | ------------------------------------------ | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Annotated, known language (e.g. ` ```ts `) | `<CodeHighlightTabs>`       | Tab label = language name (lower-cased)                                                                                                                                                                                                                                                                                                                  |
-| Annotated, unknown language identifier     | `<CodeHighlightTabs>`       | Tab label = the identifier (lower-cased); Mantine's highlight adapter degrades an unknown language to plaintext                                                                                                                                                                                                                                          |
-| No language annotation                     | `<CodeHighlight>` plaintext | Label = `"unknown"`. With `codeBlock.autoDetectUnknownLanguage: true`, `hljs.highlightAuto` guesses early, re-checks as the block grows, and settles at end of stream — label/highlighting upgrade in place                                                                                                                                              |
+| Annotated, known language (e.g. ` ```ts `) | `<CodeHighlightTabs>`       | Tab label = language name as written (lower-cased); the highlighter receives it in the spelling `codeBlock.languageFormat` selects (` ```objc ` reaches highlight.js as `objectivec`, ` ```txt ` as `plaintext`)                                                                                                                                         |
+| Annotated, unknown language identifier     | `<CodeHighlightTabs>`       | Tab label = the identifier (lower-cased); an identifier the `languageFormat` mapping does not translate reaches the highlighter lower-cased, and Mantine's highlight adapter degrades a language it lacks to plaintext                                                                                                                                   |
+| No language annotation                     | `<CodeHighlight>` plaintext | Label = `"unknown"`. With `codeBlock.autoDetectUnknownLanguage: true`, `@ai-markdown/code-language-detector` labels the block during render (server rendering included) once its evidence is conclusive, and finalizes the label when the stream ends; a block it abstains on stays `"unknown"`                                                          |
 | ` ```mermaid ` (any case)                  | Interactive Mermaid diagram | See [Mermaid Diagrams](#mermaid-diagrams); the language match is case-insensitive                                                                                                                                                                                                                                                                        |
 | ` ```json ` (any case)                     | Pretty-printed JSON         | As soon as the block looks complete (ends in `}`/`]` with balanced brackets outside strings), parsed, string values holding a nested JSON object/array expanded (primitive-looking strings such as `"true"` stay strings), then formatted with 2-space indent while retaining exact numeric tokens; both formatting and nested expansion can be disabled |
 
@@ -20,7 +20,7 @@ All non-special blocks render with `withBorder` and `withExpandButton`, collapsi
 
 ### Code Highlight Adapter
 
-Code highlighting requires a `CodeHighlightAdapterProvider` wrapping the component tree. This is a Mantine requirement -- the adapter bridges `highlight.js` into Mantine's code highlight components.
+Code highlighting requires a `CodeHighlightAdapterProvider` wrapping the component tree. This is a Mantine requirement -- the adapter bridges a highlighter (`highlight.js` below, or Shiki through `createShikiAdapter`) into Mantine's code highlight components.
 
 ```tsx
 import { CodeHighlightAdapterProvider, createHighlightJsAdapter } from '@mantine/code-highlight';
@@ -37,34 +37,60 @@ function App() {
 }
 ```
 
-### Language Auto-Detection
+With Mantine's Shiki adapter, also set `codeBlock.languageFormat` to `MantineLanguageFormat.Shiki`; see [Highlighter Language Names](#highlighter-language-names).
 
-By default, code blocks without an explicit language annotation render as plaintext. Enable auto-detection via the `codeBlock` prop:
+### Highlighter Language Names
+
+The renderer cannot see which adapter `CodeHighlightAdapterProvider` holds, so `codeBlock.languageFormat` states which names languages are handed to the highlighter in. It applies to every block with a language: a language written on the fence and a detected language go through the same mapping, `normalizeHighlightJsLanguage` or `normalizeShikiLanguage` from `@ai-markdown/code-language-detector`. Models write names such as `objc`, `txt`, `Makefile` or `console` that the two highlighters spell differently, so match this option to your adapter even when auto-detection is off.
+
+| `languageFormat`                              | Adapter                    | Names passed to the highlighter                                                                                                                                                                                                                                                                                         |
+| --------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MantineLanguageFormat.HighlightJs` (default) | `createHighlightJsAdapter` | highlight.js names: `objectivec`, `vbnet`, `x86asm`, `javascript` for JSX, `typescript` for TSX, `xml` for HTML, Vue and Svelte (its xml grammar highlights `<script>` and `<style>` as sub-languages), `plaintext` for `txt`, `shell` for `console`, `dos` for `bat` or `cmd`, `vim` for `viml`, `django` for `jinja2` |
+| `MantineLanguageFormat.Shiki`                 | `createShikiAdapter`       | Shiki language ids: `objective-c` for `objc`, `text` for `txt` or `plaintext`, `make` for `makefile`, `bat` for `batch` or `cmd`, `shellsession` for `console`, `coffee` for `coffeescript`                                                                                                                             |
+
+Any other name reaches the highlighter lower-cased as written, and a block with no language is highlighted as `plaintext`. A mapped name does not guarantee that the grammar is registered or loaded; Mantine's adapters degrade a language they lack to plaintext.
+
+The tab label keeps the fence language as written (lower-cased), or the detected language's own name, and shows "unknown" only when a block has no language. Under the default, ` ```objc ` is labelled `objc` and highlighted as `objectivec`, and a detected Vue component is labelled `vue` and highlighted as `xml`. JSON pretty-printing and the Mermaid renderer key on that lower-cased name, not on the mapped one.
+
+With the Shiki adapter, select the Shiki names:
 
 ```tsx
-import hljs from 'highlight.js';
+import MantineAIMarkdown, { MantineLanguageFormat } from '@ai-markdown/react-mantine';
 
-const CODE_BLOCK = { autoDetectUnknownLanguage: true, highlightJs: hljs };
-// or load it on first use — keep the loader at module scope, the group is compared by value:
-// const CODE_BLOCK = { autoDetectUnknownLanguage: true, highlightJs: () => import('highlight.js') };
+const CODE_BLOCK = {
+  languageFormat: MantineLanguageFormat.Shiki,
+};
 
 <MantineAIMarkdown content={markdown} codeBlock={CODE_BLOCK} />;
 ```
 
-This uses `highlight.js`'s `highlightAuto` to guess the language, run on the instance or loader you pass as `highlightJs`. The package does not import `highlight.js` itself (the peer is optional), so the option is inert without `highlightJs` and logs one warning. Passing the same instance the adapter uses — including a `highlight.js/lib/core` build with only your languages registered — keeps detection limited to what the adapter can highlight. Results may vary for short or ambiguous snippets. While a block streams, detection runs on a doubling schedule — a first guess once the block has ~32 characters, a corrective re-run each time it has doubled in length, and a final verdict when the stream ends — so an append-only stream submits O(n) total input to detection instead of re-scoring every prefix. This bounds the amount of submitted text, not the runtime of highlight.js or its language grammars. A block that is replaced rather than appended to (a regenerate) restarts the schedule. Without a `streaming` prop the renderer cannot tell chunks apart and re-detects on every content change — pass `streaming` when you stream. A loader runs once per page (cached by function identity); a failed load is retried a bounded number of times.
+An unrecognised `languageFormat` value falls back to the default.
+
+### Language Auto-Detection
+
+By default, code blocks without an explicit language annotation render as plaintext labelled "unknown". Enable auto-detection via the `codeBlock` prop:
+
+```tsx
+<MantineAIMarkdown content={markdown} codeBlock={{ autoDetectUnknownLanguage: true }} />
+```
+
+Detection uses [`@ai-markdown/code-language-detector`](../../../../packages/code-language-detector/README.md), a regular dependency of this package, so it needs no highlight.js instance and no further installation. It is synchronous and runs during render, including server rendering: the detected tab label is already in the SSR markup instead of the block first painting as "unknown" and upgrading in place. The detector abstains instead of guessing when the evidence is insufficient, and a block it abstains on stays plaintext labelled "unknown". The detector never overrides an explicit fence language. A detected language reaches the highlighter through the same [`languageFormat` mapping](#highlighter-language-names) as a written one.
+
+While `streaming` is `true`, the detector labels a block once its evidence is conclusive and re-detects only after the block has grown meaningfully. It never lowers its confidence and never swaps to another language family mid-stream. Text that does not extend the previous text — a regenerate, including a replacement of the same length — starts detection over. When `streaming` ends, the verdict is finalized against the complete block. Pass `streaming` while tokens arrive so this policy applies.
 
 ### Preloading the on-demand assets
 
-`mermaid` is loaded lazily by the diagram renderer, and a `highlightJs` loader runs the first time auto-detection needs it. An app that would rather pay that cost at startup — a documentation page whose first screen shows a diagram, or a chat UI that wants to reduce the first diagram’s module-loading delay — calls the exported helper once at boot:
+`mermaid` is loaded lazily by the diagram renderer. An app that would rather pay that cost at startup — a documentation page whose first screen shows a diagram, or a chat UI that wants to reduce the first diagram’s module-loading delay — calls the exported helper once at boot:
 
 ```tsx
 import { preloadMantineCodeAssets } from '@ai-markdown/react-mantine';
 
-void preloadMantineCodeAssets(); // mermaid only; idempotent; failures are swallowed and the renderers fall back to lazy loading
-void preloadMantineCodeAssets({ highlightJs: loadHljs }); // also runs the loader you pass as codeBlock.highlightJs (same function)
+void preloadMantineCodeAssets(); // mermaid; idempotent; failures are swallowed and the renderer falls back to lazy loading
 ```
 
-An eager app import can also preload an asset when it resolves to the same module as the renderer's dynamic import. Use the helper when you want to load the integration's assets without depending on your application's module-resolution choices.
+The helper takes no arguments. Language detection is synchronous and ships with the package, so there is nothing to preload for it.
+
+An eager app import can also preload mermaid when it resolves to the same module as the renderer's dynamic import. Use the helper when you want to load the integration's assets without depending on your application's module-resolution choices.
 
 ## Mermaid Diagrams
 

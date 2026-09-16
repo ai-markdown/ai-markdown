@@ -9,7 +9,7 @@ Parsing, URL policy, metadata, and cross-chunk references remain engine/React ad
 ## What It Adds to the React Adapter
 
 - **Mantine typography** -- markdown content is wrapped in Mantine's `<Typography>` so it inherits the active theme's font family, line height, and color tokens
-- **Syntax highlighting** -- code blocks render via `@mantine/code-highlight` (powered by highlight.js), with language-labelled tabs, expand/collapse, and optional auto-detection for unlabelled blocks
+- **Syntax highlighting** -- code blocks render via `@mantine/code-highlight` with the adapter you provide (highlight.js or Shiki), with language-labelled tabs, expand/collapse, and optional language detection for unlabelled blocks through `@ai-markdown/code-language-detector`
 - **Mermaid diagrams** -- fenced `mermaid` code blocks render as interactive SVG diagrams with dark/light theme support, source toggle, copy, and open-in-new-window
 - **JSON pretty-print** -- fenced `json` code blocks are validated and formatted with 2-space indent while retaining numeric tokens, duplicate keys, and key order; string values that are themselves JSON documents (an object or array — the tool-call transcript shape) are expanded too, primitive-looking strings (`"true"`, `"123"`) are left as written
 - **Automatic color scheme** -- follows the active `MantineProvider`; under `auto` the system preference is read on the first client frame (server output is light), and the result is forwarded to the core renderer when no explicit `colorScheme` prop is supplied
@@ -19,25 +19,26 @@ All React adapter features (GFM, LaTeX math, CJK support, streaming, metadata co
 
 ## Package family
 
-| Package                                                                                                  | Role                                                                                                        | Version policy                                            |
-| -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| [`@ai-markdown/core`](https://www.npmjs.com/package/@ai-markdown/core)                                   | Framework-independent sessions, block planning, contributions and smooth coordination                       | Release train; exact engine dependency                    |
-| [`@ai-markdown/react`](https://www.npmjs.com/package/@ai-markdown/react)                                 | The React renderer — `<AIMarkdown>`, `<AIMarkdownSmoothStream>`, `<AIMarkdownDocuments>`, hooks, providers  | Release train                                             |
-| [`@ai-markdown/vue`](https://www.npmjs.com/package/@ai-markdown/vue)                                     | Vue 3.5 renderer — components, scoped slots, SSR/hydration and smooth composables                           | Release train; exact core and engine dependencies         |
-| [`@ai-markdown/react-mantine`](https://www.npmjs.com/package/@ai-markdown/react-mantine)                 | Mantine UI bindings — themed typography, code-highlight tabs, Mermaid, color-scheme wiring                  | Release train; compatible React 3.x peer                  |
-| [`@ai-markdown/engine`](https://www.npmjs.com/package/@ai-markdown/engine)                               | Framework-agnostic engine — incremental parsing, LaTeX preprocessing, plugin pipeline, cross-chunk registry | Release train; pinned exactly by shared core and adapters |
-| [`@ai-markdown/remark-mark-highlight`](https://www.npmjs.com/package/@ai-markdown/remark-mark-highlight) | remark plugin for `==mark==` highlight syntax                                                               | Independent semver                                        |
+| Package                                                                                                    | Role                                                                                                                                                          | Version policy                                            |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| [`@ai-markdown/core`](https://www.npmjs.com/package/@ai-markdown/core)                                     | Framework-independent sessions, block planning, contributions and smooth coordination                                                                         | Release train; exact engine dependency                    |
+| [`@ai-markdown/react`](https://www.npmjs.com/package/@ai-markdown/react)                                   | The React renderer — `<AIMarkdown>`, `<AIMarkdownSmoothStream>`, `<AIMarkdownDocuments>`, hooks, providers                                                    | Release train                                             |
+| [`@ai-markdown/vue`](https://www.npmjs.com/package/@ai-markdown/vue)                                       | Vue 3.5 renderer — components, scoped slots, SSR/hydration and smooth composables                                                                             | Release train; exact core and engine dependencies         |
+| [`@ai-markdown/react-mantine`](https://www.npmjs.com/package/@ai-markdown/react-mantine)                   | Mantine UI bindings — themed typography, code-highlight tabs, Mermaid, color-scheme wiring                                                                    | Release train; compatible React 3.x peer                  |
+| [`@ai-markdown/engine`](https://www.npmjs.com/package/@ai-markdown/engine)                                 | Framework-agnostic engine — incremental parsing, LaTeX preprocessing, plugin pipeline, cross-chunk registry                                                   | Release train; pinned exactly by shared core and adapters |
+| [`@ai-markdown/remark-mark-highlight`](https://www.npmjs.com/package/@ai-markdown/remark-mark-highlight)   | remark plugin for `==mark==` highlight syntax                                                                                                                 | Independent semver                                        |
+| [`@ai-markdown/code-language-detector`](https://www.npmjs.com/package/@ai-markdown/code-language-detector) | Heuristic language detection for unlabelled code blocks, and fence language names mapped to Shiki or highlight.js names; a regular dependency of this package | Independent semver                                        |
 
 ## Compatibility
 
-|                |                                                                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Mantine        | `@mantine/core` ^9 and `@mantine/code-highlight` ^9 (peer dependencies)                                                               |
-| highlight.js   | ^11.11.2 (optional peer; never imported by the package — used by your adapter, and by auto-detection through `codeBlock.highlightJs`) |
-| React          | ^19.0.0                                                                                                                               |
-| Node           | `^20.19.0 \|\| >=22.12.0` (`engines.node`)                                                                                            |
-| Module formats | ESM and CJS with types; the compiled stylesheet is exported as `@ai-markdown/react-mantine/styles.css`                                |
-| React adapter  | [Peer range below](#peer-dependencies); upgrade both packages together                                                                |
+|                |                                                                                                          |
+| -------------- | -------------------------------------------------------------------------------------------------------- |
+| Mantine        | `@mantine/core` ^9 and `@mantine/code-highlight` ^9 (peer dependencies)                                  |
+| highlight.js   | ^11.11.2 (optional peer; never imported by the package — needed only for Mantine's highlight.js adapter) |
+| React          | ^19.0.0                                                                                                  |
+| Node           | `^20.19.0 \|\| >=22.12.0` (`engines.node`)                                                               |
+| Module formats | ESM and CJS with types; the compiled stylesheet is exported as `@ai-markdown/react-mantine/styles.css`   |
+| React adapter  | [Peer range below](#peer-dependencies); upgrade both packages together                                   |
 
 ## Installation
 
@@ -73,7 +74,7 @@ Mantine uses the React adapter and does not depend directly on shared core. Vue 
 }
 ```
 
-`highlight.js` is declared optional (`peerDependenciesMeta`). The package contains no import of it, so a build without it succeeds; install it for Mantine's highlight.js adapter and for language auto-detection, which takes the instance or a loader through `codeBlock.highlightJs`.
+`highlight.js` is declared optional (`peerDependenciesMeta`). The package contains no import of it, so a build without it succeeds; install it only for Mantine's highlight.js adapter. Language auto-detection does not use it: it runs on `@ai-markdown/code-language-detector`, which is a regular dependency and installs with the package.
 
 ### CSS Dependencies
 
@@ -142,17 +143,17 @@ The `codeBlock` prop transports a partial behavior group. An absent or null grou
 
 ### `codeBlock` (`Partial<MantineCodeBlockOptions>`)
 
-| Field                       | Type                               | Default | Behavior                                                                                                                                                                                                                                                                        |
-| --------------------------- | ---------------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `defaultExpanded`           | `boolean`                          | `true`  | Initial expanded state; false starts long blocks collapsed with an expand action                                                                                                                                                                                                |
-| `autoDetectUnknownLanguage` | `boolean`                          | `false` | Guess an unannotated block's language with highlight.js; needs `highlightJs`, otherwise inert (one warning)                                                                                                                                                                     |
-| `highlightJs`               | `MantineHighlightJsSource \| null` | `null`  | The highlight.js instance auto-detection runs with (the one passed to `createHighlightJsAdapter`, or a `highlight.js/lib/core` instance with your languages), or a loader such as `() => import('highlight.js')`. Keep a loader at module scope: the group is compared by value |
-| `formatJson`                | `boolean`                          | `true`  | Format valid JSON for display while preserving numeric tokens, duplicate keys, and order                                                                                                                                                                                        |
-| `expandNestedJson`          | `boolean`                          | `true`  | While formatting, expand string values that contain JSON objects or arrays                                                                                                                                                                                                      |
-| `highlightIntervalMs`       | `number`                           | `50`    | Coalesce appended code display updates during streaming; zero displays every update                                                                                                                                                                                             |
-| `mermaidIntervalMs`         | `number`                           | `300`   | Shortest time between two mermaid render attempts of one block while streaming; the final source renders once streaming ends; zero attempts every update                                                                                                                        |
+| Field                       | Type                    | Default                             | Behavior                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------------------- | ----------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `defaultExpanded`           | `boolean`               | `true`                              | Initial expanded state; false starts long blocks collapsed with an expand action                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `autoDetectUnknownLanguage` | `boolean`               | `false`                             | Identify an unannotated block's language with `@ai-markdown/code-language-detector`, synchronously during render (server rendering included). A block the detector abstains on stays plaintext labelled "unknown"; the detector never overrides an explicit fence language                                                                                                                                                                                                                             |
+| `languageFormat`            | `MantineLanguageFormat` | `MantineLanguageFormat.HighlightJs` | The names languages are handed to the highlighter in; match it to the adapter in your `CodeHighlightAdapterProvider` (`HighlightJs` or `Shiki`). Applies to a language written on the fence and to a detected one: under highlight.js ` ```objc ` is highlighted as `objectivec` and ` ```txt ` as `plaintext`, and under Shiki ` ```Makefile ` as `make`. The tab label keeps the name as written (lower-cased), or the detected language's own name. An unrecognised value falls back to the default |
+| `formatJson`                | `boolean`               | `true`                              | Format valid JSON for display while preserving numeric tokens, duplicate keys, and order                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `expandNestedJson`          | `boolean`               | `true`                              | While formatting, expand string values that contain JSON objects or arrays                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `highlightIntervalMs`       | `number`                | `50`                                | Coalesce appended code display updates during streaming; zero displays every update                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `mermaidIntervalMs`         | `number`                | `300`                               | Shortest time between two mermaid render attempts of one block while streaming; the final source renders once streaming ends; zero attempts every update                                                                                                                                                                                                                                                                                                                                               |
 
-Explicit undefined fields retain their shipped defaults. Both intervals must be finite and non-negative; invalid values fall back to the defaults (50 ms and 300 ms). Do not assume that null is a supported value for individual fields merely because null at the group boundary counts as absent (`highlightJs` is the one field where `null` means "none").
+Explicit undefined fields retain their shipped defaults. Both intervals must be finite and non-negative; invalid values fall back to the defaults (50 ms and 300 ms). Do not assume that null is a supported value for individual fields merely because null at the group boundary counts as absent: no individual field accepts `null`.
 
 ### Example: Collapsed Code Blocks
 
@@ -366,16 +367,19 @@ Caller-provided `Typography`, `ExtraStyles`, and `customComponents` props overri
 - `MantineAIMarkdownProps`
 - `MantineAIMarkdownMetadata`
 - `MantineCodeBlockOptions` -- the `codeBlock` group shape
-- `MantineHighlightJsLike` / `MantineHighlightJsSource` -- what `codeBlock.highlightJs` accepts (an instance with `highlightAuto`, or a loader returning it or its module namespace)
 - `MantineBehaviorProps` -- input type of `defineMantineBehaviors`
 
 ### Constants
 
 - `defaultMantineCodeBlockOptions` -- shipped defaults of the `codeBlock` behavior group (frozen)
 
+### Enums
+
+- `MantineLanguageFormat` -- the value of `codeBlock.languageFormat`: `HighlightJs` (`'highlight-js'`, the default) or `Shiki` (`'shiki'`)
+
 ### Asset helpers
 
-- `preloadMantineCodeAssets({ highlightJs? })` — starts the lazy Mermaid import, and runs the given highlight.js loader (pass the same function you give `codeBlock.highlightJs`; the cache is keyed by identity); idempotent, with renderer fallback if loading fails
+- `preloadMantineCodeAssets(): Promise<void>` — starts the lazy Mermaid import; takes no arguments; idempotent, with renderer fallback if loading fails
 
 ### Factories
 

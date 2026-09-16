@@ -22,18 +22,19 @@ AI Markdown 支持在 React 19 或 Vue 3.5 中渲染累积的 Markdown 内容。
 
 ## 选择包
 
-| 包                                   | 直接安装的场景                                            | 公开入口                                |
-| ------------------------------------ | --------------------------------------------------------- | --------------------------------------- |
-| `@ai-markdown/react`                 | 构建 React 应用                                           | 根入口、`/plugins`、`/typography/*.css` |
-| `@ai-markdown/vue`                   | 构建 Vue 3.5 应用                                         | 根入口、`/styles.css`                   |
-| `@ai-markdown/react-mantine`         | 为 React 添加 Mantine 9 排版样式、代码高亮与 Mermaid 图表 | 根入口、`/styles.css`                   |
-| `@ai-markdown/core`                  | 构建需要会话管理、执行规划与跨文档协调的框架适配器        | 根入口                                  |
-| `@ai-markdown/engine`                | 构建适配器或纯字符串 / AST 语法处理流水线                 | 根入口                                  |
-| `@ai-markdown/remark-mark-highlight` | 为独立的 unified 处理流水线添加 `==高亮==` 语法           | 根入口                                  |
+| 包                                    | 直接安装的场景                                                               | 公开入口                                |
+| ------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------- |
+| `@ai-markdown/react`                  | 构建 React 应用                                                              | 根入口、`/plugins`、`/typography/*.css` |
+| `@ai-markdown/vue`                    | 构建 Vue 3.5 应用                                                            | 根入口、`/styles.css`                   |
+| `@ai-markdown/react-mantine`          | 为 React 添加 Mantine 9 排版样式、代码高亮与 Mermaid 图表                    | 根入口、`/styles.css`                   |
+| `@ai-markdown/core`                   | 构建需要会话管理、执行规划与跨文档协调的框架适配器                           | 根入口                                  |
+| `@ai-markdown/engine`                 | 构建适配器或纯字符串 / AST 语法处理流水线                                    | 根入口                                  |
+| `@ai-markdown/remark-mark-highlight`  | 为独立的 unified 处理流水线添加 `==高亮==` 语法                              | 根入口                                  |
+| `@ai-markdown/code-language-detector` | 在 Mantine 集成之外检测未标注语言的代码，或把 fence 语言名映射为高亮器的写法 | 根入口                                  |
 
 每个包均提供公开的 `/package.json`。应用只能导入公开导出的入口路径；不支持直接从 `src/` 或内部 `dist/` 路径导入。`@ai-markdown/react/plugins` 是 React 包的子路径导出，并非需要单独安装的独立包。Vue 则直接从根入口导出封装好的插件。
 
-React 和 Vue 分别依赖完全同版本的 core 与 engine。Core 本身依赖 engine。Mantine 声明了兼容的 React 适配器作为 peer 依赖；升级时请参阅其[对等依赖要求](../reference/react-mantine.md)并将两者一同升级。应用通常只需安装所选的框架适配器及其对等依赖。高亮插件作为 engine 的依赖项，与框架主包分开独立管理版本。
+React 和 Vue 分别依赖完全同版本的 core 与 engine。Core 本身依赖 engine。Mantine 声明了兼容的 React 适配器作为 peer 依赖；升级时请参阅其[对等依赖要求](../reference/react-mantine.md)并将两者一同升级。应用通常只需安装所选的框架适配器及其对等依赖。高亮插件是 engine 的依赖项，代码语言探测器是 Mantine 集成的依赖项，二者都与框架主包分开独立管理版本。
 
 早期的旧包 `@ai-react-markdown/core` 是一个 React 渲染器；其替代者是 `@ai-markdown/react`。新的 `@ai-markdown/core` 中不包含任何 React 组件或 Vue 组件。在重命名现有导入语句前，请先参阅[包迁移指南](framework-transition.md)。
 

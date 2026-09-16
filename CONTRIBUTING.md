@@ -4,7 +4,7 @@ Thanks for your interest in contributing. This file covers the practical "how" �
 
 ## Quick orientation
 
-This is a **pnpm monorepo** with six public packages:
+This is a **pnpm monorepo** with seven public packages:
 
 - [`packages/engine`](./packages/engine) — the Markdown engine: incremental parsing, LaTeX preprocessing, the definition/footnote machinery, and the unified plugin pipeline. No React anywhere in its tree.
 - [`packages/core`](./packages/core) — shared framework-independent sessions, planning and coordination.
@@ -12,6 +12,7 @@ This is a **pnpm monorepo** with six public packages:
 - [`packages/vue`](./packages/vue) — the Vue 3.5+ renderer built on the shared core.
 - [`packages/react-mantine`](./packages/react-mantine) — Mantine UI integration (lives on top of the React adapter).
 - [`packages/remark-mark-highlight`](./packages/remark-mark-highlight) — standalone `==highlight==` remark plugin, published on its own semver track.
+- [`packages/code-language-detector`](./packages/code-language-detector) — dependency-free heuristic language detection for unlabelled code blocks, used by react-mantine and published on its own semver track.
 
 The engine/core/adapter boundary is where most orientation mistakes happen. **Anything that turns Markdown text into a hast tree belongs in the engine; anything that turns a hast tree into React belongs in the React adapter.** If a change needs `useState`, a context, or a DOM node, it is adapter-side by construction. `core` depends on `engine` at an exact version (pnpm rewrites `workspace:*` to the published version), so the two always ship in lockstep.
 
@@ -205,7 +206,7 @@ By participating in this project you agree to abide by the [Contributor Covenant
 
 ## Releasing (maintainer-only)
 
-Releases publish from CI via [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC for all existing packages) with provenance attached automatically. Each new npm package must first have its publisher configured for `ai-markdown/ai-markdown` and `release.yml`; the scope registration does not configure it. Pushing a `v*` tag triggers `.github/workflows/release.yml`, which re-runs the full quality gate (lint, format, typecheck, tests, build), verifies the tag matches `package.json`, and publishes missing versions in dependency order: independent highlight plugin, engine, core, react, react-mantine, vue. The registry is checked between steps. Packages on an independent semver track — `remark-mark-highlight` — either ride the train tag when their version was bumped, or get released alone via a `<pkg>-vX.Y.Z` tag:
+Releases publish from CI via [npm trusted publishing](https://docs.npmjs.com/trusted-publishers) (OIDC) with provenance attached automatically. Every package that already exists on npm must have its trusted publisher configured for `ai-markdown/ai-markdown` and `release.yml`; the scope registration does not configure it. A package that does not exist on npm yet has no publisher to configure, so its first version bootstraps with the `FIRST_PUBLISH_NPM_TOKEN` secret: `@ai-markdown/code-language-detector` is first published from its own `code-language-detector-v1.0.0` tag. A train tag does not receive the bootstrap token, so push that package tag before the first train tag that includes the detector, then configure the detector's trusted publisher: later tags publish it through OIDC only. Pushing a `v*` tag triggers `.github/workflows/release.yml`, which re-runs the full quality gate (lint, format, typecheck, tests, build), verifies the tag matches `package.json`, and publishes missing versions in dependency order: the independent packages first, then engine, core, react, react-mantine, vue. The registry is checked between steps. The independent packages are listed once, in `scripts/release-packages.mjs` — currently `remark-mark-highlight` and `code-language-detector`. Each either rides the train tag when its version was bumped, or is released alone via a `<directory>-vX.Y.Z` tag such as `code-language-detector-vX.Y.Z`:
 
 ```bash
 # Sync versions across the monorepo (also rewrites README version refs)
@@ -216,7 +217,7 @@ git tag vX.Y.Z
 git push origin main vX.Y.Z
 ```
 
-The five main packages are published as stable 3.0.1 on npm `latest`. Future stable versions use `latest` and a non-prerelease GitHub release; beta/RC versions use their corresponding npm channel and a GitHub prerelease. The independent highlight plugin stays on its own stable 1.x line.
+The five main packages are published as stable 3.0.1 on npm `latest`. Future stable versions use `latest` and a non-prerelease GitHub release; beta/RC versions use their corresponding npm channel and a GitHub prerelease. The independent highlight plugin and code language detector stay on their own stable 1.x lines.
 
 Run `pnpm preflight` before tagging to catch gate failures locally — it is the same check suite the workflow runs, minus the publish. There is deliberately no local publish path: a local `npm publish` cannot attach provenance, so publishing happens only via the tag flow.
 

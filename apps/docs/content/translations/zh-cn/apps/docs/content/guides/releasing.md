@@ -25,7 +25,7 @@ pnpm install
 2. 确保 CI 测试全部通过，包括打包使用端的 Node 矩阵测试与 core 契约任务。
 3. 提交干净的候选版本并运行 `pnpm check:soak-impact`。当引擎变动影响需要进行压测时，请遵循[压测覆盖与审批](soak-coverage.md)，并使用 `pnpm check:release-soak --evidence .soak-logs/<run-id>` 验证其测试证据。当前发布配置覆盖全部六个测试分支与 84 项逻辑任务。
 4. 为验证通过的版本打上 Git 标签。发布工作流必须通过自动化验证，并在需要时通过人工 `soak-approval` 审查。妥善留存已审查的测试证据。
-5. 对现有相关包采用 Trusted Publishing。预发布版本推送到对应的 `beta` 或 `rc` 渠道；稳定发布版本推送到 `latest`。独立插件遵循自身的版本号与分发渠道。对于现有包，保持引导认证（bootstrap authentication）处于关闭状态。
+5. 对现有相关包采用 Trusted Publishing。预发布版本推送到对应的 `beta` 或 `rc` 渠道；稳定发布版本推送到 `latest`。`scripts/release-packages.mjs` 中列出的独立版本包（`remark-mark-highlight`、`code-language-detector`）遵循各自的版本号与分发渠道；统一版本标签会先发布它们，再发布 engine、core、react、react-mantine 与 vue。尚未在 npm 上存在的包，首个版本通过 `FIRST_PUBLISH_NPM_TOKEN` 引导发布（代码语言探测器对应 `code-language-detector-v1.0.0`），发布完成后再为其配置 Trusted Publisher。对于现有包，保持引导认证（bootstrap authentication）处于关闭状态。
 6. 发布完成后必须执行注册表与使用端验证。工作流在创建 GitHub Release 之前会归档其验证报告；只读验证工作流可对现有发布重新执行检查。
 
 本地测试通过并不能替代远程 CI、已发布产物验证或必要的人工审查。在测试运行与证据标识符生成后，请如实记录其实际 URL 与标识。
@@ -50,8 +50,8 @@ pnpm test:published-release "${RELEASE_TAG:?Set RELEASE_TAG to an existing relea
 
 独立相关包发布会检查自身的元数据与溯源信息，并与该标签下记录的发布版本一同进行测试。
 
-请使用现有标签以及包含完整 Git 历史的代码检出。对于这些注册表检查，不需要在本地构建工作区或安装依赖项。Node 版本必须满足相关包的 engine 范围要求；系统中必须安装并可用 `npm`、`pnpm`、`git` 和 `tar`。独立插件的版本直接读取自该标签下的 package.json，而非硬编码版本。GitHub 的 `Verify published release` 工作流为现有标签提供了相同的只读检查，无需执行发布操作，也无需压测批准。
+请使用现有标签以及包含完整 Git 历史的代码检出。对于这些注册表检查，不需要在本地构建工作区或安装依赖项。Node 版本必须满足相关包的 engine 范围要求；系统中必须安装并可用 `npm`、`pnpm`、`git` 和 `tar`。独立版本包的版本直接读取自该标签下的 package.json，而非硬编码版本。GitHub 的 `Verify published release` 工作流为现有标签提供了相同的只读检查，无需执行发布操作，也无需压测批准。
 
-验证流程会检查 npm 渠道、依赖项与 engine 元数据、tarball SHA-512，以及溯源仓库、工作流、源码标签、提交 SHA 与 tarball 主题。这属于溯源**内容与源码一致性**验证，而非加密 Sigstore 签名校验。复用的插件版本与发布重试会保留其原始溯源调用；原始源码必须是祖先提交且相关包实现源码未发生变更。独立版本发布的插件在复用其现有构建产物时允许顶层 README 存在差异；实现变更仍必须升级版本。统一版本发布相关包还额外要求包清单与 lockfile 输入保持不变。切勿要求复用的构建产物包含当前工作流运行的名称。
+验证流程会检查 npm 渠道、依赖项与 engine 元数据、tarball SHA-512，以及溯源仓库、工作流、源码标签、提交 SHA 与 tarball 主题。这属于溯源**内容与源码一致性**验证，而非加密 Sigstore 签名校验。复用的独立包版本与发布重试会保留其原始溯源调用；原始源码必须是祖先提交且相关包实现源码未发生变更。独立版本发布的包在复用现有构建产物时允许顶层 README 存在差异；实现变更仍必须升级版本。统一版本发布相关包还额外要求包清单与 lockfile 输入保持不变。切勿要求复用的构建产物包含当前工作流运行的名称。
 
 注册表可见性检查最多重试 12 次，每次尝试间隔 5 秒，单次请求超时时间为 30 秒。持续不匹配会导致验证失败。生成的 JSON 报告会记录目标 SHA、Node 版本、源码调用、哈希值与测试结果（包括失败时的部分结果）。CI 会将其归档为 `published-release-verification`。重试操作可以验证已有的上传内容，并保留已发布的 GitHub Release 完整无损。在恢复未完成的上传时，请从发布标签运行发布工作流，以使新的溯源记录该标签；切勿移动已有标签或覆盖已发布的 npm 版本。历史审计要求预期渠道仍指向该版本；一旦后续的新发布推进了渠道指向，较早的历史审计会按预期在渠道检查项上报错失败。

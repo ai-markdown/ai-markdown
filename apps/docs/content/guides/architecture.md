@@ -209,10 +209,10 @@ See [URL Sanitization & Custom Schemes](url-sanitization.md) for the two-gate mo
 
 `@ai-markdown/react-mantine` is a thin wrapper that:
 
-1. Ships the `codeBlock` behavior group (`defaultExpanded`, `autoDetectUnknownLanguage`, `highlightJs`, `formatJson`, `expandNestedJson`, `highlightIntervalMs`, `mermaidIntervalMs`) — contributed through the additive `AIMarkdownBehaviorsProvider`, read via `useMantineCodeBlockOptions()`.
+1. Ships the `codeBlock` behavior group (`defaultExpanded`, `autoDetectUnknownLanguage`, `languageFormat`, `formatJson`, `expandNestedJson`, `highlightIntervalMs`, `mermaidIntervalMs`) — contributed through the additive `AIMarkdownBehaviorsProvider`, read via `useMantineCodeBlockOptions()`.
 2. Provides `MantineAIMarkdownTypography` (uses Mantine's `<Typography>`).
 3. Provides `MantineAIMDefaultExtraStyles` (CSS scoping for em-based Mantine token overrides).
-4. Overrides `customComponents.pre` with `MantineAIMPreCode` (CodeHighlight + Mermaid + JSON pretty-print).
+4. Overrides `customComponents.pre` with `MantineAIMPreCode` (CodeHighlight + Mermaid + JSON pretty-print), which identifies unlabelled blocks with `@ai-markdown/code-language-detector` when `autoDetectUnknownLanguage` is on.
 5. Auto-detects the color scheme from Mantine's provider (`useMantineColorScheme`), resolving `auto` against the system query with `useSyncExternalStore` so the first client frame is already correct.
 
 Every one of these uses **public** extension points from core. No internal access. See [Extending via a Sub-package](extending-via-subpackage.md) for the template.
@@ -345,7 +345,7 @@ packages/react-mantine/src/
     └── useMantineAIMarkdownMetadata.ts
 ```
 
-`packages/remark-mark-highlight` is the independently versioned remark plugin consumed by engine. It is the sixth public package; `packages/react/plugins` is only an export subpath.
+`packages/remark-mark-highlight` is the independently versioned remark plugin consumed by engine, the sixth public package. `packages/code-language-detector` is the independently versioned, dependency-free language detector consumed by react-mantine, the seventh public package. `packages/react/plugins` is only an export subpath.
 
 Storybook apps live in `apps/storybook-{hub,react,vue}`, with shared helpers in `tooling/storybook-kit`. Those workspaces, the corpus, benchmarks and archived prototypes are private. See [development commands](development-commands.md) for package-filtered builds and tests.
 
