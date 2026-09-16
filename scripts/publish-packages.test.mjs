@@ -23,16 +23,24 @@ for (const version of ['3.0.0-beta.2', '3.0.0-rc.1', '3.0.0']) {
       mkdirSync(join(root, 'bin'));
       mkdirSync(join(root, 'state'));
       mkdirSync(join(root, 'runner'));
-      for (const script of ['publish-packages.mjs', 'check-release.mjs'])
+      for (const script of ['publish-packages.mjs', 'check-release.mjs', 'release-packages.mjs'])
         copyFileSync(resolve('scripts', script), join(root, 'scripts', script));
       const rootManifest = JSON.parse(readFileSync('package.json', 'utf8'));
       rootManifest.version = version;
       writeFileSync(join(root, 'package.json'), JSON.stringify(rootManifest));
-      const packages = ['engine', 'core', 'react', 'react-mantine', 'vue', 'remark-mark-highlight'];
+      const packages = [
+        'engine',
+        'core',
+        'react',
+        'react-mantine',
+        'vue',
+        'remark-mark-highlight',
+        'code-language-detector',
+      ];
       for (const name of packages) {
         mkdirSync(join(root, 'packages', name), { recursive: true });
         const manifest = JSON.parse(readFileSync(resolve('packages', name, 'package.json'), 'utf8'));
-        if (name !== 'remark-mark-highlight') manifest.version = version;
+        if (!['remark-mark-highlight', 'code-language-detector'].includes(name)) manifest.version = version;
         if (name === 'react-mantine')
           manifest.peerDependencies['@ai-markdown/react'] = version.includes('-') ? version : `^${version}`;
         writeFileSync(join(root, 'packages', name, 'package.json'), JSON.stringify(manifest));

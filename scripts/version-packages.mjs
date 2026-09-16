@@ -5,9 +5,9 @@
 //
 // Usage: node scripts/version-packages.mjs <new-version>
 //
-// - Updates "version" in every LOCKSTEP package (engine, core, react, react-mantine — the
-//   release train); independently versioned packages (remark-mark-highlight)
-//   are reported and skipped
+// - Updates "version" in every LOCKSTEP package (engine, core, react, react-mantine, vue — the
+//   release train); independently versioned packages (remark-mark-highlight,
+//   code-language-detector) are reported and skipped
 // - For integration lockstep packages, updates peerDependencies["@ai-markdown/react"] to ^<new-version>
 // - Rewrites React version references in README files and an allowlist of guides
 //   (install snippets, examples)

@@ -1,14 +1,15 @@
 name: Release
 
-# Publishes the five train packages and independently versioned plugin to npm with provenance attestation when a version
+# Publishes the five train packages and the independently versioned packages to npm with provenance attestation when a version
 # tag is pushed. Flow:
 #
 #   pnpm version-packages X.Y.Z && pnpm install
 #   git commit -am "chore(release): vX.Y.Z"
 #   git tag vX.Y.Z && git push origin main vX.Y.Z
 #
-# Independent (non-lockstep) packages — e.g.
-# @ai-markdown/remark-mark-highlight — ride a train tag automatically
+# Independent (non-lockstep) packages — @ai-markdown/remark-mark-highlight
+# and @ai-markdown/code-language-detector, listed in
+# scripts/release-packages.mjs — ride a train tag automatically
 # when their version was bumped (the publisher skips already-published
 # versions). To release ONE of them without a train, push a package tag:
 #
@@ -19,8 +20,10 @@ name: Release
 # release notes.
 #
 # Auth is npm "trusted publishing" (OIDC): register this repo+workflow
-# as a trusted publisher for each package on npmjs.com. The first new-scope
-# beta can bootstrap with FIRST_PUBLISH_NPM_TOKEN; later tags use only OIDC.
+# as a trusted publisher for each package on npmjs.com. A package that does
+# not exist on npm yet has no trusted publisher to register, so its first
+# version bootstraps with FIRST_PUBLISH_NPM_TOKEN (Vue at v3.0.0-beta.2, the
+# language detector at code-language-detector-v1.0.0); later tags use only OIDC.
 # npm mints a short-lived credential from the id-token
 # permission below, and provenance is attached automatically. pnpm's own
 # native OIDC support landed in 11.1.3, below the version pinned here, so the
@@ -222,12 +225,13 @@ jobs:
       # npm gives every publish `latest` unless told otherwise (2026-08-19
       # review r2 P2-16). The dist-tag is the pre-release identifier's first
       # word (`beta.1` → `beta`, `rc.2` → `rc`), `next` when it has none.
-      # The beta.2 tag creates Vue for the first time. Only Vue receives the
+      # The beta.2 tag created Vue, and code-language-detector-v1.0.0 creates
+      # the language detector. Only the package being created receives the
       # temporary token; existing packages retain their OIDC publishers.
       - name: Publish to npm (provenance; first beta token or OIDC)
         env:
-          FIRST_PUBLISH_NPM_TOKEN: ${{ (inputs.bootstrap_vue || (inputs.release_tag || github.ref_name) == 'v3.0.0-beta.1' || (inputs.release_tag || github.ref_name) == 'v3.0.0-beta.2') && secrets.FIRST_PUBLISH_NPM_TOKEN || '' }}
-          FIRST_PUBLISH_PACKAGE: ${{ (inputs.bootstrap_vue || (inputs.release_tag || github.ref_name) == 'v3.0.0-beta.2') && '@ai-markdown/vue' || '' }}
+          FIRST_PUBLISH_NPM_TOKEN: ${{ (inputs.bootstrap_vue || (inputs.release_tag || github.ref_name) == 'v3.0.0-beta.1' || (inputs.release_tag || github.ref_name) == 'v3.0.0-beta.2' || (inputs.release_tag || github.ref_name) == 'code-language-detector-v1.0.0') && secrets.FIRST_PUBLISH_NPM_TOKEN || '' }}
+          FIRST_PUBLISH_PACKAGE: ${{ (inputs.bootstrap_vue || (inputs.release_tag || github.ref_name) == 'v3.0.0-beta.2') && '@ai-markdown/vue' || (inputs.release_tag || github.ref_name) == 'code-language-detector-v1.0.0' && '@ai-markdown/code-language-detector' || '' }}
         run: |
           node scripts/publish-packages.mjs "$RELEASE_TAG"
 

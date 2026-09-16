@@ -3,12 +3,11 @@ import assert from 'node:assert/strict';
 import { readFileSync, writeFileSync, unlinkSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
+import { releaseDirectories } from './release-packages.mjs';
 
 const releaseTag = process.argv[2];
 execFileSync(process.execPath, ['scripts/check-release.mjs', releaseTag], { stdio: 'inherit' });
-const directories = releaseTag.startsWith('v')
-  ? ['remark-mark-highlight', 'engine', 'core', 'react', 'react-mantine', 'vue']
-  : [releaseTag.slice(0, releaseTag.lastIndexOf('-v'))];
+const directories = releaseDirectories(releaseTag);
 const registry = 'https://registry.npmjs.org';
 
 // Provenance records the workflow ref that ran the upload, and

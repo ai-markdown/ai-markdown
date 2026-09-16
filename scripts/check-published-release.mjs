@@ -5,6 +5,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { resolve, join } from 'node:path';
 import { URL, pathToFileURL } from 'node:url';
+import { INDEPENDENT, RELEASE_TAG_PATTERN, releaseDirectories, releaseVersion } from './release-packages.mjs';
 
 export function channel(version) {
   return version.includes('-') ? version.split('-')[1].split('.')[0] : 'latest';
@@ -16,7 +17,7 @@ export function verifyStatement(statement, bytes) {
   assert.equal(definition.externalParameters.workflow.path, '.github/workflows/release.yml');
   const ref = definition.externalParameters.workflow.ref;
   assert(
-    /^refs\/tags\/(?:v|remark-mark-highlight-v)\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(ref),
+    ref.startsWith('refs/tags/') && RELEASE_TAG_PATTERN.test(ref.slice('refs/tags/'.length)),
     'Provenance must reference a release tag'
   );
   const source = definition.resolvedDependencies.find((d) =>
@@ -47,10 +48,9 @@ const git = (args) =>
 // its README links change. Its existing tarball and README are still checked
 // against the original provenance; all other package files must stay identical.
 export function verifyPackageSources(directory, source, target, cwd = root) {
-  const paths =
-    directory === 'remark-mark-highlight'
-      ? ['packages/remark-mark-highlight', ':(exclude)packages/remark-mark-highlight/README.md']
-      : ['packages', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json'];
+  const paths = INDEPENDENT.includes(directory)
+    ? [`packages/${directory}`, `:(exclude)packages/${directory}/README.md`]
+    : ['packages', 'pnpm-lock.yaml', 'pnpm-workspace.yaml', 'package.json'];
   execFileSync('git', ['diff', '--exit-code', source, target, '--', ...paths], {
     cwd,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -63,15 +63,10 @@ async function get(url, binary = false) {
   return binary ? Buffer.from(await response.arrayBuffer()) : response.json();
 }
 async function audit(tag, reportDirectory) {
-  assert(
-    /^(?:v|remark-mark-highlight-v)\d+\.\d+\.\d+(?:-[\w.]+)?$/.test(tag ?? ''),
-    'Usage: check-published-release.mjs <release-tag> [report-directory]'
-  );
+  assert(RELEASE_TAG_PATTERN.test(tag ?? ''), 'Usage: check-published-release.mjs <release-tag> [report-directory]');
   const target = git(['rev-parse', '--verify', `${tag}^{commit}`]);
-  const releaseVersion = tag.slice(tag.startsWith('v') ? 1 : 'remark-mark-highlight-v'.length);
-  const directories = tag.startsWith('v')
-    ? ['engine', 'core', 'react', 'react-mantine', 'vue', 'remark-mark-highlight']
-    : ['remark-mark-highlight'];
+  const version = releaseVersion(tag);
+  const directories = releaseDirectories(tag);
   const report = {
     tag,
     target,
@@ -86,8 +81,8 @@ async function audit(tag, reportDirectory) {
       const expected = JSON.parse(git(['show', `${target}:packages/${directory}/package.json`]));
       assert.equal(expected.name, `@ai-markdown/${directory}`);
       assert(!expected.private);
-      if (directory !== 'remark-mark-highlight' || !tag.startsWith('v'))
-        assert.equal(expected.version, releaseVersion, 'Tag differs from package version');
+      if (!INDEPENDENT.includes(directory) || !tag.startsWith('v'))
+        assert.equal(expected.version, version, 'Tag differs from package version');
       let record, failure;
       // Registry metadata, attestation and CDN visibility can lag the upload.
       // Bound retries; a mismatch still fails the release rather than being ignored.
@@ -118,11 +113,14 @@ async function audit(tag, reportDirectory) {
             assert.equal(manifest.dependencies['@ai-markdown/engine'], expected.version);
           if (['react', 'vue'].includes(directory))
             assert.equal(manifest.dependencies['@ai-markdown/core'], expected.version);
-          if (directory === 'react-mantine')
+          if (directory === 'react-mantine') {
             assert.equal(
               manifest.peerDependencies['@ai-markdown/react'],
               expected.peerDependencies['@ai-markdown/react']
             );
+            const detector = JSON.parse(git(['show', `${target}:packages/code-language-detector/package.json`]));
+            assert.equal(manifest.dependencies['@ai-markdown/code-language-detector'], `^${detector.version}`);
+          }
           const bytes = await get(manifest.dist.tarball, true);
           assert.equal(manifest.dist.integrity, 'sha512-' + createHash('sha512').update(bytes).digest('base64'));
           const attestations = await get(manifest.dist.attestations.url);
