@@ -6,13 +6,13 @@
 
 Mantine 集成包安装了一个默认的 `<pre>` 渲染器（`MantineAIMPreCode`），负责驱动所有代码块特性。针对不同类型的代码块，其渲染行为如下：
 
-| 代码块类型                                                                                                                                                                                                                                                                                                     | 渲染为                            | 行为说明                                                                                                                                                                                   |
-| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 已声明且受支持的语言（如 ` ```ts `） \| `<CodeHighlightTabs>`                                                                                                                                                                                                                                                  | 标签页标题 = 转换为小写的语言名称 |
-| 已声明但未知的语言标识符                                                                                                                                                                                                                                                                                       | `<CodeHighlightTabs>`             | 标签页标题 = 转换为小写的标识符；Mantine 的高亮适配器会将未知语言安全降级为纯文本展示                                                                                                      |
-| 未声明任何语言                                                                                                                                                                                                                                                                                                 | `<CodeHighlight>` 纯文本          | 标签页标题 = `"unknown"`。当设置 `codeBlock.autoDetectUnknownLanguage: true` 时，`hljs.highlightAuto` 会尽早预估，随代码块增长重新校验，并在流式结束时给出最终判定——原位升级标签与语法高亮 |
-| ` ```mermaid `（大小写不敏感）                                                                                                                                                                                                                                                                                 | 交互式 Mermaid 图表               | 详见 [Mermaid 图表](#mermaid-diagrams)；语言匹配不区分大小写                                                                                                                               |
-| ` ```json `（大小写不敏感） \| 美化格式化后的 JSON \| 代码块一旦呈现完整形态（以 `}` 或 `]` 结尾且括号在字符串外对称闭合），即会进行解析；字符串中嵌套的 JSON 对象/数组会被展开（原始字面量风格的字符串如 `"true"` 保持为字符串），并以 2 空格缩进排版，同时保留精确的数值 Token；格式化和嵌套展开均可单独关闭 |
+| 代码块类型                           | 渲染为                   | 行为说明                                                                                                                                                                                                                                                 |
+| ------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 已声明且受支持的语言（如 ` ```ts `） | `<CodeHighlightTabs>`    | 标签页标题 = 按原样书写的语言名称（转换为小写）；交给高亮器的是 `codeBlock.languageFormat` 所选拼写下的名称（` ```objc ` 以 `objectivec` 交给 highlight.js，` ```txt ` 以 `plaintext` 交给 highlight.js）                                                |
+| 已声明但未知的语言标识符             | `<CodeHighlightTabs>`    | 标签页标题 = 转换为小写的标识符；`codeBlock.languageFormat` 不转换的标识符以小写形式交给高亮器，Mantine 的高亮适配器会将它不支持的语言安全降级为纯文本展示                                                                                               |
+| 未声明任何语言                       | `<CodeHighlight>` 纯文本 | 标签页标题 = `"unknown"`。当设置 `codeBlock.autoDetectUnknownLanguage: true` 时，`@ai-markdown/code-language-detector` 在渲染期间（包括服务端渲染）于证据充分时标注语言，并在流式结束时确定最终结果；检测器放弃判断的代码块保持 `"unknown"`              |
+| ` ```mermaid `（大小写不敏感）       | 交互式 Mermaid 图表      | 详见 [Mermaid 图表](#mermaid-diagrams)；语言匹配不区分大小写                                                                                                                                                                                             |
+| ` ```json `（大小写不敏感）          | 美化格式化后的 JSON      | 代码块一旦呈现完整形态（以 `}` 或 `]` 结尾且括号在字符串外对称闭合），即会进行解析；字符串中嵌套的 JSON 对象/数组会被展开（原始字面量风格的字符串如 `"true"` 保持为字符串），并以 2 空格缩进排版，同时保留精确的数值 Token；格式化和嵌套展开均可单独关闭 |
 
 无论 JSON 显示如何美化，点击复制按钮均会复制最原始的代码文本（包含尾部换行符）。包含嵌套元素、兄弟文本或额外属性的原生 HTML `<pre>` 结构会保持原生渲染，不会错误进入代码高亮器。
 
@@ -20,7 +20,7 @@ Mantine 集成包安装了一个默认的 `<pre>` 渲染器（`MantineAIMPreCode
 
 ### 代码高亮适配器
 
-代码高亮要求在组件树外层包裹 `CodeHighlightAdapterProvider`。这是 Mantine 的官方要求——该适配器将 `highlight.js` 桥接到 Mantine 的代码高亮组件中。
+代码高亮要求在组件树外层包裹 `CodeHighlightAdapterProvider`。这是 Mantine 的官方要求——该适配器将高亮器（下例中的 `highlight.js`，或通过 `createShikiAdapter` 接入的 Shiki）桥接到 Mantine 的代码高亮组件中。
 
 ```tsx
 import { CodeHighlightAdapterProvider, createHighlightJsAdapter } from '@mantine/code-highlight';
@@ -37,34 +37,60 @@ function App() {
 }
 ```
 
-### 语言自动检测
+使用 Mantine 的 Shiki 适配器时，还需要把 `codeBlock.languageFormat` 设为 `MantineLanguageFormat.Shiki`，详见[高亮器语言名称](#highlighter-language-names)。
 
-默认情况下，未标注语言的代码块会作为纯文本渲染。可通过 `codeBlock` 属性开启自动检测：
+### 高亮器语言名称 <a id="highlighter-language-names"></a>
+
+渲染器无法得知 `CodeHighlightAdapterProvider` 中使用的是哪个适配器，因此由 `codeBlock.languageFormat` 说明语言以哪套名称交给高亮器。它作用于所有带语言的代码块：书写在围栏上的语言和检测出的语言都经过同一个映射函数，即 `@ai-markdown/code-language-detector` 的 `normalizeHighlightJsLanguage` 或 `normalizeShikiLanguage`。模型会写出 `objc`、`txt`、`Makefile`、`console` 这类两个高亮器拼写不同的名称，因此即使不开启自动检测，也应让该选项与适配器保持一致。
+
+| `languageFormat`                              | 适配器                     | 交给高亮器的名称                                                                                                                                                                                                                                                                                                 |
+| --------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `MantineLanguageFormat.HighlightJs`（默认值） | `createHighlightJsAdapter` | highlight.js 名称：`objectivec`、`vbnet`、`x86asm`，JSX 对应 `javascript`，TSX 对应 `typescript`，HTML、Vue 与 Svelte 对应 `xml`（其 xml 语法会把 `<script>` 与 `<style>` 作为子语言高亮），`txt` 对应 `plaintext`，`console` 对应 `shell`，`bat` 或 `cmd` 对应 `dos`，`viml` 对应 `vim`，`jinja2` 对应 `django` |
+| `MantineLanguageFormat.Shiki`                 | `createShikiAdapter`       | Shiki 语言 id：`objc` 对应 `objective-c`，`txt` 或 `plaintext` 对应 `text`，`makefile` 对应 `make`，`batch` 或 `cmd` 对应 `bat`，`console` 对应 `shellsession`，`coffeescript` 对应 `coffee`                                                                                                                     |
+
+其他名称转换为小写后原样交给高亮器；没有语言的代码块按 `plaintext` 高亮。映射得到的名称并不保证对应的 grammar 已注册或已加载；Mantine 的适配器会把不支持的语言降级为纯文本。
+
+标签页标题保留围栏上书写的语言（转换为小写），或检测出的语言本身的名称；只有代码块没有语言时才显示“unknown”。在默认设置下，` ```objc ` 的标签为 `objc`，按 `objectivec` 高亮；检测出的 Vue 组件标签为 `vue`，按 `xml` 高亮。JSON 美化格式化与 Mermaid 渲染依据的是这个小写名称，而不是映射后的名称。
+
+使用 Shiki 适配器时，请选择 Shiki 名称：
 
 ```tsx
-import hljs from 'highlight.js';
+import MantineAIMarkdown, { MantineLanguageFormat } from '@ai-markdown/react-mantine';
 
-const CODE_BLOCK = { autoDetectUnknownLanguage: true, highlightJs: hljs };
-// 或首次使用时再加载——加载函数请放在模块作用域，该组按值比较：
-// const CODE_BLOCK = { autoDetectUnknownLanguage: true, highlightJs: () => import('highlight.js') };
+const CODE_BLOCK = {
+  languageFormat: MantineLanguageFormat.Shiki,
+};
 
 <MantineAIMarkdown content={markdown} codeBlock={CODE_BLOCK} />;
 ```
 
-开启后将使用 `highlight.js` 的 `highlightAuto` 猜测语言，运行在你通过 `highlightJs` 传入的实例或加载函数上。包本身不导入 `highlight.js`（该对等依赖为可选），因此未传 `highlightJs` 时该选项不生效，并输出一次警告。传入与适配器相同的实例——包括只注册了所需语言的 `highlight.js/lib/core` 构建——可以让检测范围限定在适配器能够高亮的语言之内。对于过短或含义模糊的代码片段，猜测结果可能会有所波动。在代码块流式接收期间，检测按照**倍增计划**执行——当代码块达到约 32 个字符时进行首次预估，长度每次翻倍时重新修正一次，并在流式彻底结束时给出最终裁定——因此纯追加的数据流只会向检测器提交 O(n) 的总文本量，避免在每个前缀上反复计分。这限制了提交的文本规模，但不代表能限制 highlight.js 或其特定语法解析器的执行耗时。若代码块被整体替换而非追加（重新生成），倍增计划会重新计时。若未传入 `streaming` 属性，渲染器无法判断数据分块边界，会在每次内容变动时重新触发全量检测——因此在流式传输时请传入 `streaming`。加载函数在每个页面只执行一次（按函数身份缓存）；加载失败会在有限次数内重试。
+无法识别的 `languageFormat` 值会回退为默认值。
+
+### 语言自动检测
+
+默认情况下，未标注语言的代码块会作为纯文本渲染，标签为“unknown”。可通过 `codeBlock` 属性开启自动检测：
+
+```tsx
+<MantineAIMarkdown content={markdown} codeBlock={{ autoDetectUnknownLanguage: true }} />
+```
+
+检测由 [`@ai-markdown/code-language-detector`](../../../../packages/code-language-detector/README.md) 完成。它是本包的常规依赖，因此无需提供 highlight.js 实例，也无需额外安装。检测是同步的，在渲染期间执行，包括服务端渲染：检测出的标签页标题直接出现在 SSR 标记中，代码块不会先显示“unknown”再原位升级。证据不足时检测器会放弃判断而不是猜测，被放弃的代码块保持纯文本，标签为“unknown”。检测器永远不会覆盖显式声明的围栏语言。检测出的语言与书写在围栏上的语言经由同一套 [`languageFormat` 映射](#highlighter-language-names)交给高亮器。
+
+`streaming` 为 `true` 期间，检测器在证据充分时才为代码块标注语言，之后只有代码块明显增长才会重新检测。它不会降低已有的置信度，也不会在流式中途切换到另一个语言家族。如果新文本不是在旧文本之后追加（例如重新生成，包括长度相同的替换），检测会从头开始。`streaming` 结束时，检测器基于完整代码块确定最终结果。流式传输时请传入 `streaming`，以便应用上述策略。
 
 ### 预加载按需资源
 
-`mermaid` 由图表渲染器惰性加载，`highlightJs` 加载函数则在自动检测首次需要时执行。如果应用希望在启动时提前承担此项开销——例如首屏即包含图表的文档页，或希望消除首个图表模块加载延迟的聊天界面——可在应用启动时调用导出的预加载函数一次：
+`mermaid` 由图表渲染器惰性加载。如果应用希望在启动时提前承担此项开销——例如首屏即包含图表的文档页，或希望消除首个图表模块加载延迟的聊天界面——可在应用启动时调用导出的预加载函数一次：
 
 ```tsx
 import { preloadMantineCodeAssets } from '@ai-markdown/react-mantine';
 
-void preloadMantineCodeAssets(); // 仅 mermaid；幂等；失败被吞掉，渲染器回退为惰性加载
-void preloadMantineCodeAssets({ highlightJs: loadHljs }); // 同时执行你传给 codeBlock.highlightJs 的加载函数（同一个函数）
+void preloadMantineCodeAssets(); // mermaid；幂等；失败被吞掉，渲染器回退为惰性加载
 ```
 
-当应用自身的预加载能够解析为与渲染器动态导入相同的模块实例时，也可以直接采用应用层的静态导入。当你希望独立于应用的模块解析策略预加载集成资源时，请使用该辅助函数。
+该函数不接受参数。语言检测是同步的，且随包一起提供，因此无需为它预加载任何资源。
+
+当应用自身的预加载能够解析为与渲染器动态导入相同的 mermaid 模块时，也可以直接采用应用层的静态导入。当你希望独立于应用的模块解析策略预加载集成资源时，请使用该辅助函数。
 
 ## Mermaid 图表 <a id="mermaid-diagrams"></a>
 

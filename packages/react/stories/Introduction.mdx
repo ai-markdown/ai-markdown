@@ -39,12 +39,13 @@ to reach for.
 
 ## Packages
 
-| Package                              | Install it when                                                                                                             | In this Storybook                            |
-| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
-| `@ai-markdown/react`                 | You are rendering markdown in React, with any UI library or none.                                                           | The React catalog.                           |
-| `@ai-markdown/react-mantine`         | Your app already uses Mantine and you want highlighted code blocks, mermaid diagrams, and automatic color-scheme following. | The **Integrations / Mantine** branch.       |
-| `@ai-markdown/engine`                | You are building a renderer for another framework. It is the parsing engine, with no React in it.                           | Not shown — it has no UI to demonstrate.     |
-| `@ai-markdown/remark-mark-highlight` | You want `==highlight==` syntax in some other remark pipeline.                                                              | Not shown — it is a plugin, not a component. |
+| Package                               | Install it when                                                                                                                  | In this Storybook                                                          |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| `@ai-markdown/react`                  | You are rendering markdown in React, with any UI library or none.                                                                | The React catalog.                                                         |
+| `@ai-markdown/react-mantine`          | Your app already uses Mantine and you want highlighted code blocks, mermaid diagrams, and automatic color-scheme following.      | The **Integrations / Mantine** branch.                                     |
+| `@ai-markdown/engine`                 | You are building a renderer for another framework. It is the parsing engine, with no React in it.                                | Not shown — it has no UI to demonstrate.                                   |
+| `@ai-markdown/remark-mark-highlight`  | You want `==highlight==` syntax in some other remark pipeline.                                                                   | Not shown — it is a plugin, not a component.                               |
+| `@ai-markdown/code-language-detector` | You want to detect the language of unlabelled code, or map fence language names to Shiki or highlight.js names, without Mantine. | Used by **Integrations / Mantine / Code Blocks**; it has no UI of its own. |
 
 The Mantine package **wraps** the React adapter rather than replacing it: same props, same engine, same
 streaming behaviour, plus its own renderers. Nothing in the React catalog stops being true over

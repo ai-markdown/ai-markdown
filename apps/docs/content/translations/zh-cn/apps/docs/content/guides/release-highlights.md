@@ -6,6 +6,34 @@
 
 验证测试数量属于对应候选版本报告的历史数据，并非针对本次文档修订重新执行的测试。同样，零缺陷的模糊测试（fuzz）或压测轮次仅能证明其受测输入族与配置下的表现；后续条目将说明在扩展这些输入族时发现的其他缺陷。
 
+## 3.2.0 — 代码语言探测器与 Mantine 同步语言检测
+
+### 3.2.0
+
+本次次版本将 engine、core、React、Mantine 和 Vue 同步升级至 `3.2.0`，其中 engine、core、React 与 Vue 仅做版本对齐。独立发布的高亮插件仍为 `1.0.2`。新增独立版本包 `@ai-markdown/code-language-detector`，首个版本为 `1.0.0`。Mantine 改用该包做语言自动检测，并移除了为旧检测方式提供 highlight.js 的选项。
+
+#### 代码语言探测器
+
+- **新包 `@ai-markdown/code-language-detector` 1.0.0。** 为未标注语言的代码块做启发式语言检测，面向大模型的流式输出设计。它没有任何运行时依赖，同时提供 ESM 与 CJS 构建。证据不足时返回 `language: null` 而不是猜测；在流式模式下不会在语言家族之间来回切换。
+- **API。** `CodeLanguage` 枚举包含 42 种语言，取值为 Shiki id（如 `CodeLanguage.Rust = 'rust'`、`CodeLanguage.VisualBasic = 'vb'`）。`detectLanguage(code)` 返回 `{ language, confidence, candidates, evidence }`。`StreamingLanguageDetector` 在代码块流式输入期间调用 `update(accumulatedText)`，在围栏闭合时调用 `finalize(text)`，另有 `reset()` 与 `current`。同时导出 `DetectionCache`。`toShikiLanguage` 与 `toHighlightJsLanguage` 把检测结果映射为高亮器使用的名称；highlight.js 映射会改写 `objective-c`、`vb`、`asm`、`jsx` 与 `tsx`，并把 HTML、Vue 与 Svelte 映射为 `xml`。`normalizeCodeLanguage(name)` 把名称、扩展名或高亮器别名解析为 `CodeLanguage`，不对应 42 种语言中的任何一种时返回 `null`。详见[包 README](../../../../packages/code-language-detector/README.md)。
+- **围栏语言的高亮器名称。** `normalizeHighlightJsLanguage(name)` 与 `normalizeShikiLanguage(name)` 把模型在代码围栏上书写的语言名称映射为高亮器使用的名称，忽略大小写和首尾空白。属于 42 种语言之一的名称经 `normalizeCodeLanguage` 和转换函数解析（`objc` 变为 `objectivec` 或 `objective-c`，`vue` 在 highlight.js 下变为 `xml`）。一张小表转换 42 种语言之外、两个高亮器拼写不同的常见名称（`txt` 变为 `plaintext` 或 `text`，`console` 变为 `shell` 或 `shellsession`，`makefile` 变为 `makefile` 或 `make`）。其他名称只转为小写，其余原样返回（`haskell`、`jsonc`）。返回的是名称，并不保证对应的 grammar 已加载或已注册。
+
+#### Mantine
+
+- **检测改由新包完成。** `codeBlock.autoDetectUnknownLanguage` 现在使用 `@ai-markdown/code-language-detector`，该包是 `@ai-markdown/react-mantine` 的常规依赖，不再需要 highlight.js 实例。检测是同步的，在渲染期间执行（包括服务端渲染），因此检测出的标签页标题直接出现在 SSR 标记中，代码块不会先显示“unknown”再原位升级。
+- **流式策略。** 流式期间，证据充分时才为代码块标注语言，之后只有明显增长才会重新检测。检测器不会降低已有的置信度，也不会在中途切换到另一个语言家族。重新生成（新文本不是在旧文本之后追加，包括长度相同的替换）会让检测从头开始；`streaming` 结束时确定最终结果。检测器放弃判断的代码块保持纯文本，标签为“unknown”；检测器永远不会覆盖显式声明的围栏语言。旧的倍增检测计划、`highlightAuto`、加载函数缓存与重试以及缺少实例时的警告均已移除。
+- **新增 `codeBlock.languageFormat`。** 渲染器无法得知 `CodeHighlightAdapterProvider` 中使用的是哪个适配器，因此由该字段说明语言以哪套名称交给高亮器：`MantineLanguageFormat.HighlightJs`（`'highlight-js'`，默认值）或 `MantineLanguageFormat.Shiki`（`'shiki'`）。它既作用于检测出的语言，也作用于显式声明的围栏语言：高亮器收到的是小写名称经 `normalizeHighlightJsLanguage` 或 `normalizeShikiLanguage` 映射后的结果，因此使用 highlight.js 时 ` ```objc ` 按 `objectivec` 高亮、` ```txt ` 按 `plaintext` 高亮，使用 Shiki 时 ` ```Makefile ` 按 `make` 高亮。标签页标题保留围栏上书写的语言（转换为小写），或检测出的语言本身的名称，因此使用 highlight.js 时，检测出的 Vue 组件标签为 `vue`，按 `xml` 高亮；只有代码块没有语言时，标题才显示“unknown”。JSON 美化格式化与 Mermaid 渲染仍依据小写名称判断。无法识别的值回退为默认值。该枚举从包根入口导出。
+- **次版本中的破坏性变更。** 移除了 `codeBlock.highlightJs`、`MantineHighlightJsLike` 与 `MantineHighlightJsSource` 两个类型，以及 `preloadMantineCodeAssets` 的 `options` 参数。`preloadMantineCodeAssets()` 现在不接受参数，返回 `Promise<void>`，只预加载 mermaid。这项移除经维护者决定随 `3.2.0` 发布，没有等到主版本。
+- **迁移方法。** 从 `codeBlock` 分组和 `defineMantineBehaviors` 调用中删除 `highlightJs`。如果使用 Mantine 的 Shiki 适配器，设置 `languageFormat: MantineLanguageFormat.Shiki`，该设置同样影响显式声明了围栏语言的代码块；默认值已与 highlight.js 适配器匹配。调用 `preloadMantineCodeAssets()` 时不再传参。删除对上述两个类型的导入。
+- `highlight.js` 仍是可选 peer，只有 Mantine 的 highlight.js 适配器需要它；本包从不导入它。
+
+#### 发布工具
+
+- 独立版本包统一登记在 `scripts/release-packages.mjs`（`remark-mark-highlight`、`code-language-detector`）。统一版本标签会先发布这些包，再依次发布 engine、core、React、Mantine 与 Vue。
+- `code-language-detector-vX.Y.Z` 是有效的包标签。首次发布 `code-language-detector-v1.0.0` 通过 `FIRST_PUBLISH_NPM_TOKEN` 引导完成；此后必须在 npm 上为新包配置 Trusted Publisher。
+
+<!-- Verification: fill in at release -->
+
 ## 3.1.0 — 评审修复、任务列表增量解析与适配器对齐
 
 ### 3.1.0

@@ -30,14 +30,15 @@ React 适配器负责管理 React 生命周期、上下文 Hooks、文档协调�
 
 ## 相关包
 
-| 包名                                                                                                     | 职责                                                                             | 版本策略                                           |
-| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------- |
-| [`@ai-markdown/core`](https://www.npmjs.com/package/@ai-markdown/core)                                   | 框架无关的会话管理、块级规划、贡献管理与平滑协调                                 | 统一版本发布；以精确版本依赖 Engine                |
-| [`@ai-markdown/react`](https://www.npmjs.com/package/@ai-markdown/react)                                 | React 渲染器——提供 `<AIMarkdown>`、`<AIMarkdownSmoothStream>`、Hooks 与 Provider | 统一版本发布                                       |
-| [`@ai-markdown/vue`](https://www.npmjs.com/package/@ai-markdown/vue)                                     | Vue 3.5 渲染器——提供组件、作用域插槽、SSR/水合与平滑组合式函数                   | 统一版本发布；精确依赖 core 与 engine              |
-| [`@ai-markdown/react-mantine`](https://www.npmjs.com/package/@ai-markdown/react-mantine)                 | Mantine UI 绑定——主题排版、代码高亮标签页、Mermaid、配色联动                     | 统一版本发布；声明兼容的 React 3.x 对等依赖        |
-| [`@ai-markdown/engine`](https://www.npmjs.com/package/@ai-markdown/engine)                               | 框架中立引擎——增量解析、LaTeX 预处理、插件管线与跨分块注册表                     | 统一版本发布；被共享 core 与适配器严格锁定依赖版本 |
-| [`@ai-markdown/remark-mark-highlight`](https://www.npmjs.com/package/@ai-markdown/remark-mark-highlight) | 支持 `==mark==` 高亮语法的 remark 插件                                           | 独立语义化版本                                     |
+| 包名                                                                                                       | 职责                                                                                                                | 版本策略                                           |
+| ---------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| [`@ai-markdown/core`](https://www.npmjs.com/package/@ai-markdown/core)                                     | 框架无关的会话管理、块级规划、贡献管理与平滑协调                                                                    | 统一版本发布；以精确版本依赖 Engine                |
+| [`@ai-markdown/react`](https://www.npmjs.com/package/@ai-markdown/react)                                   | React 渲染器——提供 `<AIMarkdown>`、`<AIMarkdownSmoothStream>`、Hooks 与 Provider                                    | 统一版本发布                                       |
+| [`@ai-markdown/vue`](https://www.npmjs.com/package/@ai-markdown/vue)                                       | Vue 3.5 渲染器——提供组件、作用域插槽、SSR/水合与平滑组合式函数                                                      | 统一版本发布；精确依赖 core 与 engine              |
+| [`@ai-markdown/react-mantine`](https://www.npmjs.com/package/@ai-markdown/react-mantine)                   | Mantine UI 绑定——主题排版、代码高亮标签页、Mermaid、配色联动                                                        | 统一版本发布；声明兼容的 React 3.x 对等依赖        |
+| [`@ai-markdown/engine`](https://www.npmjs.com/package/@ai-markdown/engine)                                 | 框架中立引擎——增量解析、LaTeX 预处理、插件管线与跨分块注册表                                                        | 统一版本发布；被共享 core 与适配器严格锁定依赖版本 |
+| [`@ai-markdown/remark-mark-highlight`](https://www.npmjs.com/package/@ai-markdown/remark-mark-highlight)   | 支持 `==mark==` 高亮语法的 remark 插件                                                                              | 独立语义化版本                                     |
+| [`@ai-markdown/code-language-detector`](https://www.npmjs.com/package/@ai-markdown/code-language-detector) | 为未标注语言的代码块做启发式语言检测，并把 fence 上的语言名映射为 Shiki 或 highlight.js 的写法；供 Mantine 集成使用 | 独立语义化版本                                     |
 
 <span id="compatibility"></span>
 

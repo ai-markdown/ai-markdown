@@ -11,7 +11,7 @@
 ## 为 React 适配器增加的能力
 
 - **Mantine 排版**：Markdown 内容包裹在 Mantine 的 `<Typography>` 中，继承当前主题的字体系列、行高与颜色 Token。
-- **语法高亮**：代码块通过 `@mantine/code-highlight`（基于 highlight.js）渲染，提供带有语言标签的选项卡、展开/折叠功能，并支持未标注语言的代码块自动检测。
+- **语法高亮**：代码块通过 `@mantine/code-highlight` 及你提供的适配器（highlight.js 或 Shiki）渲染，提供带有语言标签的选项卡、展开/折叠功能，并可借助 `@ai-markdown/code-language-detector` 自动检测未标注语言的代码块。
 - **Mermaid 图表**：声明了 `mermaid` 的代码围栏渲染为交互式 SVG 矢量图表，支持深浅主题切换、查看源码、一键复制和在新窗口中打开。
 - **JSON 美化展示**：声明为 `json` 的代码块在格式合法时以 2 空格缩进排版展示，同时保留数值 Token、重复键及其原始顺序；嵌套了 JSON 文档（对象或数组，常见于大模型工具调用返回）的字符串值同样会被递归展开，而字面量风格的原始字符串（如 `"true"`、`"123"`）保持原样。
 - **自动配色方案自适应**：未显式传入 `colorScheme` 时，跟随当前 `MantineProvider`；处于 `auto` 时在客户端首帧即读取系统偏好（服务端输出为浅色），并透传给核心渲染器。
@@ -23,27 +23,28 @@
 
 ## 相关包
 
-| 包名                                                                                                     | 职责                                                                             | 版本策略                                           |
-| -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------------------- |
-| [`@ai-markdown/core`](https://www.npmjs.com/package/@ai-markdown/core)                                   | 框架无关的会话管理、块级规划、贡献管理与平滑协调                                 | 统一版本发布；以精确版本依赖 Engine                |
-| [`@ai-markdown/react`](https://www.npmjs.com/package/@ai-markdown/react)                                 | React 渲染器——提供 `<AIMarkdown>`、`<AIMarkdownSmoothStream>`、Hooks 与 Provider | 统一版本发布                                       |
-| [`@ai-markdown/vue`](https://www.npmjs.com/package/@ai-markdown/vue)                                     | Vue 3.5 渲染器——提供组件、作用域插槽、SSR/水合与平滑组合式函数                   | 统一版本发布；精确依赖 core 与 engine              |
-| [`@ai-markdown/react-mantine`](https://www.npmjs.com/package/@ai-markdown/react-mantine)                 | Mantine UI 绑定——主题排版、代码高亮标签页、Mermaid、配色联动                     | 统一版本发布；声明兼容的 React 3.x 对等依赖        |
-| [`@ai-markdown/engine`](https://www.npmjs.com/package/@ai-markdown/engine)                               | 框架中立引擎——增量解析、LaTeX 预处理、插件管线与跨分块注册表                     | 统一版本发布；被共享 core 与适配器严格锁定依赖版本 |
-| [`@ai-markdown/remark-mark-highlight`](https://www.npmjs.com/package/@ai-markdown/remark-mark-highlight) | 支持 `==mark==` 高亮语法的 remark 插件                                           | 独立语义化版本                                     |
+| 包名                                                                                                       | 职责                                                                                                           | 版本策略                                           |
+| ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| [`@ai-markdown/core`](https://www.npmjs.com/package/@ai-markdown/core)                                     | 框架无关的会话管理、块级规划、贡献管理与平滑协调                                                               | 统一版本发布；以精确版本依赖 Engine                |
+| [`@ai-markdown/react`](https://www.npmjs.com/package/@ai-markdown/react)                                   | React 渲染器——提供 `<AIMarkdown>`、`<AIMarkdownSmoothStream>`、Hooks 与 Provider                               | 统一版本发布                                       |
+| [`@ai-markdown/vue`](https://www.npmjs.com/package/@ai-markdown/vue)                                       | Vue 3.5 渲染器——提供组件、作用域插槽、SSR/水合与平滑组合式函数                                                 | 统一版本发布；精确依赖 core 与 engine              |
+| [`@ai-markdown/react-mantine`](https://www.npmjs.com/package/@ai-markdown/react-mantine)                   | Mantine UI 绑定——主题排版、代码高亮标签页、Mermaid、配色联动                                                   | 统一版本发布；声明兼容的 React 3.x 对等依赖        |
+| [`@ai-markdown/engine`](https://www.npmjs.com/package/@ai-markdown/engine)                                 | 框架中立引擎——增量解析、LaTeX 预处理、插件管线与跨分块注册表                                                   | 统一版本发布；被共享 core 与适配器严格锁定依赖版本 |
+| [`@ai-markdown/remark-mark-highlight`](https://www.npmjs.com/package/@ai-markdown/remark-mark-highlight)   | 支持 `==mark==` 高亮语法的 remark 插件                                                                         | 独立语义化版本                                     |
+| [`@ai-markdown/code-language-detector`](https://www.npmjs.com/package/@ai-markdown/code-language-detector) | 为未标注语言的代码块做启发式语言检测，并把 fence 上的语言名映射为 Shiki 或 highlight.js 的写法；本包的常规依赖 | 独立语义化版本                                     |
 
 <span id="compatibility"></span>
 
 ## 兼容性与运行环境
 
-| 项目         | 规格要求                                                                                                      |
-| ------------ | ------------------------------------------------------------------------------------------------------------- |
-| Mantine      | `@mantine/core` ^9 与 `@mantine/code-highlight` ^9（对等依赖）                                                |
-| highlight.js | ^11.11.2（可选对等依赖；包本身不会导入它——由你的适配器使用，自动语言检测则通过 `codeBlock.highlightJs` 获取） |
-| React        | ^19.0.0                                                                                                       |
-| Node         | `^20.19.0 \|\| >=22.12.0`（`engines.node`）                                                                   |
-| 模块格式     | 包含类型定义的 ESM 与 CJS；编译后的样式文件通过 `@ai-markdown/react-mantine/styles.css` 导出                  |
-| React 适配器 | 参见[下方对等依赖范围](#peer-dependencies)；建议两个包保持同步升级                                            |
+| 项目         | 规格要求                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------- |
+| Mantine      | `@mantine/core` ^9 与 `@mantine/code-highlight` ^9（对等依赖）                               |
+| highlight.js | ^11.11.2（可选对等依赖；包本身不会导入它——仅 Mantine 的 highlight.js 适配器需要）            |
+| React        | ^19.0.0                                                                                      |
+| Node         | `^20.19.0 \|\| >=22.12.0`（`engines.node`）                                                  |
+| 模块格式     | 包含类型定义的 ESM 与 CJS；编译后的样式文件通过 `@ai-markdown/react-mantine/styles.css` 导出 |
+| React 适配器 | 参见[下方对等依赖范围](#peer-dependencies)；建议两个包保持同步升级                           |
 
 <span id="installation"></span>
 
@@ -83,7 +84,7 @@ Mantine 集成基于 React 适配器构建，不直接依赖共享 core。Vue �
 }
 ```
 
-`highlight.js` 声明为可选对等依赖（`peerDependenciesMeta`）。包内没有任何对它的导入，因此未安装时构建也能通过；为 Mantine 的 highlight.js 适配器以及语言自动检测安装它，自动检测通过 `codeBlock.highlightJs` 接收实例或加载函数。
+`highlight.js` 声明为可选对等依赖（`peerDependenciesMeta`）。包内没有任何对它的导入，因此未安装时构建也能通过；只有使用 Mantine 的 highlight.js 适配器时才需要安装。语言自动检测不依赖它，而是由 `@ai-markdown/code-language-detector` 完成，该包是常规依赖，会随本包一起安装。
 
 <span id="css-dependencies"></span>
 
@@ -160,17 +161,17 @@ function StreamingChat({ content, isStreaming }: { content: string; isStreaming:
 
 ### `codeBlock` (`Partial<MantineCodeBlockOptions>`)
 
-| 字段                        | 类型                               | 默认值  | 行为说明                                                                                                                                                                                                             |
-| --------------------------- | ---------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `defaultExpanded`           | `boolean`                          | `true`  | 初始展开状态；设为 false 时长代码块默认折叠，并展示展开操作按钮                                                                                                                                                      |
-| `autoDetectUnknownLanguage` | `boolean`                          | `false` | 使用 highlight.js 猜测未标注语言代码块的语法；需要 `highlightJs`，否则不生效（并输出一次警告）                                                                                                                       |
-| `highlightJs`               | `MantineHighlightJsSource \| null` | `null`  | 自动检测所使用的 highlight.js：传给 `createHighlightJsAdapter` 的实例（或只注册了所需语言的 `highlight.js/lib/core` 实例），或形如 `() => import('highlight.js')` 的加载函数。加载函数请放在模块作用域：该组按值比较 |
-| `formatJson`                | `boolean`                          | `true`  | 在展示时格式化合法 JSON，并保留数值 Token、重复键及其原始顺序                                                                                                                                                        |
-| `expandNestedJson`          | `boolean`                          | `true`  | 格式化时，将包含 JSON 对象或数组的字符串值展开                                                                                                                                                                       |
-| `highlightIntervalMs`       | `number`                           | `50`    | 合并流式追加过程中的代码展示更新；设为 0 则每次更新立即刷新                                                                                                                                                          |
-| `mermaidIntervalMs`         | `number`                           | `300`   | 流式期间同一代码块两次 Mermaid 渲染尝试之间的最短间隔；流结束后最终源码必定渲染一次；设为 0 则每次更新都尝试                                                                                                         |
+| 字段                        | 类型                    | 默认值                              | 行为说明                                                                                                                                                                                                                                                                                                                                                                                |
+| --------------------------- | ----------------------- | ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `defaultExpanded`           | `boolean`               | `true`                              | 初始展开状态；设为 false 时长代码块默认折叠，并展示展开操作按钮                                                                                                                                                                                                                                                                                                                         |
+| `autoDetectUnknownLanguage` | `boolean`               | `false`                             | 使用 `@ai-markdown/code-language-detector` 识别未标注语言代码块的语言，在渲染期间同步执行（包括服务端渲染）。检测器放弃判断的代码块保持纯文本，标签为“unknown”；检测器永远不会覆盖显式声明的围栏语言                                                                                                                                                                                    |
+| `languageFormat`            | `MantineLanguageFormat` | `MantineLanguageFormat.HighlightJs` | 语言以哪套名称交给高亮器；应与 `CodeHighlightAdapterProvider` 中的适配器一致（`HighlightJs` 或 `Shiki`）。它同时作用于围栏上书写的语言和检测出的语言：使用 highlight.js 时，` ```objc ` 按 `objectivec` 高亮，` ```txt ` 按 `plaintext` 高亮；使用 Shiki 时，` ```Makefile ` 按 `make` 高亮。标签页标题保留书写的名称（转换为小写），或检测出的语言本身的名称。无法识别的值回退为默认值 |
+| `formatJson`                | `boolean`               | `true`                              | 在展示时格式化合法 JSON，并保留数值 Token、重复键及其原始顺序                                                                                                                                                                                                                                                                                                                           |
+| `expandNestedJson`          | `boolean`               | `true`                              | 格式化时，将包含 JSON 对象或数组的字符串值展开                                                                                                                                                                                                                                                                                                                                          |
+| `highlightIntervalMs`       | `number`                | `50`                                | 合并流式追加过程中的代码展示更新；设为 0 则每次更新立即刷新                                                                                                                                                                                                                                                                                                                             |
+| `mermaidIntervalMs`         | `number`                | `300`                               | 流式期间同一代码块两次 Mermaid 渲染尝试之间的最短间隔；流结束后最终源码必定渲染一次；设为 0 则每次更新都尝试                                                                                                                                                                                                                                                                            |
 
-显式设为 undefined 的字段保留包默认值。两个间隔都必须为非负有限数字；非法数值自动回退为默认值（50 毫秒与 300 毫秒）。请勿因为组边界允许 null（视为未传）就假定单个具体字段也支持传入 null（`highlightJs` 是唯一以 `null` 表示“无”的字段）。
+显式设为 undefined 的字段保留包默认值。两个间隔都必须为非负有限数字；非法数值自动回退为默认值（50 毫秒与 300 毫秒）。请勿因为组边界允许 null（视为未传）就假定单个具体字段也支持传入 null：没有任何单个字段接受 `null`。
 
 ### 示例：折叠长代码块
 
@@ -393,16 +394,19 @@ function ChatChunk({ id, markdown, pending }: { id: string; markdown: string; pe
 - `MantineAIMarkdownProps`
 - `MantineAIMarkdownMetadata`
 - `MantineCodeBlockOptions`：`codeBlock` 组的结构定义
-- `MantineHighlightJsLike` / `MantineHighlightJsSource`：`codeBlock.highlightJs` 接受的类型（带 `highlightAuto` 的实例，或返回该实例/其模块命名空间的加载函数）
 - `MantineBehaviorProps`：`defineMantineBehaviors` 的入参类型
 
 ### 常量
 
 - `defaultMantineCodeBlockOptions`：`codeBlock` 行为控制组的内置默认值（已冻结）
 
+### 枚举
+
+- `MantineLanguageFormat`：`codeBlock.languageFormat` 的取值，`HighlightJs`（`'highlight-js'`，默认值）或 `Shiki`（`'shiki'`）
+
 ### 资源辅助工具
 
-- `preloadMantineCodeAssets({ highlightJs? })`：提前触发 Mermaid 的惰性导入，并执行传入的 highlight.js 加载函数（请传与 `codeBlock.highlightJs` 相同的函数，缓存按函数身份区分）；调用幂等，加载失败时渲染器平滑降级
+- `preloadMantineCodeAssets(): Promise<void>`：提前触发 Mermaid 的惰性导入；不接受参数；调用幂等，加载失败时渲染器平滑降级
 
 ### 工厂函数
 

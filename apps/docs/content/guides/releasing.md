@@ -21,7 +21,7 @@ Use a new version and tag for every release. Update the package train, lockfile 
 2. Require CI, including the packed consumer Node matrix and core contract job, to pass.
 3. Commit a clean candidate and run `pnpm check:soak-impact`. Follow [soak coverage and approval](soak-coverage.md) when engine impact requires a campaign, and validate its evidence with `pnpm check:release-soak --evidence .soak-logs/<run-id>`. The current release profile covers all six legs and 84 logical tasks.
 4. Tag the verified version. The release workflow must pass automated verification and, when required, human `soak-approval` review. Retain the reviewed evidence.
-5. Use trusted publishing for existing packages. Prereleases use their corresponding `beta` or `rc` channel; stable releases use `latest`. The independent plugin follows its own version and channel. Leave bootstrap authentication disabled for existing packages.
+5. Use trusted publishing for existing packages. Prereleases use their corresponding `beta` or `rc` channel; stable releases use `latest`. The independently versioned packages listed in `scripts/release-packages.mjs` (`remark-mark-highlight`, `code-language-detector`) follow their own versions and channels; a train tag publishes them before engine, core, react, react-mantine and vue. A package that does not exist on npm yet bootstraps its first version with `FIRST_PUBLISH_NPM_TOKEN` (`code-language-detector-v1.0.0` for the language detector); configure its trusted publisher after that publication. Leave bootstrap authentication disabled for existing packages.
 6. Require post-publication registry and consumer verification. The workflow archives its report before creating the GitHub release; the read-only verification workflow can check an existing release again.
 
 A local green run does not replace remote CI, published-artifact verification or required human review. Record actual run URLs and evidence identifiers after they exist.
@@ -51,16 +51,16 @@ An independent package release checks its own metadata/provenance and exercises 
 Use an existing tag and a checkout containing its full Git history. No workspace build
 or dependency installation is required for these registry checks. The Node version
 must satisfy the package engine range; `npm`, `pnpm`, `git` and `tar` must be available.
-The independent plugin version comes from the tag's manifest, not a hardcoded version.
+An independent package's version comes from the tag's manifest, not a hardcoded version.
 The `Verify published release` GitHub workflow provides the same read-only check for
 an existing tag, without publishing or requiring a soak approval.
 
 Verification checks npm channels, dependency and engine metadata, tarball SHA-512,
 and provenance repository, workflow, source tag, commit and tarball subject. This is
 provenance **content and source consistency** verification, not cryptographic Sigstore
-signature verification. Reused plugin versions and publication retries retain their
+signature verification. Reused independent-package versions and publication retries retain their
 original provenance invocation; the original source must be an ancestor with unchanged
-package implementation sources. The independently versioned plugin permits top-level README-only drift when reusing its existing artifact; implementation changes still require a new version. Train packages additionally require unchanged package/lockfile inputs.
+package implementation sources. The independently versioned packages permit top-level README-only drift when reusing an existing artifact; implementation changes still require a new version. Train packages additionally require unchanged package/lockfile inputs.
 Do not require a reused artifact to name the current workflow run.
 
 Registry visibility checks retry for up to 12 attempts, with 5 seconds between attempts

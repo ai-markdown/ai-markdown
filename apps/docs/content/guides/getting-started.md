@@ -20,18 +20,19 @@ ai-markdown renders accumulated Markdown in React 19 or Vue 3.5. Both adapters u
 
 ## Choose a package
 
-| Package                              | Install directly when…                                                            | Public entries                        |
-| ------------------------------------ | --------------------------------------------------------------------------------- | ------------------------------------- |
-| `@ai-markdown/react`                 | Building a React application                                                      | Root, `/plugins`, `/typography/*.css` |
-| `@ai-markdown/vue`                   | Building a Vue 3.5 application                                                    | Root, `/styles.css`                   |
-| `@ai-markdown/react-mantine`         | Adding Mantine 9 typography, code highlighting and Mermaid to React               | Root, `/styles.css`                   |
-| `@ai-markdown/core`                  | Building a framework adapter that needs sessions, plans and document coordination | Root                                  |
-| `@ai-markdown/engine`                | Building an adapter or a string/AST pipeline                                      | Root                                  |
-| `@ai-markdown/remark-mark-highlight` | Adding `==mark==` to an independent unified pipeline                              | Root                                  |
+| Package                               | Install directly when…                                                                                           | Public entries                        |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `@ai-markdown/react`                  | Building a React application                                                                                     | Root, `/plugins`, `/typography/*.css` |
+| `@ai-markdown/vue`                    | Building a Vue 3.5 application                                                                                   | Root, `/styles.css`                   |
+| `@ai-markdown/react-mantine`          | Adding Mantine 9 typography, code highlighting and Mermaid to React                                              | Root, `/styles.css`                   |
+| `@ai-markdown/core`                   | Building a framework adapter that needs sessions, plans and document coordination                                | Root                                  |
+| `@ai-markdown/engine`                 | Building an adapter or a string/AST pipeline                                                                     | Root                                  |
+| `@ai-markdown/remark-mark-highlight`  | Adding `==mark==` to an independent unified pipeline                                                             | Root                                  |
+| `@ai-markdown/code-language-detector` | Detecting unlabelled code, or mapping fence language names to highlighter names, outside the Mantine integration | Root                                  |
 
 Every package also exposes `/package.json`. Import only public entries; `src/` and internal `dist/` paths are not supported application imports. `@ai-markdown/react/plugins` is a subpath of the React package, not a separate package to install. Vue exports its sealed plugins from its root.
 
-React and Vue each depend on matching exact versions of core and engine. Core depends on engine. Mantine declares a compatible React adapter peer; see its [peer requirements](../reference/react-mantine.md#peer-dependencies) and upgrade those two together. Applications normally install only their adapter and its peers. The highlight plugin is an engine dependency and is versioned separately from the framework train.
+React and Vue each depend on matching exact versions of core and engine. Core depends on engine. Mantine declares a compatible React adapter peer; see its [peer requirements](../reference/react-mantine.md#peer-dependencies) and upgrade those two together. Applications normally install only their adapter and its peers. The highlight plugin is an engine dependency and the code language detector is a Mantine dependency; both are versioned separately from the framework train.
 
 The legacy `@ai-react-markdown/core` was a React renderer; its replacement is `@ai-markdown/react`. The new `@ai-markdown/core` has no React components or Vue components. See the [migration guide](framework-transition.md) before renaming existing imports.
 

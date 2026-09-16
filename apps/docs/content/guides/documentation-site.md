@@ -21,7 +21,7 @@ No renderer package build is required. The site renders documentation and code e
 
 - `apps/docs/content/guides/*.md` and `apps/docs/content/guides/api/*.md` are the canonical usage, architecture and maintenance guides.
 - `apps/docs/content/reference/{react,vue,react-mantine}.md` own the full adapter references. Their routes remain `/docs/react/`, `/docs/vue/` and `/docs/react/mantine/`.
-- Adapter package READMEs contain installation, a minimal example and documentation links. Core, engine and the independently versioned highlight plugin still use their package READMEs as their reference sources.
+- Adapter package READMEs contain installation, a minimal example and documentation links. Core, engine and the independently versioned highlight plugin and code language detector still use their package READMEs as their reference sources.
 - `apps/docs/content/` owns the documentation overview, example directory and translations. English and Chinese homepage routes share `apps/docs/src/components/Home.astro`; the Examples routes share `Examples.astro`.
 - `apps/docs/scripts/content.mjs` maps these sources to routes and generates Starlight frontmatter with an edit link to the canonical file. The adapter references declare their former README paths as source aliases, so existing README links and fragments still resolve to the full site reference.
 - `apps/docs/src/content/docs/` is generated and ignored by Git. Do not edit it. Development watches canonical sources and regenerates changed pages, including additions and deletions.

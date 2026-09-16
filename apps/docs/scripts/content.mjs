@@ -36,9 +36,9 @@ export function pages() {
       aliases: [`packages/${name}/README.md`],
       slug: `docs/${name === 'react-mantine' ? 'react/mantine' : name}`,
     })),
-    ...['core', 'engine', 'remark-mark-highlight'].map((name) => ({
+    ...['core', 'engine', 'remark-mark-highlight', 'code-language-detector'].map((name) => ({
       source: `packages/${name}/README.md`,
-      slug: `docs/${name === 'remark-mark-highlight' ? 'plugins/highlight' : name}`,
+      slug: `docs/${{ 'remark-mark-highlight': 'plugins/highlight', 'code-language-detector': 'plugins/code-language-detector' }[name] ?? name}`,
     })),
   ];
   const translated = Object.keys(locales)

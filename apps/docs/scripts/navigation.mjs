@@ -98,6 +98,7 @@ export const sidebar = [
       page('docs/guides/building-an-adapter', 'Framework adapters', '开发框架适配器'),
       page('docs/guides/extending-via-subpackage', 'React integrations', '开发 React 集成'),
       page('docs/plugins/highlight', 'Standalone highlight plugin', '独立高亮插件'),
+      page('docs/plugins/code-language-detector', 'Code language detector', '代码语言探测器'),
     ],
   },
   {

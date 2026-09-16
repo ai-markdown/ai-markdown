@@ -16,7 +16,7 @@ Add Mantine presentation to the React Markdown renderer: themed typography, high
 
 - React and React DOM `^19.0.0`.
 - `@mantine/core` and `@mantine/code-highlight` `^9.0.0`.
-- highlight.js `^11.11.2` is an optional peer. The package never imports it; install it for Mantine's highlight.js adapter (the Quick Start) and pass it as `codeBlock.highlightJs` for language auto-detection. An app that highlights with another adapter (Shiki) can leave it out.
+- highlight.js `^11.11.2` is an optional peer. The package never imports it; install it for Mantine's highlight.js adapter (the Quick Start). An app that highlights with another adapter (Shiki) can leave it out.
 - A compatible `@ai-markdown/react` peer; upgrade the React adapter and integration together. See [the declared peer range](./package.json).
 - Node `^20.19.0 || >=22.12.0` for server/build consumers.
 - This integration is React-only. Vue applications use `@ai-markdown/vue`.
@@ -56,11 +56,12 @@ export function Answer() {
 
 Both providers and the stylesheet imports are part of this setup. KaTeX CSS is required for the math example. Keep the adapter object stable. Replacing the `pre` renderer transfers code formatting, copy, highlighting and diagram behavior to your component.
 
-Language auto-detection for unlabelled fences takes highlight.js from the `codeBlock` group, as the instance above or as a loader:
+Language auto-detection for unlabelled fences uses [`@ai-markdown/code-language-detector`](https://ai-markdown.github.io/docs/plugins/code-language-detector/), a dependency of this package, so it needs no further setup. Detection is synchronous and runs during render, server rendering included. A block the detector cannot place with confidence stays plaintext labelled "unknown", and the detector never overrides an explicit fence language. `codeBlock.languageFormat` names your adapter (highlight.js by default), and every language, whether written on the fence or detected, is handed to the highlighter in that adapter's spelling: ` ```objc ` reaches highlight.js as `objectivec`, and ` ```txt ` reaches Shiki as `text`. The tab label keeps the name as written:
 
 ```tsx
-<MantineAIMarkdown content={content} codeBlock={{ autoDetectUnknownLanguage: true, highlightJs: hljs }} />
-// or, loaded on first use: highlightJs: () => import('highlight.js')  (keep the loader at module scope)
+<MantineAIMarkdown content={content} codeBlock={{ autoDetectUnknownLanguage: true }} />
+// with Mantine's Shiki adapter:
+// codeBlock={{ autoDetectUnknownLanguage: true, languageFormat: MantineLanguageFormat.Shiki }}
 ```
 
 Mermaid renders while streaming are throttled by `codeBlock.mermaidIntervalMs` (default 300 ms; the final source always renders once streaming ends), and input above mermaid's `maxTextSize` shows an error instead of a placeholder diagram.

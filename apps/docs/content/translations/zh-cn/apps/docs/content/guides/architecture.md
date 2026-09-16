@@ -243,10 +243,10 @@ clobberPrefix = `${encodeURIComponent(shortenDocumentId(documentId))}-user-conte
 
 `@ai-markdown/react-mantine` 是一个极具代表性的轻量级官方封装层：
 
-1. 提供 `codeBlock` 专属行为配置分组（`defaultExpanded`、`autoDetectUnknownLanguage`、`highlightJs`、`formatJson`、`expandNestedJson`、`highlightIntervalMs`、`mermaidIntervalMs`）——通过累加式 `AIMarkdownBehaviorsProvider` 注入，调用 `useMantineCodeBlockOptions()` 进行读取。
+1. 提供 `codeBlock` 专属行为配置分组（`defaultExpanded`、`autoDetectUnknownLanguage`、`languageFormat`、`formatJson`、`expandNestedJson`、`highlightIntervalMs`、`mermaidIntervalMs`）——通过累加式 `AIMarkdownBehaviorsProvider` 注入，调用 `useMantineCodeBlockOptions()` 进行读取。
 2. 提供 `MantineAIMarkdownTypography`（内部封装了 Mantine 官方的 `<Typography>` 组件）。
 3. 提供 `MantineAIMDefaultExtraStyles`（用于承载基于 em 的 Mantine CSS 变量局部作用域覆盖）。
-4. 将 `customComponents.pre` 覆盖为 `MantineAIMPreCode`（集成 CodeHighlight 语法高亮、Mermaid 图表以及 JSON 美化折叠）。
+4. 将 `customComponents.pre` 覆盖为 `MantineAIMPreCode`（集成 CodeHighlight 语法高亮、Mermaid 图表以及 JSON 美化折叠）；开启 `autoDetectUnknownLanguage` 时，它借助 `@ai-markdown/code-language-detector` 识别未标注语言的代码块。
 5. 从 Mantine 的 provider（`useMantineColorScheme`）读取配色方案，`auto` 时借助 `useSyncExternalStore` 对系统查询求值，使客户端首帧即为正确配色。
 
 上述每一项扩展均完全基于 core 导出的**官方公开扩展点**构建。未借助任何内部未公开私有后门。完整实现模板请参阅 [通过子包进行功能扩展](extending-via-subpackage.md)。
@@ -385,7 +385,7 @@ packages/react-mantine/src/
     └── useMantineAIMarkdownMetadata.ts
 ```
 
-`packages/remark-mark-highlight` 是由 engine 独立引入、单独遵循独立语义化版本发布的 remark 插件包。它是仓库内的第六个公开包；而 `packages/react/plugins` 仅属于 `@ai-markdown/react` 的一个导出子路径。
+`packages/remark-mark-highlight` 是由 engine 引入、遵循独立语义化版本发布的 remark 插件包，是仓库内的第六个公开包。`packages/code-language-detector` 是由 react-mantine 引入、零依赖且遵循独立语义化版本发布的代码语言探测器，是第七个公开包。`packages/react/plugins` 仅属于 `@ai-markdown/react` 的一个导出子路径。
 
 Storybook 应用位于 `apps/storybook-{hub,react,vue}`，共享工具位于 `tooling/storybook-kit`。这些工作区、核心测试语料库、性能基准套件以及归档的原型代码均属于私有维护资产。关于按包过滤构建与测试的命令，请参阅 [开发命令速查](development-commands.md)。
 
