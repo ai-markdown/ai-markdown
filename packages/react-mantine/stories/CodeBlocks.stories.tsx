@@ -1,5 +1,4 @@
 import React from 'react';
-import hljs from 'highlight.js';
 import MantineAIMarkdown from '../src/index';
 import { baseMantineMeta, type MantineMeta, type MantineStory } from './_shared/meta';
 import { JSON_PAYLOAD_DOC, LONG_CODE_DOC, UNLABELED_CODE_DOC } from './_shared/fixtures';
@@ -43,8 +42,8 @@ const meta: MantineMeta = {
           '| Option | Default | Effect |',
           '| --- | --- | --- |',
           '| `defaultExpanded` | `true` | `false` starts blocks collapsed at 320px with an expand button |',
-          '| `autoDetectUnknownLanguage` | `false` | `true` runs `hljs.highlightAuto()` on fences with no info string |',
-          '| `highlightJs` | `null` | The highlight.js instance (or a loader) auto-detection runs with; the package does not import highlight.js itself |',
+          '| `autoDetectUnknownLanguage` | `false` | `true` names fences with no info string through `@ai-markdown/code-language-detector` |',
+          '| `languageFormat` | `MantineLanguageFormat.HighlightJs` | Hands fence and detected languages to the highlighter in highlight.js names or, with `Shiki`, in Shiki names |',
           '',
           'The group replaces atomically — passing `codeBlock={{ defaultExpanded: false }}`',
           'leaves `autoDetectUnknownLanguage` at its shipped default rather than clearing',
@@ -169,21 +168,20 @@ export const JsonPrettyPrint: MantineStory = {
  * as unhighlighted monospace text. This is the conservative default — the
  * renderer says nothing about content it was told nothing about.
  *
- * **Right, `true`.** `hljs.highlightAuto()` gets a vote, run on the instance
- * passed as `highlightJs` (the same one the adapter uses). It reads the
- * sample as Python, so the block gains a `python` tab and full token
- * colouring.
+ * **Right, `true`.** `@ai-markdown/code-language-detector` reads the sample
+ * as Python, so the block gains a `python` tab and full token colouring. The
+ * detector ships with the package and runs during render, so the label is
+ * already in the server-rendered markup.
  *
  * The difference is plainly visible here because the sample is unambiguous
- * Python. Auto-detection is a heuristic over the whole snippet, and it is
- * least reliable exactly where fences most often lack a label: three lines of
- * shell, a config excerpt, a stack trace. A wrong guess is not harmless —
- * it colours the block as something it is not. Turn it on when your content
- * pipeline tends to drop info strings, and leave it off when your model
- * reliably emits them.
+ * Python. The detector is built to abstain rather than guess: three lines of
+ * shell or a config excerpt with no telling syntax stay unlabelled
+ * plaintext, because a wrong guess colours the block as something it is not.
+ * Turn it on when your content pipeline tends to drop info strings, and leave
+ * it off when your model reliably emits them.
  */
-/** Module constant: the group is compared by value and the instance must keep its identity. */
-const AUTODETECT_WITH_HLJS = { autoDetectUnknownLanguage: true, highlightJs: hljs };
+/** Module constant: the group is compared by value. */
+const AUTODETECT = { autoDetectUnknownLanguage: true };
 
 export const UnknownLanguageFallback: MantineStory = {
   args: {
@@ -197,7 +195,7 @@ export const UnknownLanguageFallback: MantineStory = {
       leftLabel="autoDetectUnknownLanguage: false — plaintext, no tab"
       rightLabel="autoDetectUnknownLanguage: true — detected as python"
       left={<MantineAIMarkdown {...args} codeBlock={{ autoDetectUnknownLanguage: false }} />}
-      right={<MantineAIMarkdown {...args} codeBlock={AUTODETECT_WITH_HLJS} />}
+      right={<MantineAIMarkdown {...args} codeBlock={AUTODETECT} />}
     />
   ),
 };

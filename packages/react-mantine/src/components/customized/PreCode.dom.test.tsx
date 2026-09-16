@@ -13,8 +13,11 @@ import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
 import { createHighlightJsAdapter, type CodeHighlightAdapter } from '@mantine/code-highlight';
 import hljs from 'highlight.js';
 import MantineAIMarkdown from '../../MantineAIMarkdown';
-import type { MantineHighlightJsSource } from '../../defs';
+import { MantineLanguageFormat } from '../../defs';
 import { createMountHarness, flushEffects, installMantineDomStubs } from './domTestHarness';
+
+/** Module constant: the group is compared by value. */
+const SHIKI_FORMAT = { languageFormat: MantineLanguageFormat.Shiki };
 
 const harness = createMountHarness();
 beforeAll(installMantineDomStubs);
@@ -55,16 +58,19 @@ function createRecordingAdapter() {
 }
 
 describe('code fences and grammar-on-demand adapters (client render)', () => {
-  test('a ```ts fence asks the consumer adapter to load "ts" and is highlighted once it resolves', async () => {
+  test('a ```ts fence asks the consumer adapter to load its Shiki name and is highlighted once it resolves', async () => {
     const { adapter, loadLanguageCalls } = createRecordingAdapter();
-    const container = await harness.mount(<MantineAIMarkdown content={'```ts\nconst answer = 42;\n```'} />, adapter);
+    const container = await harness.mount(
+      <MantineAIMarkdown content={'```ts\nconst answer = 42;\n```'} codeBlock={SHIKI_FORMAT} />,
+      adapter
+    );
     // One flush for loadContext to resolve, one for loadLanguage.
     await flushEffects();
     await flushEffects();
-    expect(loadLanguageCalls).toContain('ts');
+    expect(loadLanguageCalls).toContain('typescript');
     const highlighted = container.querySelector('.recording-hl');
     expect(highlighted, 'the code element should carry the adapter markup').not.toBeNull();
-    expect(highlighted?.getAttribute('data-lang')).toBe('ts');
+    expect(highlighted?.getAttribute('data-lang')).toBe('typescript');
     expect(highlighted?.textContent).toContain('const answer = 42;');
   });
 
@@ -81,61 +87,39 @@ describe('code fences and grammar-on-demand adapters (client render)', () => {
   });
 });
 
-// Unlabelled Python, well above the 32-character detection minimum.
-const PY_BODY = ['import os', 'import sys', '', 'def main(argv):', '    for path in argv:', '        print(path)'].join(
+const PYTHON = ['import os', 'import sys', '', 'def main(argv):', '    for path in argv:', '        print(path)'].join(
   '\n'
 );
-const UNLABELLED = '```\n' + PY_BODY + '\n```';
-/** What the real highlight.js calls this text; the label must agree with it. */
-const EXPECTED_LABEL = hljs.highlightAuto(PY_BODY).language ?? '';
+const RUST = ['fn main() {', '    let mut total = 0;', '    println!("{}", total);', '}'].join('\n');
 /** The tab's file-name element (static class; `-fileIcon` and `-files` are siblings). */
 const TAB_LABEL = '.mantine-CodeHighlightTabs-file';
 const tabLabel = (container: HTMLElement) => container.querySelector(TAB_LABEL)?.textContent ?? null;
 /** Group values are module constants so their identity is stable across renders. */
-const WITH_INSTANCE = { autoDetectUnknownLanguage: true, highlightJs: hljs };
-const WITHOUT_SOURCE = { autoDetectUnknownLanguage: true };
+const AUTODETECT = { autoDetectUnknownLanguage: true };
+const fence = (body: string) => '```\n' + body + '\n```';
 
-describe('language auto-detection takes highlight.js from codeBlock.highlightJs (client render)', () => {
-  test('an injected instance labels an unlabelled block', async () => {
-    expect(EXPECTED_LABEL).not.toBe('');
+describe('language auto-detection across a stream (client render)', () => {
+  test('the label appears mid-stream and survives the end of the stream', async () => {
     const container = await harness.mount(
-      <MantineAIMarkdown content={UNLABELLED} codeBlock={WITH_INSTANCE} />,
+      <MantineAIMarkdown content={fence(PYTHON)} codeBlock={AUTODETECT} streaming />,
       createHighlightJsAdapter(hljs)
     );
-    await flushEffects();
-    await flushEffects();
-    expect(tabLabel(container)).toBe(EXPECTED_LABEL);
+    expect(tabLabel(container)).toBe('python');
+    await harness.update(<MantineAIMarkdown content={fence(PYTHON + '\n\nmain(sys.argv)')} codeBlock={AUTODETECT} />);
+    expect(tabLabel(container)).toBe('python');
   });
 
-  test('a loader is called once for the page and its module namespace is unwrapped', async () => {
-    const loader = vi.fn(() => Promise.resolve({ default: hljs }));
-    const group: { autoDetectUnknownLanguage: boolean; highlightJs: MantineHighlightJsSource } = {
-      autoDetectUnknownLanguage: true,
-      highlightJs: loader,
-    };
+  test('a regenerated block is detected afresh, even across language families', async () => {
     const container = await harness.mount(
-      <MantineAIMarkdown content={UNLABELLED + '\n\n' + UNLABELLED} codeBlock={group} />,
+      <MantineAIMarkdown content={fence(PYTHON)} codeBlock={AUTODETECT} streaming />,
       createHighlightJsAdapter(hljs)
     );
-    await flushEffects();
-    await flushEffects();
-    const labels = Array.from(container.querySelectorAll(TAB_LABEL)).map((el) => el.textContent);
-    expect(labels).toEqual([EXPECTED_LABEL, EXPECTED_LABEL]);
-    expect(loader).toHaveBeenCalledTimes(1);
-  });
-
-  test('without a source the option is inert: the block stays "unknown" and one warning is logged', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const container = await harness.mount(
-      <MantineAIMarkdown content={UNLABELLED + '\n\n' + UNLABELLED} codeBlock={WITHOUT_SOURCE} />,
-      createHighlightJsAdapter(hljs)
-    );
-    await flushEffects();
-    await flushEffects();
-    // No tab strip at all: "unknown" blocks render through plain CodeHighlight.
-    expect(container.querySelector(TAB_LABEL)).toBeNull();
-    expect(container.querySelectorAll('code').length).toBe(2);
-    const messages = warn.mock.calls.filter((call) => String(call[0]).includes('codeBlock.highlightJs'));
-    expect(messages).toHaveLength(1);
+    expect(tabLabel(container)).toBe('python');
+    // Same block position, different text: the detector must not hold the
+    // Python verdict against the new block.
+    await harness.update(<MantineAIMarkdown content={fence(RUST)} codeBlock={AUTODETECT} streaming />);
+    expect(tabLabel(container)).toBe('rust');
+    await harness.update(<MantineAIMarkdown content={fence(RUST)} codeBlock={AUTODETECT} />);
+    expect(tabLabel(container)).toBe('rust');
   });
 });

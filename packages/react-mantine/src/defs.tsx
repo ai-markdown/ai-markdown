@@ -8,24 +8,22 @@
 import { AIMarkdownMetadata } from '@ai-markdown/react';
 
 /**
- * The part of highlight.js that language auto-detection uses. The root
- * `highlight.js` export satisfies it, and so does a `highlight.js/lib/core`
- * instance with only the consumer's languages registered.
+ * The language names code blocks are handed to the highlighter in. A fence's
+ * language as the model wrote it (`objc`, `vue`, `txt`) and a detected language
+ * are both translated to these names. Mantine's adapters take different names
+ * for some languages, and the renderer cannot see which adapter the
+ * `CodeHighlightAdapterProvider` holds, so the `codeBlock` group says it.
  */
-export interface MantineHighlightJsLike {
-  highlightAuto: (code: string) => { language?: string };
+export enum MantineLanguageFormat {
+  /**
+   * highlight.js names, for `createHighlightJsAdapter`: `objectivec`,
+   * `vbnet`, `x86asm`, and `xml` for HTML, Vue and Svelte (its xml grammar
+   * highlights `<script>` and `<style>` blocks as sub-languages).
+   */
+  HighlightJs = 'highlight-js',
+  /** Shiki language names, for `createShikiAdapter`: `objective-c`, `make`, `text` for plain text. */
+  Shiki = 'shiki',
 }
-
-/**
- * Where auto-detection gets highlight.js from: the instance itself (the one
- * already passed to `createHighlightJsAdapter`), or a loader that imports it
- * on demand (`() => import('highlight.js')`; the module namespace is
- * unwrapped). Keep a loader at module scope so its identity is stable — the
- * `codeBlock` group is compared by value, and a new function on every render
- * counts as a new group.
- */
-export type MantineHighlightJsSource =
-  MantineHighlightJsLike | (() => Promise<MantineHighlightJsLike | { default: MantineHighlightJsLike }>);
 
 /**
  * Code block rendering options (the mantine `codeBlock` behavior group).
@@ -45,22 +43,26 @@ export interface MantineCodeBlockOptions {
   defaultExpanded: boolean;
 
   /**
-   * When `true`, uses `highlight.js` auto-detection to determine the language
-   * of code blocks that lack an explicit language annotation. Needs
-   * {@link MantineCodeBlockOptions.highlightJs}; without it the option is
-   * inert and a warning is logged once.
+   * When `true`, identifies the language of code blocks that lack an
+   * explicit language annotation with `@ai-markdown/code-language-detector`.
+   * The detector abstains rather than guess, so a block it cannot place stays
+   * plaintext with an "unknown" label. No further setup: it is a dependency
+   * of this package and runs synchronously, server rendering included.
    *
    * @default false
    */
   autoDetectUnknownLanguage: boolean;
   /**
-   * highlight.js for auto-detection: an instance or a loader. The package
-   * does not import `highlight.js` itself, so a consumer that never turns on
-   * auto-detection (or highlights with another adapter) need not install it.
+   * The names languages are passed to the highlighter in; match it to the
+   * adapter in your `CodeHighlightAdapterProvider`. Applies to a language
+   * written on the fence (` ```objc ` reaches highlight.js as `objectivec`)
+   * and to a detected one. The tab label keeps the name as written, or the
+   * detected language's own name. An unrecognised value falls back to the
+   * default.
    *
-   * @default null
+   * @default MantineLanguageFormat.HighlightJs
    */
-  highlightJs?: MantineHighlightJsSource | null;
+  languageFormat?: MantineLanguageFormat;
   /** Format JSON for display without changing numeric literals. @default true */
   formatJson?: boolean;
   /** Expand string values containing JSON objects/arrays for display. @default true */
@@ -82,7 +84,7 @@ export interface MantineCodeBlockOptions {
 export const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions> = Object.freeze({
   defaultExpanded: true,
   autoDetectUnknownLanguage: false,
-  highlightJs: null,
+  languageFormat: MantineLanguageFormat.HighlightJs,
   formatJson: true,
   expandNestedJson: true,
   highlightIntervalMs: 50,

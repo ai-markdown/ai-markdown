@@ -682,6 +682,9 @@ importers:
 
   packages/react-mantine:
     dependencies:
+      '@ai-markdown/code-language-detector':
+        specifier: workspace:^
+        version: link:../code-language-detector
       mermaid:
         specifier: ^11.17.2
         version: 11.17.2

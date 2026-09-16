@@ -79,6 +79,7 @@
     }
   },
   "dependencies": {
+    "@ai-markdown/code-language-detector": "workspace:^",
     "mermaid": "^11.17.2"
   },
   "devDependencies": {
