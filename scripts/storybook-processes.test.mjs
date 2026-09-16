@@ -59,6 +59,35 @@ for (const leaderExits of [false, true]) {
     }
   );
 }
+for (const [name, epermProbes] of [
+  ['a transient EPERM while the group exits', 3],
+  ['an EPERM that never clears', Number.POSITIVE_INFINITY],
+]) {
+  test(`cleanup finishes on ${name}`, { skip: process.platform === 'win32', timeout: 10000 }, async () => {
+    const originalKill = process.kill;
+    let probes = 0;
+    // Group probes and group signals answer EPERM like macOS does for a group whose members are still exiting.
+    process.kill = (pid, signal) => {
+      if (pid < 0 && probes < epermProbes) {
+        probes += 1;
+        const error = new Error('kill EPERM');
+        error.code = 'EPERM';
+        throw error;
+      }
+      return originalKill.call(process, pid, signal);
+    };
+    try {
+      const supervisor = createProcessSupervisor({ graceMs: 100 });
+      const started = Date.now();
+      await supervisor.run('exiting fixture', process.execPath, ['-e', '0'], { stdio: 'ignore' });
+      assert(probes > 0, 'the fixture must exercise the EPERM path');
+      assert(Date.now() - started < 5000, 'cleanup stays bounded');
+    } finally {
+      process.kill = originalKill;
+    }
+  });
+}
+
 test('interruption blocks additional commands and preserves bounded cleanup', async () => {
   const supervisor = createProcessSupervisor({ graceMs: 100 });
   const run = supervisor.run('startup fixture', process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {

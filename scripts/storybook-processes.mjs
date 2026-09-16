@@ -11,9 +11,19 @@ export function createProcessSupervisor({ graceMs = 3000 } = {}) {
     if (process.platform === 'win32') return record.child.exitCode === null && record.child.signalCode === null;
     try {
       process.kill(-record.child.pid, 0);
+      record.exiting = false;
       return true;
     } catch (error) {
       if (error.code === 'ESRCH') return false;
+      // macOS answers EPERM for a group whose last members are still exiting in
+      // the kernel: `ps` lists none of them, and the probe turns into ESRCH
+      // about a hundred milliseconds later (seen after a Storybook build's
+      // esbuild children). Keep polling; the grace and force deadlines in
+      // retire() bound the wait even if the answer never changes.
+      if (error.code === 'EPERM') {
+        record.exiting = true;
+        return true;
+      }
       throw error;
     }
   }
@@ -32,7 +42,8 @@ export function createProcessSupervisor({ graceMs = 3000 } = {}) {
       try {
         process.kill(-record.child.pid, force ? 'SIGKILL' : 'SIGTERM');
       } catch (error) {
-        if (error.code !== 'ESRCH') throw error;
+        // EPERM: only exiting members are left, and they cannot take a signal.
+        if (error.code !== 'ESRCH' && error.code !== 'EPERM') throw error;
       }
     }
   }
@@ -42,7 +53,11 @@ export function createProcessSupervisor({ graceMs = 3000 } = {}) {
       const deadline = Date.now() + graceMs;
       while (alive(record) && Date.now() < deadline) await delay(50);
       if (alive(record)) {
-        console.log(`[storybook] Force-stopping remaining ${record.label} processes`);
+        console.log(
+          record.exiting
+            ? `[storybook] Still waiting for exiting ${record.label} processes`
+            : `[storybook] Force-stopping remaining ${record.label} processes`
+        );
         await signal(record, true);
         // A killed descendant can briefly remain a zombie until its parent reaps it.
         const forcedDeadline = Date.now() + 1000;
