@@ -686,10 +686,14 @@ y$ which spans lines`;
       time(make(1000));
       const [t1, t2, t4] = [1000, 2000, 4000].map((n) => time(make(n)));
       const readout = `${name}: 1000: ${t1.toFixed(1)} ms, 2000: ${t2.toFixed(1)} ms, 4000: ${t4.toFixed(1)} ms`;
-      // Linear is 2x per doubling, quadratic 4x. The floor absorbs timer
-      // noise where a run is a few milliseconds.
-      expect(t2, readout).toBeLessThan(Math.max(40, 3 * t1));
-      expect(t4, readout).toBeLessThan(Math.max(40, 3 * t2));
+      // Over the whole range linear is 4x and quadratic 16x; 8x is the
+      // midpoint, two-fold headroom either way. A per-doubling 3x bound
+      // failed twice on shared CI cores for linear walks (3.2x and 3.4x
+      // between 2000 and 4000) because one slow doubling is enough; the
+      // range bound needs the noise to persist across both. The floor
+      // absorbs timer noise where a run is a few milliseconds.
+      expect(t4, readout).toBeLessThan(Math.max(80, 8 * t1));
+      expect(t2, readout).toBeLessThan(Math.max(40, 4 * t1));
     }
   });
 
@@ -1216,30 +1220,37 @@ describe('preprocessLaTeX — the pipe pass takes its flow blocks from the unclo
     }
   });
 
-  test('a closed block whose body holds `$$…$$` lines is one block, at 0-3 spaces, after short and long prefixes', () => {
-    const prefixes = ['', 'p $x$\n', 'settled prose with $x^2$ and \\(y\\) inline, nothing open.\n'.repeat(12)];
-    expect(prefixes[2].length).toBeGreaterThan(512);
-    for (const prefix of prefixes) {
-      for (const indent of ['', ' ', '  ', '   ']) {
-        for (const body of ['$$\\int_0^1 x\\,dx$$', '$$a$$ and $$b$$', '$$a | b$$\n$$c$$']) {
-          const doc = `${prefix}${indent}$$\n${body}\n\n$$\n| a | b |\n\n$$\n`;
-          const out = preprocessLaTeX(doc);
-          // The prose pipes stay literal; the block's own pipe is escaped.
-          expect(out.endsWith('$$\n| a | b |'), JSON.stringify(doc)).toBe(true);
-          if (body.includes('|')) expect(out).toContain('$$a \\vert{} b$$');
-          for (const options of [{ freezeThreshold: 0, backoff: false }, { freezeThreshold: 0 }, {}] as const) {
-            const incremental = createIncrementalLatexPreprocessor(options);
-            for (let i = 1; i <= doc.length; i++) {
-              const frame = doc.slice(0, i);
-              expect(incremental(frame), `${JSON.stringify(doc)} ${JSON.stringify(options)} len=${i}`).toBe(
-                preprocessLaTeX(frame)
-              );
+  // 36 documents x 3 incremental configurations x every prefix length of a
+  // 700-byte document: about 80,000 preprocessor calls, 5 s on a fast core
+  // and past vitest's default timeout on a shared CI core.
+  test(
+    'a closed block whose body holds `$$…$$` lines is one block, at 0-3 spaces, after short and long prefixes',
+    { timeout: 60_000 },
+    () => {
+      const prefixes = ['', 'p $x$\n', 'settled prose with $x^2$ and \\(y\\) inline, nothing open.\n'.repeat(12)];
+      expect(prefixes[2].length).toBeGreaterThan(512);
+      for (const prefix of prefixes) {
+        for (const indent of ['', ' ', '  ', '   ']) {
+          for (const body of ['$$\\int_0^1 x\\,dx$$', '$$a$$ and $$b$$', '$$a | b$$\n$$c$$']) {
+            const doc = `${prefix}${indent}$$\n${body}\n\n$$\n| a | b |\n\n$$\n`;
+            const out = preprocessLaTeX(doc);
+            // The prose pipes stay literal; the block's own pipe is escaped.
+            expect(out.endsWith('$$\n| a | b |'), JSON.stringify(doc)).toBe(true);
+            if (body.includes('|')) expect(out).toContain('$$a \\vert{} b$$');
+            for (const options of [{ freezeThreshold: 0, backoff: false }, { freezeThreshold: 0 }, {}] as const) {
+              const incremental = createIncrementalLatexPreprocessor(options);
+              for (let i = 1; i <= doc.length; i++) {
+                const frame = doc.slice(0, i);
+                expect(incremental(frame), `${JSON.stringify(doc)} ${JSON.stringify(options)} len=${i}`).toBe(
+                  preprocessLaTeX(frame)
+                );
+              }
             }
           }
         }
       }
     }
-  });
+  );
 
   test('a block closed on its opener line, and a closer with trailing text, still close', () => {
     expect(preprocessLaTeX('$$|a|$$ then | b')).toBe('$$\\vert{}a\\vert{}$$ then | b');
