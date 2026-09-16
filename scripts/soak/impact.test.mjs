@@ -2,7 +2,9 @@
 import { URL } from 'node:url';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { readdirSync, readFileSync } from 'node:fs';
 import { classify, dependencyGraph } from './impact.mjs';
+import { TASK_FILES } from './soak-contract.mjs';
 const check = (file, a, b) =>
   classify(
     [file],
@@ -61,6 +63,78 @@ test('lockfile impact follows engine transitive dependencies, not unrelated impo
   assert.equal(check('pnpm-lock.yaml', lock(), lock('2')), true);
   assert.equal(check('pnpm-lock.yaml', lock(), lock('1', '1', '2')), true);
   assert.equal(check('pnpm-lock.yaml', lock(), '{}'), true);
+});
+
+const typedLock = (typesVersion, toolVersion = '1') =>
+  JSON.stringify({
+    importers: {
+      'packages/engine': {
+        devDependencies: {
+          '@types/node': { specifier: typesVersion, version: typesVersion },
+          tool: { specifier: toolVersion, version: `${toolVersion}(@types/node@${typesVersion})` },
+        },
+      },
+    },
+    snapshots: {
+      [`@types/node@${typesVersion}`]: { dependencies: { 'undici-types': typesVersion } },
+      [`undici-types@${typesVersion}`]: {},
+      [`tool@${toolVersion}(@types/node@${typesVersion})`]: {
+        dependencies: { helper: `1(@types/node@${typesVersion})` },
+        transitivePeerDependencies: ['@types/node'],
+      },
+      [`helper@1(@types/node@${typesVersion})`]: {},
+    },
+    packages: {
+      [`@types/node@${typesVersion}`]: { resolution: { integrity: `types-${typesVersion}` } },
+      [`undici-types@${typesVersion}`]: { resolution: { integrity: `undici-${typesVersion}` } },
+      [`tool@${toolVersion}`]: { resolution: { integrity: `tool-${toolVersion}` } },
+      'helper@1': { resolution: { integrity: 'helper' } },
+    },
+  });
+test('type declaration packages do not require soak, in the lockfile or an engine manifest', () => {
+  // A bump shows up as the package itself and as peer suffixes on everything that resolved against it.
+  assert.equal(check('pnpm-lock.yaml', typedLock('25.9.5'), typedLock('25.9.6')), false);
+  assert.equal(check('pnpm-lock.yaml', typedLock('25.9.5'), typedLock('25.9.6', '2')), true);
+  for (const manifest of ['packages/engine/package.json', 'packages/remark-mark-highlight/package.json']) {
+    assert.equal(
+      check(manifest, '{"devDependencies":{"@types/node":"^25.9.5"}}', '{"devDependencies":{"@types/node":"^25.9.6"}}'),
+      false,
+      manifest
+    );
+    assert.equal(
+      check(manifest, '{"devDependencies":{"vitest":"^4.1.10"}}', '{"devDependencies":{"vitest":"^4.1.11"}}'),
+      true,
+      manifest
+    );
+  }
+});
+
+test('unit tests outside the soak legs are CI gates; legs and fuzz suites still require soak', () => {
+  for (const file of [
+    'packages/engine/src/preprocessors/latex.test.ts',
+    'packages/engine/src/components/rehypeRebaseHashLinks.test.tsx',
+    'packages/remark-mark-highlight/src/index.test.ts',
+  ])
+    assert.equal(check(file, 'const a=1;', 'const a=2;'), false, file);
+  for (const leg of Object.values(TASK_FILES))
+    assert.equal(check(`packages/engine/src/${leg}`, 'const a=1;', 'const a=2;'), true, leg);
+  for (const file of [
+    'packages/engine/src/components/incrementalParse/someOther.fuzz.test.ts',
+    'packages/engine/src/components/incrementalParse/testPluginCatalog.ts',
+    'packages/engine/vitest.config.ts',
+  ])
+    assert.equal(check(file, 'const a=1;', 'const a=2;'), true, file);
+});
+
+test('no engine module imports a test file, so a non-leg test cannot change what a leg runs', () => {
+  const root = new URL('../../packages/engine/src/', import.meta.url);
+  const offenders = readdirSync(root, { recursive: true })
+    .map(String)
+    .filter((file) => /\.[cm]?[jt]sx?$/.test(file))
+    .filter((file) =>
+      /from\s+['"][^'"]*\.(test|spec)(\.[cm]?[jt]sx?)?['"]/.test(readFileSync(new URL(file, root), 'utf8'))
+    );
+  assert.deepEqual(offenders, []);
 });
 
 test('runtime exports and release Node changes require soak', () => {

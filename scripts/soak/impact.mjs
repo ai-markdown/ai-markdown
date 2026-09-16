@@ -5,6 +5,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import ts from 'typescript';
 import { parse } from 'yaml';
+import { TASK_FILES } from './soak-contract.mjs';
 
 const canonical = (value) =>
   JSON.stringify(value, (_key, item) =>
@@ -12,24 +13,44 @@ const canonical = (value) =>
       ? Object.fromEntries(Object.entries(item).sort(([a], [b]) => a.localeCompare(b)))
       : item
   );
+/** Type declaration packages carry no executable code: tsup and vitest strip
+ * types, so neither the build output nor any soak leg runs them. Only this
+ * package family is ignored; the rest of the test and build toolchain stays
+ * significant. */
+const isTypesPackage = (name) => name.startsWith('@types/');
+/** pnpm peer suffixes name the @types versions a package resolved against, e.g.
+ * `vite@8.2.1(@types/node@25.9.6)(esbuild@0.28.2)`. */
+const withoutTypesPeers = (spec) => {
+  let current = spec;
+  for (let previous; previous !== current;) {
+    previous = current;
+    current = current.replace(/\(@types\/[^()]*\)/g, '');
+  }
+  return current;
+};
+const DEPENDENCY_FIELDS = [
+  'dependencies',
+  'devDependencies',
+  'optionalDependencies',
+  'peerDependencies',
+  'peerDependenciesMeta',
+];
+const withoutTypesPackages = (map) =>
+  map && Object.fromEntries(Object.entries(map).filter(([name]) => !isTypesPackage(name)));
+/** A changed unit test is gated by CI, not by the soak: the campaign runs only
+ * the six leg files. Fuzz suites stay significant, since they share the legs'
+ * generators and a leg can move to one. */
+const SOAK_LEG_FILES = new Set(Object.values(TASK_FILES).map((file) => `packages/engine/src/${file}`));
+const isNonLegUnitTest = (file) =>
+  /\.(test|spec)\.[cm]?[jt]sx?$/.test(file) && !/\.fuzz\.(test|spec)\./.test(file) && !SOAK_LEG_FILES.has(file);
 const manifestInputs = (text) => {
   const p = JSON.parse(text);
   return canonical(
     Object.fromEntries(
-      [
-        'dependencies',
-        'devDependencies',
-        'optionalDependencies',
-        'peerDependencies',
-        'peerDependenciesMeta',
-        'scripts',
-        'engines',
-        'type',
-        'exports',
-        'main',
-        'module',
-        'sideEffects',
-      ].map((key) => [key, p[key]])
+      [...DEPENDENCY_FIELDS, 'scripts', 'engines', 'type', 'exports', 'main', 'module', 'sideEffects'].map((key) => [
+        key,
+        DEPENDENCY_FIELDS.includes(key) ? withoutTypesPackages(p[key]) : p[key],
+      ])
     )
   );
 };
@@ -41,11 +62,23 @@ function executable(text) {
     compilerOptions: { target: ts.ScriptTarget.ESNext, module: ts.ModuleKind.ESNext, removeComments: true },
   }).outputText;
 }
+function typesFreeSnapshot(snap) {
+  const copy = { ...snap };
+  for (const field of ['dependencies', 'optionalDependencies'])
+    if (copy[field])
+      copy[field] = Object.fromEntries(
+        Object.entries(withoutTypesPackages(copy[field])).map(([name, version]) => [name, withoutTypesPeers(version)])
+      );
+  if (copy.transitivePeerDependencies)
+    copy.transitivePeerDependencies = copy.transitivePeerDependencies.filter((name) => !isTypesPackage(name));
+  return copy;
+}
 export function dependencyGraph(lockText) {
   const lock = parse(lockText),
     visited = new Set(),
     result = { settings: lock.settings, overrides: lock.overrides, patchedDependencies: lock.patchedDependencies };
   function snapshot(name, version, importer) {
+    if (isTypesPackage(name)) return;
     if (version.startsWith('link:')) {
       workspace(path.posix.normalize(path.posix.join(importer, version.slice(5))));
       return;
@@ -55,7 +88,7 @@ export function dependencyGraph(lockText) {
     if (visited.has(key)) return;
     visited.add(key);
     const snap = lock.snapshots[key];
-    result[key] = { snapshot: snap, package: lock.packages?.[key.split('(')[0]] };
+    result[withoutTypesPeers(key)] = { snapshot: typesFreeSnapshot(snap), package: lock.packages?.[key.split('(')[0]] };
     for (const [child, v] of Object.entries({ ...snap.dependencies, ...snap.optionalDependencies }))
       snapshot(child, v, importer);
   }
@@ -66,8 +99,10 @@ export function dependencyGraph(lockText) {
     const item = lock.importers?.[importer];
     if (!item) throw new Error(`Missing importer ${importer}`);
     // Engine test/build dependencies affect the verification mechanism too.
-    const deps = { ...item.dependencies, ...item.optionalDependencies, ...item.devDependencies };
-    result[key] = deps;
+    const deps = withoutTypesPackages({ ...item.dependencies, ...item.optionalDependencies, ...item.devDependencies });
+    result[key] = Object.fromEntries(
+      Object.entries(deps).map(([name, data]) => [name, { ...data, version: withoutTypesPeers(data.version) }])
+    );
     for (const [name, data] of Object.entries(deps)) snapshot(name, data.version, importer);
   }
   workspace('packages/engine');
@@ -75,7 +110,7 @@ export function dependencyGraph(lockText) {
   for (const name of ['typescript', 'tsup', 'vitest', '@vitest/coverage-v8', 'yaml']) {
     const dep = root?.devDependencies?.[name];
     if (dep) {
-      result[`tool:${name}`] = dep;
+      result[`tool:${name}`] = { ...dep, version: withoutTypesPeers(dep.version) };
       snapshot(name, dep.version, '.');
     }
   }
@@ -183,6 +218,7 @@ export function classify(paths, before, after) {
         reasons.push(`${file}: runtime or build contract changed`);
     } else if (/^packages\/(engine|remark-mark-highlight)\//.test(file)) {
       if (/\.(md|txt)$|\/LICENSE$/.test(file)) continue;
+      if (isNonLegUnitTest(file)) continue;
       if (/\.[cm]?[jt]sx?$/.test(file) && a && b && executable(a) === executable(b)) continue;
       reasons.push(`${file}: engine/plugin implementation or verification changed`);
     } else if (/^corpus\/documents\//.test(file)) {

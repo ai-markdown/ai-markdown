@@ -55,7 +55,7 @@ pnpm --filter @ai-markdown/engine soak:aggregate -- \
 
 PR 与主分支 CI 包含一项**评估引擎压测影响**检查，以及一项名为 **⚠ 发布前必须进行引擎压测** 或 **✓ 发布前无需引擎压测** 的依赖检查。如果评估失败，依赖检查会报告 **UNAVAILABLE** 并导致流程失败。该判定在 PR 检查列表与 Actions 任务列表中直接可见。当需要进行压测时，GitHub 仍可能将工作流显示为成功：因为完整的压测轮次是发布门禁，而不是 PR 门禁。评估标注与任务摘要会明确注明 `REQUIRED` 或 `NOT REQUIRED`、基准提交 SHA、候选提交 SHA 以及触发原因。绿色勾选仅表示评估操作本身成功完成，并不意味着无需压测或压测已通过。PR CI 会累积评估自前一个统一版本发布标签以来的合并候选版本，而非仅评估最新一次推送。发布 CI 会对最终候选版本重新评估。PR 检查不会等待发布审批。
 
-运行 `pnpm check:soak-impact` 可将已提交的候选版本与其最近的前序统一版本发布标签进行比对。使用 `--base <commit-or-tag> --head <commit>` 可审查指定的祖先提交区间。Engine 与 highlight 的运行时代码变动、运行时导出、引擎测试与构建配置、相关的传递 lockfile 依赖、共享工具链变动以及压测机制本身的变动，均要求进行压测验证。代码注释与被剥离的 TypeScript 类型会被忽略。无法解析的依赖影响或缺失的前序统一版本发布标签均要求进行压测；无效的 Git 区间会导致检查失败。
+运行 `pnpm check:soak-impact` 可将已提交的候选版本与其最近的前序统一版本发布标签进行比对。使用 `--base <commit-or-tag> --head <commit>` 可审查指定的祖先提交区间。Engine 与 highlight 的运行时代码变动、运行时导出、六条腿的测试文件与所有 fuzz 套件、引擎测试辅助模块与构建配置、相关的传递 lockfile 依赖、共享工具链变动以及压测机制本身的变动，均要求进行压测验证。代码注释与被剥离的 TypeScript 类型会被忽略；另有两类任何一条腿都不会执行的改动也会被忽略：既不是腿文件、也不是 fuzz 套件的 engine 或 highlight 单元测试（它仍由 CI 把关，并有控制测试断言没有任何引擎模块导入测试文件），以及 engine 或 highlight 清单文件和 lockfile 依赖图中的类型声明包（`@types/*`），包括它给其他条目带来的 peer 后缀。其余测试与构建工具链，例如 `vitest`、`tsup`、`yaml` 或 Playwright peer，仍要求进行压测验证。无法解析的依赖影响或缺失的前序统一版本发布标签均要求进行压测；无效的 Git 区间会导致检查失败。
 
 六个压测分支在 `packages/engine` 中启动 Vitest，并使用该相关包自身的配置。根目录 `vitest.config.ts` 的改动属于常规的单元测试/Storybook 门禁，不会导致引擎压测证据失效。但对 `packages/engine/vitest.config.ts`、引擎构建设置或压测运行器本身的改动仍会导致证据失效。
 
