@@ -1,0 +1,79 @@
+// Generated from the built public declaration. Review changes before updating.
+declare enum CodeLanguage {
+    JavaScript = "javascript",
+    TypeScript = "typescript",
+    Jsx = "jsx",
+    Tsx = "tsx",
+    Json = "json",
+    Yaml = "yaml",
+    Toml = "toml",
+    Ini = "ini",
+    Html = "html",
+    Xml = "xml",
+    Markdown = "markdown",
+    Css = "css",
+    Scss = "scss",
+    Less = "less",
+    Vue = "vue",
+    Svelte = "svelte",
+    C = "c",
+    Cpp = "cpp",
+    ObjectiveC = "objective-c",
+    Java = "java",
+    CSharp = "csharp",
+    Kotlin = "kotlin",
+    Groovy = "groovy",
+    Scala = "scala",
+    Go = "go",
+    Rust = "rust",
+    Swift = "swift",
+    Zig = "zig",
+    Dart = "dart",
+    Python = "python",
+    Ruby = "ruby",
+    Php = "php",
+    Lua = "lua",
+    Sql = "sql",
+    VisualBasic = "vb",
+    Matlab = "matlab",
+    Julia = "julia",
+    Assembly = "asm",
+    PowerShell = "powershell",
+    Bash = "bash",
+    AppleScript = "applescript",
+    Dockerfile = "dockerfile"
+}
+interface LanguageDetectionResult {
+    language: CodeLanguage | null;
+    confidence: number;
+    candidates: readonly CodeLanguage[];
+    evidence: readonly string[];
+}
+declare function detectLanguage(code: string): LanguageDetectionResult;
+interface StreamingLanguageDetectorOptions {
+    lockConfidence?: number;
+    growthRatio?: number;
+    minGrowthChars?: number;
+    familySwitchMargin?: number;
+}
+declare class StreamingLanguageDetector {
+    #private;
+    constructor(options?: StreamingLanguageDetectorOptions);
+    get current(): LanguageDetectionResult;
+    update(code: string): LanguageDetectionResult;
+    finalize(code: string): LanguageDetectionResult;
+    reset(): void;
+}
+declare class DetectionCache {
+    #private;
+    constructor(limit?: number);
+    get size(): number;
+    detect(code: string): LanguageDetectionResult;
+    clear(): void;
+}
+declare function normalizeCodeLanguage(name: string): CodeLanguage | null;
+declare function normalizeShikiLanguage(name: string): string;
+declare function normalizeHighlightJsLanguage(name: string): string;
+declare function toShikiLanguage(language: CodeLanguage): string;
+declare function toHighlightJsLanguage(language: CodeLanguage): string;
+export { CodeLanguage, DetectionCache, type LanguageDetectionResult, StreamingLanguageDetector, type StreamingLanguageDetectorOptions, detectLanguage, normalizeCodeLanguage, normalizeHighlightJsLanguage, normalizeShikiLanguage, toHighlightJsLanguage, toShikiLanguage };

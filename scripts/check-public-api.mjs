@@ -7,6 +7,7 @@ mkdirSync('tooling/api-reports', { recursive: true });
 const surfaces = [
   { name: 'engine', directory: 'engine', entry: 'src/index.ts', shared: true },
   { name: 'core', directory: 'core', entry: 'src/index.ts', shared: true },
+  { name: 'code-language-detector', directory: 'code-language-detector', entry: 'src/index.ts', shared: true },
   { name: 'react', directory: 'react', entry: 'src/index.tsx' },
   { name: 'react-plugins', directory: 'react', entry: 'src/plugins/index.ts', declaration: 'dist/plugins/index.d.ts' },
   { name: 'react-mantine', directory: 'react-mantine', entry: 'src/index.tsx' },

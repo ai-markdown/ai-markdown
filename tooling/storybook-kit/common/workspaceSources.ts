@@ -6,6 +6,7 @@ const sources = {
   '@ai-markdown/engine': 'packages/engine/src/index.ts',
   '@ai-markdown/core': 'packages/core/src/index.ts',
   '@ai-markdown/remark-mark-highlight': 'packages/remark-mark-highlight/src/index.ts',
+  '@ai-markdown/code-language-detector': 'packages/code-language-detector/src/index.ts',
   '@ai-markdown/react': 'packages/react/src/index.tsx',
   '@ai-markdown/react/plugins': 'packages/react/src/plugins/index.ts',
   '@ai-markdown/react/typography/default.css': 'packages/react/src/components/typography/variants/default.scss',
@@ -39,9 +40,12 @@ export function withWorkspaceSources(config: ViteConfig, configType: string): Vi
       // Otherwise Vitest can reload mid-test as their dependencies are discovered.
       entries: [
         ...(typeof entries === 'string' ? [entries] : (entries ?? [])),
-        ...['@ai-markdown/engine', '@ai-markdown/core', '@ai-markdown/remark-mark-highlight'].map((name) =>
-          sourcePath(sources[name as keyof typeof sources])
-        ),
+        ...[
+          '@ai-markdown/engine',
+          '@ai-markdown/core',
+          '@ai-markdown/remark-mark-highlight',
+          '@ai-markdown/code-language-detector',
+        ].map((name) => sourcePath(sources[name as keyof typeof sources])),
       ],
       exclude: [...(config.optimizeDeps?.exclude ?? []), ...Object.keys(sources)],
     },
