@@ -3,7 +3,7 @@
 /**
  * Downloads the hand-picked GitHub corpus into a local directory, for the
  * evidence harnesses in `src/evidence/`. Two lists make two splits:
- *   - `tune`: `github-curated.tsv`, the files rules were designed against
+ *   - `tune`: `github-tune.tsv`, the files rules were designed against
  *   - `holdout`: `github-holdout.tsv`, never used to design rules
  *
  * Usage: node scripts/fetch-github-corpus.mjs [corpus directory]
@@ -33,7 +33,7 @@ if (args.includes('--help') || args.includes('-h') || args.length > 1) {
 const out = resolve(args[0] || DEFAULT_CORPUS_DIR);
 
 const here = dirname(fileURLToPath(import.meta.url));
-const LISTS = { tune: 'github-curated.tsv', holdout: 'github-holdout.tsv' };
+const LISTS = { tune: 'github-tune.tsv', holdout: 'github-holdout.tsv' };
 const entries = Object.entries(LISTS).flatMap(([split, list]) =>
   readFileSync(join(here, list), 'utf8')
     .split('\n')

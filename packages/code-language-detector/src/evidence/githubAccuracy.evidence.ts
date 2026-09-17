@@ -2,12 +2,11 @@
  * EVIDENCE HARNESS — not a test. Run it with
  * `pnpm --filter @ai-markdown/code-language-detector evidence` after fetching the corpus.
  *
- * One-shot detection accuracy on the hand-picked GitHub corpus
- * (`scripts/github-curated.tsv`). The corpus exists to cover languages that a
- * synthetic fixture set cannot represent honestly: Objective-C, Zig, Scala,
- * MATLAB, Julia, Assembly, AppleScript, Vue, Svelte, Less and VB had no real
- * samples before, only handwritten fixtures, and handwritten samples lean
- * systematically towards textbook style.
+ * One-shot detection accuracy on the hand-picked GitHub corpus, reported for
+ * each split: `tune` (`scripts/github-tune.tsv`), which rules have been
+ * designed against, and `holdout` (`scripts/github-holdout.tsv`), which they
+ * have not. Handwritten fixtures lean systematically towards textbook style;
+ * real files are how a rule change shows whether it generalizes.
  *
  * Each snippet is the start of a file, 8 to 35 lines long, which is what an
  * agent streams into a code fence. "strict" counts only the exact language as
