@@ -1,6 +1,6 @@
 {
   "name": "@ai-markdown/vue",
-  "version": "3.2.0",
+  "version": "3.2.1",
   "description": "Vue 3 Markdown rendering, document coordination and streaming composables for ai-markdown.",
   "type": "module",
   "license": "MIT",

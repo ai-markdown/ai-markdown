@@ -445,7 +445,7 @@ export type { YourBehaviorProps } from './define';
 // packages/your-integration/package.json
 {
   "peerDependencies": {
-    "@ai-markdown/react": "^3.2.0",
+    "@ai-markdown/react": "^3.2.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "your-design-system": "^1.0.0",

@@ -6,6 +6,37 @@
 
 验证测试数量属于对应候选版本报告的历史数据，并非针对本次文档修订重新执行的测试。同样，零缺陷的模糊测试（fuzz）或压测轮次仅能证明其受测输入族与配置下的表现；后续条目将说明在扩展这些输入族时发现的其他缺陷。
 
+## 3.2.1 — 代码语言探测器 1.1.0
+
+### 3.2.1
+
+本次补丁版本将 engine、core、React、Mantine 和 Vue 同步升级至 `3.2.1`，其中 engine、core、React 与 Vue 仅做版本对齐，自 `3.2.0` 以来源码没有改动。`@ai-markdown/code-language-detector` 升级至 `1.1.0`，`@ai-markdown/react-mantine` 现在依赖 `^1.1.0`。独立发布的高亮插件仍为 `1.0.2`。
+
+#### 代码语言探测器 1.1.0
+
+- **准确率改为在规则从未参照过的文件上测量。** 我们手工挑选了 504 个真实文件（42 种语言各 12 个，来自宽松许可的仓库），结果表明 `1.0.0` 给出的「跨语言家族误判 0%、loose precision 100%」只在调规则所用的语料上成立。README 现在优先报告留出集的数字：单次检测覆盖率 74.7%、loose precision 96.8%，流式检测中 2.4% 的文件出现过跨家族翻转，最终判定正确率 90.8%。与 `1.0.0` 在同一留出集上相比：覆盖率从 68.3% 提升至 74.7%，最终判定正确率从 83.6% 提升至 90.8%，出现翻转的文件从 457 个中的 13 个降至 11 个。
+- **评分前清空 fence 内的代码。** 满是 TypeScript 示例的 Markdown 指南会判为 `markdown`；Python 提示词模板中用 fence 包裹的 JSON 示例不再算作 JSON 证据。连续的 `///` 或 `//!` 文档注释会给 Markdown 扣分，以三引号 docstring 开头的片段不会被判为 Markdown。
+- **打成平局的近亲语言也会得到判定。** 当证据分不清 C 与 C++、JavaScript 与 TypeScript、CSS 与 SCSS、Less，但相对其他所有语言已能确定所属家族时，检测器以恰好 `0.8` 的置信度给出最可能的成员。在 `1.0.0` 中返回 `language: null` 的片段，例如只含 `#include` 与 `static` 函数的 C 文件，或不含 SCSS、Less 语法的样式表，现在会返回 `c` 或 `css`。置信度恰好为 `0.8` 表示确定了家族，但不确定具体成员。
+- **跨家族误判修复。** 以 `<?php` 开头的片段排除 JavaScript、TypeScript、C# 与 Java；Dockerfile 的 `# syntax=` 指令成为决定性证据，大写的 `RUN` 行会给 Bash 扣分；Markdown front matter 能与 YAML 区分；Dart 的 `part of` 指令与 `factory` 构造函数、Ruby 的魔法注释都有了专属规则；Sorbet 的 `T::Array[...]` 不再被读作 Scala，`import Select from "…"` 不再被读作 SQL，许可证文本里的 `retain` 也不再计为 Objective-C 证据。
+- **覆盖率。** 新增签名规则，覆盖 VB.NET 修饰符、MATLAB 单返回值函数、Julia 的 `import Base: name` 与 export 块、Svelte 组件导入、C 的 `static` 函数与 `_t` 类型、CSS 后代选择器与声明行、tox 风格的 INI、任意包的 Java 导入，以及预处理 `.S` 文件中的 GNU 汇编指令。
+- 公开 API 没有变化。
+
+#### Mantine
+
+- `codeBlock.autoDetectUnknownLanguage` 随探测器 `1.1.0` 更新：以前因 C 与 C++、JavaScript 与 TypeScript、CSS 与其预处理器打平而保持纯文本的未标注代码块，现在会得到标签与语法高亮。包内其他内容没有变化。
+
+#### 工具链
+
+- 引擎压测影响检查会忽略 engine 与 highlight 清单文件及 lockfile 依赖图中的类型声明包（`@types/*`），以及既不属于六条压测腿、也不是 fuzz 套件的 engine 或 highlight 单元测试。其余测试与构建工具链的变动仍要求完整压测。
+- 当 macOS 对成员仍在退出的进程组返回 `EPERM` 时，Storybook 进程管理器会继续等待，因此本地 `pnpm preflight` 可以完整跑完 Storybook 构建、站点与 dev 检查。
+- Storybook 新增 Integrations / Mantine / Language Detection 页面，包含可编辑的探测器 Playground 与 fence 语言名映射表。
+
+#### 验证
+
+全部 3,091 项单元测试通过（另有 1 项 todo），React（111 项）与 Vue（42 项）Storybook 套件也全部通过。上文的探测器数据来自其 evidence harness 在钉住 commit 的留出集语料上的测量结果。
+
+本次发布没有运行引擎压测。`check:soak-impact` 判定需要压测，仅仅是因为影响检查本身有改动（`scripts/soak/impact.mjs` 及其测试）。自 `3.2.0` 以来，engine、core、React、Vue 与高亮插件的源码均无改动，任何压测腿执行的内容都没有变化，维护者据此批准本次发布作为例外。
+
 ## 3.2.0 — 代码语言探测器与 Mantine 同步语言检测
 
 ### 3.2.0

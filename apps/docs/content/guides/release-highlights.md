@@ -6,6 +6,37 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.2.1 — Code language detector 1.1.0
+
+### 3.2.1
+
+This patch release aligns engine, core, React, Mantine and Vue at `3.2.1`. Engine, core, React and Vue are version-aligned only, with no source changes since `3.2.0`. `@ai-markdown/code-language-detector` moves to `1.1.0`, and `@ai-markdown/react-mantine` now depends on `^1.1.0`. The independently versioned highlight plugin remains at `1.0.2`.
+
+#### Code language detector 1.1.0
+
+- **Accuracy is measured on files the rules were never tuned against.** A hand-picked corpus of 504 real files, 12 per language for all 42 languages from permissively licensed repositories, showed that the 0% cross-family and 100% loose-precision figures of `1.0.0` held only on the corpus the rules had been tuned on. The README now reports a holdout split first: 74.7% one-shot coverage and 96.8% loose precision, 2.4% of streamed files with a cross-family flip, 90.8% correct final verdicts. Compared with `1.0.0` on the same holdout: coverage 68.3% to 74.7%, final verdicts 83.6% to 90.8%, streamed files with a flip 13 to 11 of 457.
+- **Fenced code is blanked before scoring.** A Markdown guide full of TypeScript examples is `markdown`, and a JSON example fenced inside a Python prompt template no longer counts as JSON evidence. Runs of `///` or `//!` documentation comments count against Markdown, and a snippet that opens with a triple-quoted docstring cannot be Markdown.
+- **Close relatives that tie get a verdict.** When the evidence cannot tell C from C++, JavaScript from TypeScript, or CSS from SCSS and Less, but the family is clear against every other language, the most likely member is named at exactly `0.8`. Snippets that returned `language: null` in `1.0.0`, such as a C file with only `#include` and `static` functions or a stylesheet without SCSS or Less syntax, now return `c` or `css`. A confidence of exactly `0.8` means the family is known, not the member.
+- **Cross-family fixes.** A leading `<?php` excludes JavaScript, TypeScript, C# and Java; a Dockerfile `# syntax=` directive is definitive and an uppercase `RUN` line counts against Bash; Markdown front matter is told apart from YAML; Dart `part of` directives and `factory` constructors, Ruby magic comments, Sorbet's `T::Array[...]` no longer read as Scala, `import Select from "…"` no longer reads as SQL, and `retain` in license text no longer counts for Objective-C.
+- **Coverage.** New signatures for VB.NET modifiers, MATLAB single-output functions, Julia `import Base: name` and export blocks, Svelte component imports, C `static` functions and `_t` types, CSS descendant selectors and declaration lines, tox-style INI, Java imports from any package, and GNU assembler directives in preprocessed `.S` files.
+- The public API is unchanged.
+
+#### Mantine
+
+- `codeBlock.autoDetectUnknownLanguage` picks up detector `1.1.0`: unlabelled blocks the detector used to leave as plaintext because C and C++, JavaScript and TypeScript, or CSS and its preprocessors tied now get a label and highlighting. Nothing else in the package changed.
+
+#### Tooling
+
+- The engine soak impact check ignores type declaration packages (`@types/*`) in engine and highlight manifests and in the lockfile graph, and engine or highlight unit tests that are neither one of the six soak legs nor a fuzz suite. The rest of the test and build toolchain still requires a campaign.
+- The Storybook process supervisor keeps waiting when macOS answers `EPERM` for a process group whose members are still exiting, so a local `pnpm preflight` completes the Storybook build, site and dev checks.
+- Storybook gains an Integrations / Mantine / Language Detection page with an editable detector playground and the fence-name mapping table.
+
+#### Verification
+
+All 3,091 unit tests pass (one todo), together with the React (111) and Vue (42) Storybook suites. The detector figures above come from its evidence harnesses on the pinned holdout corpus.
+
+No engine soak campaign was run for this release. `check:soak-impact` requires one only because the impact classifier itself changed (`scripts/soak/impact.mjs` and its tests). Engine, core, React, Vue and the highlight plugin have no source changes since `3.2.0`, so nothing a soak leg executes changed, and the maintainer approved the release as an exception on that basis.
+
 ## 3.2.0 — Code language detector and synchronous Mantine detection
 
 ### 3.2.0
