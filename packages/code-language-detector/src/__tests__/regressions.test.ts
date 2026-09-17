@@ -805,3 +805,60 @@ describe('regression: after excludes removes JS/TS a usable candidate list remai
     }
   });
 });
+
+/**
+ * Thin snippets from the tuning corpus that had one piece of evidence and stayed
+ * below the confidence line. Each rule adds a second, independent signature, and
+ * each has a lookalike from another language that must stay unaffected.
+ */
+describe('regression: a second signature for thin snippets', () => {
+  it('VB.NET inheritance modifiers are vb', () => {
+    const code =
+      'Imports System.Text\n\n<Serializable()>\nPublic MustInherit Class Shape\n    MustOverride Function Area() As Double\n';
+    expect(detectLanguage(code).language).toBe('vb');
+  });
+
+  it('C# abstract members are not vb', () => {
+    const code = 'using System.Text;\n\npublic abstract class Shape\n{\n    public abstract double Area();\n}';
+    expect(detectLanguage(code).language).not.toBe('vb');
+  });
+
+  it('a MATLAB function with a single output is matlab', () => {
+    const code = 'function total = addAll(values)\n% ADDALL sums a vector\n    total = sum(values);\nend';
+    expect(detectLanguage(code).language).toBe('matlab');
+  });
+
+  it('Lua and JavaScript function declarations are not matlab', () => {
+    expect(detectLanguage('function add(a, b)\n  return a + b\nend\n\nprint(add(1, 2))').language).not.toBe('matlab');
+    expect(detectLanguage('const twice = function (x) {\n  return x * 2;\n};').language).not.toBe('matlab');
+  });
+
+  it('a Julia import with names and an indented export block is julia', () => {
+    const code =
+      '# SPDX-License-Identifier: MIT\n\nimport Base: show, length\n\nexport\n    Queue,\n    enqueue!,\n    dequeue!,\n    peek\n';
+    expect(detectLanguage(code).language).toBe('julia');
+  });
+
+  it('Python and Elixir imports are not julia', () => {
+    expect(detectLanguage('from base import show\nimport os\n\ndef main():\n    show(os.getcwd())').language).not.toBe(
+      'julia'
+    );
+    expect(detectLanguage('defmodule Report do\n  import Enum, only: [map: 2]\nend').language).not.toBe('julia');
+  });
+
+  it('a component script importing from svelte or a .svelte file is svelte', () => {
+    const code =
+      "<script lang=\"ts\">\n  import { onMount } from 'svelte';\n  import Card from './Card.svelte';\n\n  let count = 0;\n  onMount(() => (count = 1));\n";
+    expect(detectLanguage(code).language).toBe('svelte');
+  });
+
+  it('a TypeScript store module and a Vue component are not svelte', () => {
+    expect(
+      detectLanguage("import { writable } from 'svelte/store';\n\nexport const count = writable<number>(0);").language
+    ).not.toBe('svelte');
+    expect(
+      detectLanguage('<script setup lang="ts">\nimport Card from \'./Card.vue\';\nconst count = ref(0);\n</script>')
+        .language
+    ).not.toBe('svelte');
+  });
+});

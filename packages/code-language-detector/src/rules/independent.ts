@@ -29,6 +29,15 @@ export const independentRules: DetectionRule[] = [
     scores: { vb: 9 },
   },
   {
+    id: 'vb-modifier-keywords',
+    // MustInherit / NotInheritable / MustOverride / Overridable / Shadows / WithEvents / WriteOnly: inheritance
+    // and member modifiers that only VB spells this way (C# writes abstract / sealed / virtual / new). No i flag.
+    pattern:
+      /\b(?:MustInherit|NotInheritable|MustOverride|Overridable|NotOverridable|Shadows|WithEvents|WriteOnly)\s+[A-Z]\w*/,
+    scores: { vb: 10 },
+    definitive: 'vb',
+  },
+  {
     id: 'vb-then-keyword',
     // No i flag here either: a lowercase if ... then is everyday Lua / Shell
     pattern: /\bIf\s+[^\n]{1,120}\s+Then\b|^[ \t]*Else(?:If)?\b/m,
@@ -40,6 +49,14 @@ export const independentRules: DetectionRule[] = [
     id: 'matlab-function-brackets',
     // function [out1, out2] = name(args): multiple return values in square brackets are unique to MATLAB
     pattern: /^[ \t]*function\s*\[[^\]\n]{0,80}\]\s*=\s*\w+\s*\(/m,
+    scores: { matlab: 12, julia: -3 },
+    definitive: 'matlab',
+  },
+  {
+    id: 'matlab-function-output',
+    // function out = name(args): a single named return value. Julia, Lua, Python and JS never put = between the
+    // function keyword and the name.
+    pattern: /^[ \t]*function\s+\w+\s*=\s*\w+\s*\(/m,
     scores: { matlab: 12, julia: -3 },
     definitive: 'matlab',
   },
@@ -118,6 +135,19 @@ export const independentRules: DetectionRule[] = [
     // lowercase
     pattern: /^(?:import|using)\s+[A-Z][\w.]{0,40},[ \t]*[A-Z]/m,
     scores: { julia: 8, python: -1 },
+  },
+  {
+    id: 'julia-import-names',
+    // import Base: show, + / using Test: @test: a module followed by a colon and the names it brings in. Python writes
+    // from x import y, Haskell import X (y), Elixir import X, only: [...].
+    pattern: /^[ \t]*(?:import|using)\s+[A-Z][\w.]{0,40}\s*:\s*[\w@!+\-*/<>=^.]/m,
+    scores: { julia: 9, python: -1 },
+  },
+  {
+    id: 'julia-export-block',
+    // export on its own line followed by an indented, comma-separated name list
+    pattern: /^export[ \t]*\n(?:[ \t]{2,8}[\w!@]{1,40},[ \t]*\n){2,40}/m,
+    scores: { julia: 8, javascript: -2, typescript: -2 },
   },
   {
     id: 'julia-short-method',

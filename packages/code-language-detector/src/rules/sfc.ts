@@ -78,6 +78,14 @@ export const sfcRules: DetectionRule[] = [
     scores: { svelte: 10, vue: -3 },
   },
   {
+    id: 'svelte-component-imports',
+    // A snippet that opens with <script> and imports from svelte, svelte/*, or a .svelte file is a Svelte component.
+    // Anchored at the start: a plain .ts module importing svelte/store is TypeScript, not a component.
+    pattern:
+      /^<script(?:\s[^>\n]{0,80})?>(?:[^\n]{0,300}\n){0,40}?[^\n]{0,300}from\s+["'](?:svelte(?:\/[\w-]{1,30}){0,3}|[^"'\n]{1,200}\.svelte)["']/,
+    scores: { svelte: 10, vue: -4 },
+  },
+  {
     id: 'svelte-reactive-statement',
     pattern: /^[ \t]*\$:\s*[\w{]/m,
     scores: { svelte: 11, javascript: -3 },
