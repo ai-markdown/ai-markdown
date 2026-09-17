@@ -338,7 +338,7 @@ describe('regression: Dart named parameters must not match any pair of braces', 
 
 /**
  * The cases below were exposed by the real GitHub corpus
- * (scripts/github-curated.tsv). With every synthetic fixture passing, these
+ * (batch 1 of scripts/github-tune.tsv). With every synthetic fixture passing, these
  * forms were still misdetected, because handwritten samples lean
  * systematically towards textbook style. The samples are original code
  * re-created in the same shape as the corpus files, not quotations from them.
@@ -860,5 +860,169 @@ describe('regression: a second signature for thin snippets', () => {
       detectLanguage('<script setup lang="ts">\nimport Card from \'./Card.vue\';\nconst count = ref(0);\n</script>')
         .language
     ).not.toBe('svelte');
+  });
+});
+
+/**
+ * Cross-family misdetections and abstentions found on the second corpus batch. Every
+ * sample is written for the test; each positive has a lookalike that must stay
+ * unaffected.
+ */
+describe('regression: second corpus batch', () => {
+  it('a snippet opening with <?php is php even when namespaces and docblocks look like TypeScript', () => {
+    const code = `<?php
+
+declare(strict_types=1);
+
+namespace Billing;
+
+/**
+ * Normalizes invoice numbers for lookups.
+ *
+ * @internal
+ */
+final class InvoiceNumber
+{
+    public static function normalize(string $value): string
+    {
+        return strtoupper(trim($value));
+    }
+}`;
+    expect(detectLanguage(code).language).toBe('php');
+  });
+
+  it('a Dockerfile with a syntax directive and a RUN heredoc is dockerfile', () => {
+    const code = `# syntax=docker/dockerfile:1
+ARG NODE_VERSION=22
+FROM node:\${NODE_VERSION}-slim AS build
+RUN <<EOT
+  set -e
+  apt-get update && apt-get install -y git
+  echo "$(date)" > /build-time
+EOT
+COPY . /app`;
+    expect(detectLanguage(code).language).toBe('dockerfile');
+  });
+
+  it('a shell script that calls docker is still bash', () => {
+    const code =
+      '#!/usr/bin/env bash\nset -euo pipefail\n\nfor image in $(docker images -q); do\n  docker run --rm "$image" true\ndone';
+    expect(detectLanguage(code).language).toBe('bash');
+  });
+
+  it('Markdown with front matter is markdown, and a two-document YAML file stays yaml', () => {
+    const doc =
+      '---\ntitle: Getting Started\nsidebar: guide\n---\n\nInstall the package, then read the [overview](./overview.md).\n\n- step one\n- step two';
+    expect(detectLanguage(doc).language).toBe('markdown');
+    const yaml = '---\nname: api\nreplicas: 2\n---\nname: worker\nreplicas: 4\nimage: acme/worker:1.2';
+    expect(detectLanguage(yaml).language).toBe('yaml');
+  });
+
+  it('a Markdown guide full of TypeScript examples is markdown', () => {
+    const code = [
+      '# Hot reload',
+      '',
+      'The client exposes a small API on `import.meta.hot`:',
+      '',
+      '```ts',
+      'interface HotContext {',
+      '  accept(cb?: (mod: unknown) => void): void;',
+      '  dispose(cb: (data: Record<string, unknown>) => void): void;',
+      '}',
+      'export function setup(ctx: HotContext): void {}',
+      '```',
+      '',
+      'See [the plugin API](./plugins.md) for server-side hooks.',
+    ].join('\n');
+    expect(detectLanguage(code).language).toBe('markdown');
+  });
+
+  it('a prompt template fenced inside a Python string does not turn the file into JSON', () => {
+    const code = [
+      'PROMPT = """',
+      'Return the result as JSON:',
+      '```json',
+      '{"name": "string", "tags": ["string"]}',
+      '```',
+      '"""',
+      '',
+      'def build(topic: str) -> str:',
+      '    return PROMPT + topic',
+    ].join('\n');
+    expect(detectLanguage(code).language).toBe('python');
+  });
+
+  it('Rust module docs and Julia docstrings written in Markdown are not markdown', () => {
+    const rust =
+      '//! Cooperative scheduling helpers.\n//!\n//! Call [`yield_now`] inside a **long** loop so other tasks can run.\n//!\n//! #### Budget\n//! Each task gets a `budget` per poll.';
+    expect(detectLanguage(rust).language).not.toBe('markdown');
+    const julia =
+      '"""\n    RingBuffer{T}\n\nA fixed-size buffer.\n\n# Examples\n```julia\nbuf = RingBuffer{Int}(4)\n```\n"""';
+    expect(detectLanguage(julia).language).not.toBe('markdown');
+  });
+
+  it('Dart part directives and factory constructors are dart, not java', () => {
+    const code = `part of 'client.dart';
+
+/// Reuses connections for one host.
+abstract class ConnectionPool {
+  factory ConnectionPool({Duration idleTimeout = const Duration(seconds: 15)}) =>
+      _DefaultPool(idleTimeout);
+
+  @Deprecated('Use close instead')
+  void shutdown();
+}`;
+    expect(detectLanguage(code).language).toBe('dart');
+  });
+
+  it('Ruby magic comments and Sorbet generics are ruby, while Scala generics stay scala', () => {
+    const ruby =
+      '# typed: strict\n# frozen_string_literal: true\n\nrequire "json"\n\nclass Report\n  sig { returns(T::Array[String]) }\n  def lines = []\nend';
+    expect(detectLanguage(ruby).language).toBe('ruby');
+    const scala =
+      'object Stats {\n  def counts(words: Seq[String]): Map[String, Int] =\n    words.groupBy(identity).view.mapValues(_.size).toMap\n}';
+    expect(detectLanguage(scala).language).toBe('scala');
+  });
+
+  it('a component import named Select is not SQL, and real SQL still is', () => {
+    const jsx =
+      'import React from "react";\nimport Select from "antd/lib/select";\nimport Shortcuts from "@/services/Shortcuts";\n\nexport default function Picker() {\n  return <Select />;\n}';
+    expect(detectLanguage(jsx).language).not.toBe('sql');
+    expect(detectLanguage('SELECT id, email\nFROM users\nWHERE active = true\nORDER BY id;').language).toBe('sql');
+  });
+
+  it('C and C++ ties name c; stylesheet ties name css', () => {
+    const c =
+      '#include <stdio.h>\n#include "queue.h"\n\nstatic size_t queue_depth(const queue_t *q)\n{\n    return q->tail - q->head;\n}';
+    expect(detectLanguage(c).language).toBe('c');
+    const css = '.card .title {\n  color: #333;\n  margin: 0 0 8px;\n}\n\n.card > .body {\n  padding: 12px;\n}';
+    expect(detectLanguage(css).language).toBe('css');
+  });
+
+  it('a preprocessed GNU assembly file is not c', () => {
+    const code =
+      '#if defined(__ELF__)\n.section .note.GNU-stack,"",%progbits\n#endif\n#include "common.h"\n\n.intel_syntax noprefix\n.p2align 4\n.globl hash_block';
+    expect(detectLanguage(code).language).not.toBe('c');
+    expect(detectLanguage(code).language).not.toBe('cpp');
+  });
+
+  it('tox-style INI with continuation lines and unquoted text is ini, not toml', () => {
+    const code =
+      '[tox]\nrequires =\n    tox >= 4\nenvlist =\n    lint\n    py312\n\n[testenv:docs]\ndescription = build the documentation site';
+    expect(detectLanguage(code).language).toBe('ini');
+  });
+
+  it('a Java import from any package is java, while a Kotlin import is not', () => {
+    const java =
+      'package io.acme.net;\n\nimport io.acme.buffer.ByteBuf;\nimport java.util.concurrent.TimeUnit;\n\npublic final class Retry {\n}';
+    expect(detectLanguage(java).language).toBe('java');
+    const kotlin = 'package io.acme.net\n\nimport io.acme.buffer.ByteBuf\n\nclass Retry(val attempts: Int)';
+    expect(detectLanguage(kotlin).language).not.toBe('java');
+  });
+
+  it('the word retain in a license header is not Objective-C evidence', () => {
+    const code =
+      '/*\n * Redistributions of source code must retain the above copyright notice,\n * this list of conditions and the following disclaimer.\n */\n#include <stdlib.h>\n\nstatic int clamp_value(int value)\n{\n    return value < 0 ? 0 : value;\n}';
+    expect(detectLanguage(code).language).not.toBe('objective-c');
   });
 });

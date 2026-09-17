@@ -1,6 +1,7 @@
 import { pickCandidates } from './candidates';
 import { calculateConfidence, HIGH_CONFIDENCE } from './confidence';
 import type { LanguageId } from './language';
+import { tieBreakFamily } from './families';
 import { normalize } from './normalize';
 import { ALL_RULES } from './rules/index';
 import { scoreCode } from './scoring';
@@ -30,6 +31,38 @@ function toPublic(
   evidence: readonly string[]
 ): LanguageDetectionResult {
   return { language, confidence, candidates, evidence } as LanguageDetectionResult;
+}
+
+/**
+ * Blanks the content lines of fenced code blocks (``` or ~~~, closed or still
+ * open at the end), keeping the fence lines themselves.
+ *
+ * The code inside a fence belongs to the fence's language, not to the snippet:
+ * a Markdown document full of TypeScript examples is still Markdown, and a
+ * prompt template inside a Python file does not make the file JSON. This is the
+ * same principle as not counting code inside comments and strings. The fence
+ * lines stay, so the Markdown rules still see them.
+ */
+export function maskFencedCode(code: string): string {
+  if (!code.includes('```') && !code.includes('~~~')) return code;
+  const lines = code.split('\n');
+  let fence: { char: string; length: number } | null = null;
+  let masked = false;
+  for (let i = 0; i < lines.length; i += 1) {
+    const marker = /^ {0,3}(`{3,}|~{3,})(.*)$/.exec(lines[i]);
+    if (fence === null) {
+      // A backtick fence's info string cannot contain a backtick (CommonMark), which also keeps inline code out
+      if (marker && !(marker[1][0] === '`' && marker[2].includes('`'))) {
+        fence = { char: marker[1][0], length: marker[1].length };
+      }
+    } else if (marker && marker[1][0] === fence.char && marker[1].length >= fence.length && !marker[2].trim()) {
+      fence = null;
+    } else {
+      lines[i] = '';
+      masked = true;
+    }
+  }
+  return masked ? lines.join('\n') : code;
 }
 
 /**
@@ -73,7 +106,7 @@ export function detectLanguage(code: string): LanguageDetectionResult {
   const json = tryJson(trimmed);
   if (json) return json;
 
-  const { code: inspected, originalLength } = normalize(trimmed);
+  const { code: inspected, originalLength } = normalize(maskFencedCode(trimmed));
   const { ranked, definitives } = scoreCode(inspected, ALL_RULES);
   if (ranked.length === 0) return UNKNOWN;
 
@@ -87,11 +120,19 @@ export function detectLanguage(code: string): LanguageDetectionResult {
   const live = definitives.filter((lang) => ranked.some((entry) => entry.language === lang));
   const hasDefinitive = live.length === 1 && live[0] === best.language;
   const confidence = calculateConfidence(best, second, originalLength, hasDefinitive);
+  const candidates = pickCandidates(ranked);
+  if (confidence >= HIGH_CONFIDENCE) return toPublic(best.language, confidence, candidates, best.evidence);
 
-  return toPublic(
-    confidence >= HIGH_CONFIDENCE ? best.language : null,
-    confidence,
-    pickCandidates(ranked),
-    best.evidence
-  );
+  // No verdict for the language itself. When the runner-up is a close relative that highlights almost the same way
+  // (C and C++, JavaScript and TypeScript, CSS and SCSS), measure the evidence against the best language outside
+  // that family instead. If the family clears the line, name its best member (the ranking already broke the tie by
+  // evidence and then popularity) at exactly HIGH_CONFIDENCE: sure of the family, not of the member, and below the
+  // streaming lock, so specific evidence arriving later can still refine it.
+  if (tieBreakFamily(best.language, second?.language ?? best.language)) {
+    const rival = ranked.find((entry) => !tieBreakFamily(entry.language, best.language));
+    if (calculateConfidence(best, rival, originalLength, hasDefinitive) >= HIGH_CONFIDENCE) {
+      return toPublic(best.language, HIGH_CONFIDENCE, candidates, best.evidence);
+    }
+  }
+  return toPublic(null, confidence, candidates, best.evidence);
 }

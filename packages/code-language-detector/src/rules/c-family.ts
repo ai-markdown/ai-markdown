@@ -17,6 +17,20 @@ export const cFamilyRules: DetectionRule[] = [
     description: 'Does not separate C/C++; it pins the candidates to these two',
   },
   {
+    id: 'c-static-function',
+    // static [inline] type name( at the start of a line: a file-local function. PHP writes static function, and a
+    // JavaScript class method is indented.
+    pattern:
+      /^static[ \t]+(?!function\b)(?:(?:inline|const|unsigned|struct)[ \t]+){0,3}[a-z_]\w{0,60}[ \t*]+\w{1,60}[ \t]*\(/m,
+    scores: { c: 6, cpp: 6, 'objective-c': 3 },
+  },
+  {
+    id: 'c-typedef-t-types',
+    // size_t / uint32_t / ngx_int_t declarations and pointer parameters
+    pattern: /\b[a-z][a-z0-9_]{0,40}_t[ \t]+\*{0,2}[a-z_]\w{0,60}[ \t]*[;,)=[]/,
+    scores: { c: 4, cpp: 4 },
+  },
+  {
     id: 'c-define',
     pattern: /^[ \t]*#\s*(?:define|ifndef|ifdef|endif|pragma)\b/m,
     scores: { c: 5, cpp: 5 },

@@ -10,6 +10,14 @@ export const scriptingRules: DetectionRule[] = [
     definitive: 'php',
   },
   {
+    id: 'php-leading-open-tag',
+    // A snippet that opens with <?php is a PHP file; namespaces, docblocks and return types can outscore the tag
+    // for TypeScript, C# or Java, which structurally cannot start this way.
+    pattern: /^\s*<\?php\b/,
+    scores: { php: 4 },
+    excludes: ['javascript', 'typescript', 'jsx', 'tsx', 'csharp', 'java'],
+  },
+  {
     id: 'php-var-sigil',
     // No i flag: a capitalised `$Foo = ` is the PowerShell convention and is left to ps-var-assign
     pattern: /\$[a-z_]\w*\s*=\s*[^=\n]/,
@@ -65,6 +73,14 @@ export const scriptingRules: DetectionRule[] = [
     id: 'rb-symbol-hash',
     pattern: /[:{,]\s*\w+:\s*[^:\s][^\n,}]{0,60}[,}]|\B:[a-z_]\w*\b/,
     scores: { ruby: 3 },
+  },
+  {
+    id: 'rb-magic-comment',
+    // # frozen_string_literal: true and Sorbet's # typed: strict are Ruby file headers
+    pattern:
+      /^#[ \t]*(?:frozen_string_literal:[ \t]*(?:true|false)|typed:[ \t]*(?:ignore|false|true|strict|strong))[ \t]*$/m,
+    scores: { ruby: 12, yaml: -4 },
+    definitive: 'ruby',
   },
   {
     id: 'rb-require-relative',

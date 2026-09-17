@@ -25,7 +25,9 @@ export const javaRules: DetectionRule[] = [
   },
   {
     id: 'java-import',
-    pattern: /^[ \t]*import\s+(?:static\s+)?(?:java|javax|android|org|com)\.[\w.]+\s*;/m,
+    // A lowercase dotted package ending in a class name or *, then a semicolon: Kotlin and Scala write no semicolon,
+    // Dart and Go quote the path, and TypeScript says from
+    pattern: /^[ \t]*import\s+(?:static\s+)?[a-z]\w{0,40}(?:\.[a-z_]\w{0,40}){1,12}\.(?:[A-Z]\w{0,60}|\*)\s*;/m,
     scores: { java: 9, csharp: -2 },
   },
   {

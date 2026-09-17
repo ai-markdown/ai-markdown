@@ -47,7 +47,8 @@ export const jvmExtraRules: DetectionRule[] = [
     id: 'scala-bracket-generic',
     // Scala writes generics with square brackets: Option[String], Seq[Int], Map[String, Int].
     // Python typing has none of these names (it uses Optional / Dict / Sequence), so this can be definitive
-    pattern: /\b(?:Option|Seq|Map|Array|Future|Either|Try|Vector)\[[\w\s,._[\]]{1,60}\]/,
+    // (?<!::) keeps Sorbet's T::Array[String] in Ruby out.
+    pattern: /(?<!::)\b(?:Option|Seq|Map|Array|Future|Either|Try|Vector)\[[\w\s,._[\]]{1,60}\]/,
     scores: { scala: 11, java: -3, kotlin: -2 },
     definitive: 'scala',
   },

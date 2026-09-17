@@ -12,7 +12,8 @@ export const sqlRules: DetectionRule[] = [
     //   - Drizzle / Knex's `db.select().from(users)` is `select(`, not `SELECT x`
     //   - in `import { Select, SelectItem } from '@/ui/select'` FROM is followed by a quoted string
     // Both forms are more common than real SQL in agent output, and both used to be detected as sql 0.95.
-    pattern: /\bSELECT\s+(?:\*|[\w"`[])[\s\S]{0,400}?\bFROM\s+[\w"`[(]/i,
+    //   - `import Select from "antd/lib/select"` names a component, so SELECT right after import does not count
+    pattern: /(?<!\bimport\s{1,8})\bSELECT\s+(?:\*|[\w"`[])[\s\S]{0,400}?\bFROM\s+[\w"`[(]/i,
     scores: { sql: 11 },
     definitive: 'sql',
   },

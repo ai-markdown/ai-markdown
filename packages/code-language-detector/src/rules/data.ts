@@ -53,8 +53,10 @@ export const dataRules: DetectionRule[] = [
   },
   {
     id: 'yaml-document-start',
+    // A --- line opens a YAML document, but it also opens and closes Markdown front matter, so the score is split
+    // equally; md-front-matter tells them apart once the block has closed.
     pattern: /^---\s*$/m,
-    scores: { yaml: 7 },
+    scores: { yaml: 5, markdown: 5 },
   },
   {
     id: 'yaml-key-value',
@@ -115,7 +117,7 @@ export const dataRules: DetectionRule[] = [
   {
     id: 'ini-section-header',
     // [section] alone on its line, followed by key = value: the signature structure of INI/TOML
-    pattern: /^[ \t]*\[[\w.$-]{1,60}\][ \t]*$/m,
+    pattern: /^[ \t]*\[[\w.$:-]{1,60}\][ \t]*$/m,
     scores: { ini: 9 },
   },
   {
@@ -125,6 +127,20 @@ export const dataRules: DetectionRule[] = [
     // of other languages.
     pattern: /^[ \t]*[\w.-]{1,60}[ \t]*=[ \t]*[^=\n]{1,120}$/m,
     scores: { ini: 2 },
+  },
+  {
+    id: 'ini-continuation-value',
+    // key = followed by indented continuation lines (tox, setup.cfg, configparser). TOML requires a value on the line.
+    pattern: /^[\w.-]{1,60}[ \t]*=[ \t]*\n(?:[ \t]{2,}\S[^\n]{0,200}\n){1,40}/m,
+    scores: { ini: 8, toml: -6 },
+  },
+  {
+    id: 'ini-unquoted-text-value',
+    // key=unquoted text with a space: TOML needs quotes around such a string, shells and Python reject it
+    // A spaced operator (a = b + c) is an expression, not text.
+    pattern:
+      /^[\w.-]{1,60}[ \t]*=[ \t]*(?![^\n]{0,240}[ \t][-+*/%<>|^][ \t])[A-Za-z][^"'\n[{=]{0,120}[ \t][A-Za-z(][^\n=]{0,120}$/m,
+    scores: { ini: 5, toml: -5 },
   },
   {
     id: 'yaml-anchor',

@@ -10,8 +10,16 @@ export const stylesRules: DetectionRule[] = [
     //   {1,60} caps the greedy quantifier;
     //   [^{};] excludes semicolons, so the match cannot cross a declaration boundary.
     pattern:
-      /^[ \t]*[.#]?[\w-]{1,60}(?:\s*[>+~]\s*[\w.#-]{1,60})?\s*\{[^{};]{0,200}[\w-]{1,40}\s*:\s*[^;{}\n]{1,120};/m,
+      // Descendant and combinator selectors (.a .b, .a > .b) need a separator between parts, so a run of word
+      // characters cannot be split between repetitions in many ways.
+      /^[ \t]*[.#]?[\w-]{1,60}(?:(?:[ \t]*[>+~][ \t]*|[ \t]+)[\w.#:-]{1,60}){0,4}\s*\{[^{};]{0,200}[\w-]{1,40}\s*:\s*[^;{}\n]{1,120};/m,
     scores: { css: 8, scss: 5 },
+  },
+  {
+    id: 'css-declaration-lines',
+    // Two consecutive property: value; declarations. Shared by CSS, SCSS and Less; YAML has no semicolons.
+    pattern: /^[ \t]+[a-z-]{2,40}[ \t]*:[ \t]*[^;{}\n]{1,160};[ \t]*\n[ \t]+[a-z-]{2,40}[ \t]*:[ \t]*[^;{}\n]{1,160};/m,
+    scores: { css: 6, scss: 6, less: 6 },
   },
   {
     id: 'css-at-rule',

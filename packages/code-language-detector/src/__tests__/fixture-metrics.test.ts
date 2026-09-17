@@ -28,9 +28,9 @@ describe('fixture metrics', () => {
   });
 
   it('coverage does not drop below the measured baseline', () => {
-    // Measured when the package was ported: 58 of 78 samples name a language
-    // (74.4%). Raise this number when a change detects more; a drop means a
-    // rule change lost coverage.
-    expect(asserted.length).toBeGreaterThanOrEqual(58);
+    // 58 of 78 when the package was ported; 59 (75.6%) once C and C++ ties name
+    // c. Raise this number when a change detects more; a drop means a rule
+    // change lost coverage.
+    expect(asserted.length).toBeGreaterThanOrEqual(59);
   });
 });

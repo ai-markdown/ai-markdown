@@ -26,6 +26,19 @@ export const docsRules: DetectionRule[] = [
     scores: { dockerfile: 8 },
   },
   {
+    id: 'docker-syntax-directive',
+    pattern: /^#[ \t]*syntax=[\w./-]{1,80}dockerfile/m,
+    scores: { dockerfile: 14, bash: -6 },
+    definitive: 'dockerfile',
+  },
+  {
+    id: 'docker-run-line',
+    // The commands after RUN look like shell, and a long RUN block fires the shell rules; an uppercase RUN at the
+    // start of a line is not a shell command, so a snippet that has one is not a shell script.
+    pattern: /^RUN\s+\S/m,
+    scores: { dockerfile: 4, bash: -12 },
+  },
+  {
     id: 'docker-exec-form',
     pattern: /^[ \t]*(?:CMD|ENTRYPOINT)\s*\[\s*"/m,
     scores: { dockerfile: 9 },
@@ -46,6 +59,29 @@ export const docsRules: DetectionRule[] = [
     // Only headings of two different levels in the same snippet look like a real Markdown document
     pattern: /^#{1,3}\s+\S[^\n]{0,200}\n(?:[^\n]{0,200}\n){0,20}?#{2,6}\s+\S/m,
     scores: { markdown: 7 },
+  },
+  {
+    id: 'md-front-matter',
+    // A --- block of key: value lines that closes and is followed by prose or a heading is front matter. A second
+    // YAML document would continue with keys, a list or another ---.
+    pattern:
+      /^---[ \t]*\n(?:[\w-]{1,40}:[^\n]{0,300}\n){1,40}---[ \t]*\n(?:[ \t]*\n){0,3}(?![ \t]*(?:[\w-]{1,40}:|- |---))[ \t]*[^\s#]/,
+    scores: { markdown: 12, yaml: -8 },
+  },
+  {
+    id: 'doc-comment-lines',
+    // Three /// or //! lines in a row are Rust, Swift, Dart, C# or Zig documentation comments. Their Markdown is
+    // not a Markdown document, and a Markdown document never has such lines.
+    pattern: /^[ \t]*\/\/[/!][^\n]*\n[ \t]*\/\/[/!][^\n]*\n[ \t]*\/\/[/!]/m,
+    scores: { markdown: -12 },
+  },
+  {
+    id: 'docstring-opening',
+    // A snippet that opens with a triple-quoted string is a Python or Julia docstring: the Markdown in it describes
+    // code. A Markdown document never starts with three quotes.
+    pattern: /^"""[^\n]*\n/,
+    scores: { python: 2, julia: 2 },
+    excludes: ['markdown'],
   },
   {
     id: 'md-fence',

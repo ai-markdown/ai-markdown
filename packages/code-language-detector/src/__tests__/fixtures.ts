@@ -615,10 +615,10 @@ let items: string[] = []`,
 }`,
   },
   {
+    // C and C++ share this code, and the family tie-break names the more common member at the confidence line
     name: 'bare-include-is-c-or-cpp',
-    expected: null,
-    acceptableCandidates: ['c', 'cpp'],
-    maxConfidence: 0.8,
+    expected: 'c',
+    minConfidence: 0.8,
     code: `#include <stdio.h>
 
 int main() {}`,

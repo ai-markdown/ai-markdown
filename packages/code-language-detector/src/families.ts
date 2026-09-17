@@ -31,3 +31,21 @@ export function sameFamily(a: LanguageId, b: LanguageId): boolean {
   if (a === b) return true;
   return LANGUAGE_FAMILIES.some((family) => family.includes(a) && family.includes(b));
 }
+
+/**
+ * Families whose members share nearly all of their highlighting: a C file read as C++, TypeScript read as
+ * JavaScript, SCSS read as CSS. When the evidence clears the confidence line for one of these families but cannot
+ * tell its members apart, the detector names the most likely member instead of abstaining. The other families above
+ * (YAML and INI, Bash and PowerShell, Java and Scala) highlight too differently to guess within.
+ */
+const TIE_BREAK_FAMILIES: readonly (readonly LanguageId[])[] = [
+  ['javascript', 'typescript', 'jsx', 'tsx'],
+  ['c', 'cpp', 'objective-c'],
+  ['css', 'scss', 'less'],
+];
+
+/** Whether a and b belong to one family where the detector may pick a member on a tie */
+export function tieBreakFamily(a: LanguageId, b: LanguageId): boolean {
+  if (a === b) return true;
+  return TIE_BREAK_FAMILIES.some((family) => family.includes(a) && family.includes(b));
+}

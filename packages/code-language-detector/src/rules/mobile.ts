@@ -188,6 +188,20 @@ export const mobileRules: DetectionRule[] = [
     scores: { dart: 5 },
   },
   {
+    id: 'dart-part-directive',
+    // part 'x.dart'; / part of 'x.dart'; / part of library_name; split a Dart library across files
+    pattern: /^part[ \t]+(?:of[ \t]+)?(?:['"][^'"\n]{1,200}\.dart['"]|[a-z_][\w.]{0,80})[ \t]*;/m,
+    scores: { dart: 14, java: -6 },
+    definitive: 'dart',
+  },
+  {
+    id: 'dart-factory-constructor',
+    // factory Name(...) / factory Name.named(...): no other language has a factory keyword
+    pattern: /^[ \t]*(?:const[ \t]+)?factory[ \t]+[A-Z]\w{0,60}(?:\.\w{1,60})?[ \t]*\(/m,
+    scores: { dart: 12, java: -4 },
+    definitive: 'dart',
+  },
+  {
     id: 'dart-named-param',
     // Must directly follow the opening parenthesis of a parameter list. It used to match any `{ word word }`,
     // so `{ return 0 }` in any language was taken for Dart named parameters.

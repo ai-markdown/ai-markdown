@@ -40,7 +40,8 @@ export const cExtraRules: DetectionRule[] = [
   {
     id: 'objc-ns-types',
     pattern:
-      /\bNS(?:String|Array|Dictionary|Number|Object|Error|Mutable\w+)\s*\*|\b(?:nonatomic|retain|nullable|nonnull)\b/,
+      // retain only inside @property ( ): license text says "must retain the above copyright notice"
+      /\bNS(?:String|Array|Dictionary|Number|Object|Error|Mutable\w+)\s*\*|\b(?:nonatomic|nullable|nonnull)\b|@property\s*\([^)\n]{0,80}\bretain\b/,
     scores: { 'objective-c': 8, swift: -1 },
   },
   {

@@ -218,6 +218,15 @@ export const independentRules: DetectionRule[] = [
     definitive: 'asm',
   },
   {
+    id: 'asm-gas-directive',
+    // GNU as directives in preprocessed .S files: .section with flags, .p2align, .intel_syntax, .type sym, @function.
+    // A C preprocessor header above them makes such a file look like C, and C / C++ would otherwise win the family
+    // tie-break with nothing from another family to beat.
+    pattern:
+      /^[ \t]*\.(?:section[ \t]+\.[\w.-]{1,40}|p2align|balign|intel_syntax|att_syntax|cfi_startproc|type[ \t]+\w{1,60},[ \t]*[@%]function)\b/m,
+    scores: { asm: 10, c: -4, cpp: -4 },
+  },
+  {
     id: 'asm-mnemonics',
     // Mnemonics have to appear in a group: a single mov may be an identifier in another language.
     // `int` only counts as a mnemonic when followed by an interrupt number (`int 0x80` / `int 21h`);
