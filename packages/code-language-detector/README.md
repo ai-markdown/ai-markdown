@@ -327,7 +327,7 @@ Two optimizations were tried and rejected on measurements:
 The GitHub corpus measurements are evidence harnesses (`src/evidence/*.evidence.ts`), the same arrangement the engine uses for numbers that justify a gate rather than gate anything: they print tables, assert nothing, sit outside the test suite's `include`, and are not part of the published package.
 
 ```bash
-# Download the hand-picked GitHub corpus (126 files) into a directory under the OS temp dir
+# Download the hand-picked GitHub corpus (tuning and holdout lists) into a directory under the OS temp dir
 node packages/code-language-detector/scripts/fetch-github-corpus.mjs [corpus-dir]
 
 # One-shot accuracy per language, and streaming behaviour: lines until the first correct verdict,
@@ -335,7 +335,7 @@ node packages/code-language-detector/scripts/fetch-github-corpus.mjs [corpus-dir
 pnpm --filter @ai-markdown/code-language-detector evidence
 ```
 
-The corpus directory defaults to `code-language-detector-corpus` under `os.tmpdir()`; pass another one to the fetch script and as `CORPUS_DIR` to the harnesses. `CORPUS_FILES_PER_LANGUAGE` caps the streaming sample per language (default 25). The fetch replaces the language subdirectories it owns, leaves the rest of the directory alone, and reads every file at the commit `github-curated.tsv` pins, so repeated runs measure the same bytes.
+The corpus has two splits, reported separately. `tune` (`scripts/github-curated.tsv`) holds the files rules were designed against; `holdout` (`scripts/github-holdout.tsv`) is never used to design rules, so its numbers are the ones that say whether a change generalizes. The corpus directory defaults to `code-language-detector-corpus` under `os.tmpdir()`; pass another one to the fetch script and as `CORPUS_DIR` to the harnesses. `CORPUS_FILES_PER_LANGUAGE` caps the streaming sample per language (default 25). The fetch writes `<split>/<language>/` directories, replaces the ones it owns, leaves the rest of the directory alone, and reads every file at the commit its list pins, so repeated runs measure the same bytes.
 
 The corpus files belong to their repositories and remain under those repositories' licenses. They are downloaded for local measurement only; do not commit them to this repository.
 

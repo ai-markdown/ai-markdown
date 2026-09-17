@@ -1,16 +1,18 @@
 /* global process, console, fetch, AbortSignal */
 
 /**
- * Downloads the hand-picked GitHub corpus listed in `github-curated.tsv` into
- * a local directory, for the evidence harnesses in `src/evidence/`.
+ * Downloads the hand-picked GitHub corpus into a local directory, for the
+ * evidence harnesses in `src/evidence/`. Two lists make two splits:
+ *   - `tune`: `github-curated.tsv`, the files rules were designed against
+ *   - `holdout`: `github-holdout.tsv`, never used to design rules
  *
  * Usage: node scripts/fetch-github-corpus.mjs [corpus directory]
  *
  * The directory defaults to a folder under the OS temp directory, the same
- * default the harnesses read. Each language listed in the TSV gets a
- * subdirectory; those subdirectories are replaced on every run, and nothing
- * else in the directory is touched. Every file is fetched at the commit the
- * TSV pins, so the corpus does not move with upstream.
+ * default the harnesses read. Files land in `<split>/<language>/`; those
+ * language directories are replaced on every run, and nothing else in the
+ * directory is touched. Every file is fetched at the commit its list pins, so
+ * the corpus does not move with upstream.
  *
  * The downloaded files remain under their repositories' licenses. Keep the
  * corpus directory out of this repository.
@@ -31,19 +33,22 @@ if (args.includes('--help') || args.includes('-h') || args.length > 1) {
 const out = resolve(args[0] || DEFAULT_CORPUS_DIR);
 
 const here = dirname(fileURLToPath(import.meta.url));
-const entries = readFileSync(join(here, 'github-curated.tsv'), 'utf8')
-  .split('\n')
-  .filter((line) => line.trim() !== '' && !line.startsWith('#'))
-  .map((line) => {
-    const [language, repo, commit, path] = line.split('\t');
-    if (!language || !repo || !/^[0-9a-f]{40}$/.test(commit ?? '') || !path)
-      throw new Error(`Malformed line in github-curated.tsv: ${JSON.stringify(line)}`);
-    return { language, repo, commit, path };
-  });
+const LISTS = { tune: 'github-curated.tsv', holdout: 'github-holdout.tsv' };
+const entries = Object.entries(LISTS).flatMap(([split, list]) =>
+  readFileSync(join(here, list), 'utf8')
+    .split('\n')
+    .filter((line) => line.trim() !== '' && !line.startsWith('#'))
+    .map((line) => {
+      const [language, repo, commit, path] = line.split('\t');
+      if (!language || !repo || !/^[0-9a-f]{40}$/.test(commit ?? '') || !path)
+        throw new Error(`Malformed line in ${list}: ${JSON.stringify(line)}`);
+      return { split, language, repo, commit, path };
+    })
+);
 
-for (const language of new Set(entries.map((entry) => entry.language))) {
-  rmSync(join(out, language), { recursive: true, force: true });
-  mkdirSync(join(out, language), { recursive: true });
+for (const directory of new Set(entries.map((entry) => join(entry.split, entry.language)))) {
+  rmSync(join(out, directory), { recursive: true, force: true });
+  mkdirSync(join(out, directory), { recursive: true });
 }
 
 const CONCURRENCY = 8;
@@ -54,7 +59,7 @@ let next = 0;
 
 async function worker() {
   while (next < entries.length) {
-    const { language, repo, commit, path } = entries[next++];
+    const { split, language, repo, commit, path } = entries[next++];
     const name = `${repo.replace('/', '_')}__${path.replace(/[/ ]/g, '_')}`;
     const url = `https://raw.githubusercontent.com/${repo}/${commit}/${path.split('/').map(encodeURIComponent).join('/')}`;
     // raw.githubusercontent.com times out now and then; a pinned commit makes a retry safe.
@@ -62,7 +67,7 @@ async function worker() {
       try {
         const response = await fetch(url, { signal: AbortSignal.timeout(30_000) });
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        writeFileSync(join(out, language, name), await response.text());
+        writeFileSync(join(out, split, language, name), await response.text());
         ok += 1;
         break;
       } catch (error) {

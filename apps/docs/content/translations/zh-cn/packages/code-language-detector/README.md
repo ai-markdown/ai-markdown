@@ -361,7 +361,7 @@ C 与 C++ 的区分模式以及 Objective-C 的区分模式，沿用了 [GitHub 
 GitHub 语料库上的测量是 evidence harness（`src/evidence/*.evidence.ts`），与 engine 存放「为门禁提供依据、本身不做门禁」的数据的方式相同：它们只打印表格、不做断言，不在测试套件的 `include` 范围内，也不属于发布包。
 
 ```bash
-# 将手工挑选的 GitHub 语料库（126 个文件）下载到系统临时目录下的一个目录中
+# 将手工挑选的 GitHub 语料库（调参集与留出集两份清单）下载到系统临时目录下的一个目录中
 node packages/code-language-detector/scripts/fetch-github-corpus.mjs [corpus-dir]
 
 # 按语言统计一次性检测准确率，以及流式行为：首次得到正确判定所需行数、
@@ -369,7 +369,7 @@ node packages/code-language-detector/scripts/fetch-github-corpus.mjs [corpus-dir
 pnpm --filter @ai-markdown/code-language-detector evidence
 ```
 
-语料库目录默认为 `os.tmpdir()` 下的 `code-language-detector-corpus`；如果使用其他目录，把它传给下载脚本，并通过 `CORPUS_DIR` 传给 harness。`CORPUS_FILES_PER_LANGUAGE` 限制流式测量中每种语言的样本数（默认 25）。下载时只替换脚本自身管理的语言子目录，目录中的其他内容保持不变；每个文件都按 `github-curated.tsv` 钉住的 commit 获取，因此多次运行测量的是同样的内容。
+语料库分为两份，分别出报告：`tune`（`scripts/github-curated.tsv`）是设计规则时参照的文件；`holdout`（`scripts/github-holdout.tsv`）从不用于设计规则，判断一项改动能否泛化要看它的数字。语料库目录默认为 `os.tmpdir()` 下的 `code-language-detector-corpus`；如果使用其他目录，把它传给下载脚本，并通过 `CORPUS_DIR` 传给 harness。`CORPUS_FILES_PER_LANGUAGE` 限制流式测量中每种语言的样本数（默认 25）。下载时写入 `<split>/<language>/` 目录，只替换脚本自身管理的目录，其他内容保持不变；每个文件都按所在清单钉住的 commit 获取，因此多次运行测量的是同样的内容。
 
 语料库文件属于各自的仓库，并继续适用这些仓库的许可证。它们只下载到本地用于测量，不要提交到本仓库。
 

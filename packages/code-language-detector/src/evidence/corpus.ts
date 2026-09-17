@@ -1,6 +1,8 @@
 /**
  * Shared helpers for the evidence harnesses. The corpus layout is
- * `<root>/<languageId>/<any file name>`: the directory name is the ground truth.
+ * `<root>/<split>/<languageId>/<any file name>`: the language directory name is
+ * the ground truth, and the split says whether rules were designed against the
+ * files (`tune`) or not (`holdout`).
  */
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -14,6 +16,12 @@ const DEFAULT_CORPUS_DIR = join(tmpdir(), 'code-language-detector-corpus');
 export function corpusRoot(): string {
   return resolve(process.env.CORPUS_DIR || DEFAULT_CORPUS_DIR);
 }
+
+/**
+ * The splits, each reported on its own. Read the `holdout` numbers when judging
+ * a rule change: the `tune` files shaped the rules, so they overstate accuracy.
+ */
+export const CORPUS_SPLITS = ['tune', 'holdout'] as const;
 
 const KNOWN: ReadonlySet<string> = new Set(Object.values(CodeLanguage));
 
