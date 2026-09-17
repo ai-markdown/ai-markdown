@@ -1,6 +1,6 @@
 {
   "name": "@ai-markdown/code-language-detector",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Zero-dependency heuristic language detection for unlabelled code blocks, built for streamed LLM output: abstains instead of guessing, never flips between language families mid-stream, and maps fence language names to Shiki and highlight.js names.",
   "publishConfig": {
     "access": "public"
