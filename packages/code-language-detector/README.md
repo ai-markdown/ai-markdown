@@ -13,8 +13,8 @@ The main use case is **streamed agent output**: code arrives line by line, the d
 
 The guiding principle is **better to say "I don't know" than to guess wrong**. When the evidence is weak the result is `language: null` plus a short candidate list, not a forced pick.
 
-- Zero runtime dependencies, synchronous, about 315 regex rules over 42 languages.
-- Streaming detector with four stability strategies; 0 cross-family flips on the reproducible corpus.
+- Zero runtime dependencies, synchronous, about 335 regex rules over 42 languages.
+- Streaming detector with four stability strategies. On a holdout corpus of real files the rules were never tuned against, 2.4% of files show a cross-family flip while streaming; see [Accuracy and performance](#accuracy-and-performance).
 - Converters to Shiki and highlight.js language names, and normalizers that map language names written by people, models and tools to a `CodeLanguage` or to the name a highlighter uses.
 
 ## Install
@@ -169,9 +169,11 @@ Result objects are shared between callers (the unknown result is frozen); treat 
 ## How it works
 
 ```
-code → rules score every language ─ high confidence ─→ language
-                                  └ ambiguous ───────→ language: null, candidates: [2–4 languages]
-                                  └ no evidence ─────→ language: null, candidates: []
+code → blank fenced code → rules score every language ─ high confidence ────────────→ language
+                                                     └ close relatives tie,
+                                                       the family is clear ──────────→ language at 0.8
+                                                     └ ambiguous ───────────────────→ language: null, candidates: [2–4 languages]
+                                                     └ no evidence ─────────────────→ language: null, candidates: []
 ```
 
 JSON is special-cased: an object or array that `JSON.parse` accepts is `json` at 0.98. Everything else is scored by the rules. Input over 20,000 characters is inspected by its first and last 10,000.
@@ -188,13 +190,15 @@ JSON is special-cased: an object or array that `JSON.parse` accepts is `json` at
 
 **Negative weights do most of the disambiguation.** `interface Foo` gives typescript +9 and javascript −8; a JSX tag gives jsx +9 and javascript −4 (JSX does not run as plain JS). With positive scores alone, "JS that happens to contain the word interface" and real TS cannot be told apart.
 
-**Structural impossibility uses `excludes`, not a negative score.** A negative score expresses a tendency, and enough positive evidence adds up past it: the hundreds of TS lines in a Svelte component's `<script lang="ts">` block fire a dozen TS rules, typescript reaches 80 points against svelte's 49, and whether the counter-score is −6, −12 or −40 is a bet. A snippet that starts with a `<script>` tag, however, structurally cannot be a JS/TS file, so that rule removes those languages from the ranking with `excludes`. Because `excludes` is so blunt, the rule hygiene test only allows it on rules anchored at the start of the snippet (`^`, no `m` flag); there is exactly one.
+**Structural impossibility uses `excludes`, not a negative score.** A negative score expresses a tendency, and enough positive evidence adds up past it: the hundreds of TS lines in a Svelte component's `<script lang="ts">` block fire a dozen TS rules, typescript reaches 80 points against svelte's 49, and whether the counter-score is −6, −12 or −40 is a bet. A snippet that starts with a `<script>` tag, however, structurally cannot be a JS/TS file, so that rule removes those languages from the ranking with `excludes`. Because `excludes` is so blunt, the rule hygiene test only allows it on rules anchored at the start of the snippet (`^`, no `m` flag). There are three: a leading `<script>` tag, a leading `<?php` tag (namespaces, docblocks and return types otherwise outscore PHP for TypeScript), and a leading triple-quoted docstring, which cannot be a Markdown document.
 
-**Code inside comments and strings is not evidence.** Agent output is full of comments and strings that contain other languages: a JSDoc line `* Usage: <script src="x.js">`, a test asserting `toContain('<style>')`, a CSS comment saying "put this in a `<style>` tag". The HTML tag rules therefore require the tag not to be on a comment line (not starting with `/*`, `*`, `//` or `#`) and not to follow a quote directly. Shell embedded in CI configuration (`run: |` blocks) belongs to the same category and gets a large negative bash score from `yaml-embedded-script`.
+**Code inside comments and strings is not evidence.** Agent output is full of comments and strings that contain other languages: a JSDoc line `* Usage: <script src="x.js">`, a test asserting `toContain('<style>')`, a CSS comment saying "put this in a `<style>` tag". The HTML tag rules therefore require the tag not to be on a comment line (not starting with `/*`, `*`, `//` or `#`) and not to follow a quote directly. Shell embedded in CI configuration (`run: |` blocks) belongs to the same category and gets a large negative bash score from `yaml-embedded-script`, and so do the shell commands after a Dockerfile's `RUN`. Two broader measures follow from it. **The content of fenced code blocks is blanked before scoring** (the fence lines stay): a Markdown guide full of TypeScript examples is Markdown, and a JSON example fenced inside a Python prompt template is not evidence for JSON. **Runs of `///` or `//!` documentation comments count against Markdown**, whose inline code, emphasis and headings they are full of.
 
 **Confidence is not a linear function of the score.** It is a weighted sum of the score (0.55), the margin over the runner-up (0.30) and how spread out the evidence is (0.15). A single piece of evidence is capped at 0.72, and very short snippets are discounted. Score and margin go through a square root, so "just past the threshold" already earns a reasonable medium confidence.
 
 **Ties fall back to popularity.** Languages are ranked by score, then by the number of independent pieces of evidence, then by popularity, and popularity only matters when the first two are exactly tied. The ranked values are TIOBE Index shares (retrieved 2026-09), which point the right way for lookalikes: JavaScript 2.76 > TypeScript 0.43, so without type evidence the tie goes to javascript; C 10.28 > C++ 8.67, so a bare `#include` goes to c. Both are the more conservative choice. TIOBE counts search results, which differ a lot from what appears in code fences (TypeScript ranks below Visual Basic; bash, JSON, YAML and HTML are not ranked at all), so the 18 unranked languages use values estimated from how common they are in code fences. Changing these values cannot change any verdict that has evidence behind it.
+
+**Close relatives that tie still get a verdict.** When the evidence cannot tell C from C++, JavaScript from TypeScript, or CSS from SCSS and Less, the confidence of the best member alone stays low even though the family is certain, and abstaining there would leave most real C and plain stylesheets unhighlighted. So when the runner-up is in the same one of those three families, confidence is measured again against the best language outside the family; if that clears the line, the best member (after the tie-breaks above) is named at exactly 0.8, the verdict line. 0.8 says "sure of the family, not of the member", and it stays below the streaming lock, so a later `#include <iostream>` or type annotation still refines the verdict. Families whose members highlight differently (YAML and INI, Bash and PowerShell, Java and Scala) are not guessed within.
 
 **Candidates have an absolute floor.** A relative floor (40% of the best score) is not enough on its own: the 1–2 points one rule adds to a language in passing can clear it when total scores are low. A candidate also needs at least 3 points, and there are at most four.
 
@@ -217,66 +221,41 @@ Language families: JavaScript/TypeScript/JSX/TSX · C/C++/Objective-C · HTML/XM
 
 ## Accuracy and performance
 
-All accuracy numbers below were measured while the detector was developed as a prototype. Two sets are reproducible from this repository: the synthetic fixtures (the `fixture metrics` test gates them on every run) and the hand-picked GitHub corpus (see [Benchmarks](#benchmarks)). The local-corpus sets were measured on a private collection of source files and cannot be regenerated.
+Two sets of accuracy numbers are reproducible from this repository: the synthetic fixtures, which the `fixture metrics` test gates on every run, and a hand-picked GitHub corpus measured by the evidence harnesses (see [Benchmarks](#benchmarks)). The corpus has two splits. `tune` holds every file rules have been designed against; `holdout` holds 504 files, 12 per language for all 42 languages from 236 permissively licensed repositories, chosen without running the detector and never used to design a rule. **Read the holdout numbers**; the tuning numbers overstate accuracy. Snippets are the first 8 to 35 lines of a file, the closest shape to what an agent streams into a code fence, and "loose" also accepts a language of the same family (`.ts` detected as `javascript`).
 
-**Synthetic fixtures** (78 samples imitating real code fences, 20 of which should stay silent). Reproducible; enforced by the test suite.
+**Synthetic fixtures** (78 samples imitating real code fences, 19 of which should stay silent). Enforced by the test suite.
 
 | Metric              | Value         |
 | ------------------- | ------------- |
-| False positive rate | 0.0% (0/20)   |
-| Precision           | 100% (58/58)  |
-| Coverage            | 74.4% (58/78) |
+| False positive rate | 0% (0/19)     |
+| Precision           | 100% (59/59)  |
+| Coverage            | 75.6% (59/78) |
 
-**GitHub corpus** (`scripts/github-curated.tsv`: 126 files, 121 usable, 11 languages that the local corpus had no samples of). Reproducible: every file is pinned to a commit. The list was **picked by hand**: the top repositories per language by stars, then only source files that carry business logic (the lichess tournament module, the Spark scheduler, ghostty's terminal parser, tigerbeetle's storage layer, SDWebImage's cache, YesPlayMusic pages, …), excluding tests, examples, demos, documentation, vendored third-party code, VBA (not VB.NET) and malware source collections. Snippets are taken from the start of each file; "loose" accepts a language of the same family.
+**GitHub corpus, one-shot detection**
 
-| Language    | Files   | Detected  | Strict    | Loose    | Streaming cross-family |
-| ----------- | ------- | --------- | --------- | -------- | ---------------------- |
-| objective-c | 11      | 100%      | 100%      | 100%     | 0%                     |
-| vue         | 9       | 100%      | 100%      | 100%     | 0%                     |
-| zig         | 15      | 93.3%     | 100%      | 100%     | 0%                     |
-| matlab      | 13      | 92.3%     | 100%      | 100%     | 0%                     |
-| julia       | 11      | 90.9%     | 100%      | 100%     | 0%                     |
-| applescript | 8       | 87.5%     | 100%      | 100%     | 0%                     |
-| asm         | 7       | 85.7%     | 100%      | 100%     | 0%                     |
-| vb          | 14      | 78.6%     | 100%      | 100%     | 0%                     |
-| svelte      | 8       | 75.0%     | 100%      | 100%     | 0%                     |
-| scala       | 13      | 69.2%     | 100%      | 100%     | 0%                     |
-| less        | 12      | 58.3%     | 57.1%     | 100%     | 0%                     |
-| **Total**   | **121** | **84.3%** | **97.1%** | **100%** | **0%**                 |
+| Split       | Snippets | Detected  | Strict precision | Loose precision |
+| ----------- | -------- | --------- | ---------------- | --------------- |
+| **holdout** | **502**  | **74.7%** | **88.5%**        | **96.8%**       |
+| tune        | 625      | 78.9%     | 94.1%            | 99.6%           |
 
-The streaming column and the figures below come from `src/evidence/streaming.evidence.ts` over the same corpus (100 files after de-duplicating shared file headers, first 40 lines fed line by line): 0% cross-family flips, first correct verdict at line 7 (p50) / 21 (p90), 92% detected within 40 lines, 94% correct after `finalize`.
+**GitHub corpus, streaming** (first 40 lines fed line by line; files de-duplicated by their first three non-empty lines, up to 25 per language)
 
-Handwritten samples lean systematically towards textbook style. The first run of this corpus exposed Svelte components starting with `<script lang="ts">`, Julia docstrings whose body is Markdown, single-segment Scala package names colliding with Go's `package main`, and MS-DOS assembly written in MASM syntax; the synthetic fixtures had caught none of them. **Validate a new language on real project code.**
+| Split       | Files   | Cross-family flip | First correct verdict (p50 · p90) | Detected within 40 lines | Final verdict correct |
+| ----------- | ------- | ----------------- | --------------------------------- | ------------------------ | --------------------- |
+| **holdout** | **457** | **2.4%** (11)     | **line 7 · line 27**              | **85.8%**                | **90.8%**             |
+| tune        | 519     | 0% (0)            | line 6 · line 24                  | 89.0%                    | 92.3%                 |
 
-**Local corpus** (prototype only, not reproducible; de-duplicated by the first three lines of each file, snapshot and fixture files excluded, ground truth from file extensions):
+The gap between the splits is the point of having a holdout. The prototype reported 0% cross-family flips and 100% loose precision on the only real corpus it had, which was also the corpus its rules had been tuned on. On unseen code about 3% of one-shot verdicts name a language from another family, and 2.4% of streamed files show such a verdict at some line; each shape found this way (a `<?php` file scored as TypeScript, Markdown front matter read as YAML, Rust documentation comments read as Markdown) was fixed, and the next unseen corpus found other shapes. Treat a wrong family as rare, not impossible.
 
-| Sampling                                | Strict precision | Loose precision | Coverage |
-| --------------------------------------- | ---------------- | --------------- | -------- |
-| Start of file (closest to a code fence) | 92.7%            | **100%**        | 79.4%    |
-| Anywhere in the file                    | 89.5%            | 97.9%           | 72.4%    |
-
-| Streaming (289 files, first 40 lines line by line) | Value              |
-| -------------------------------------------------- | ------------------ |
-| Cross-family flips (highlighting flicker)          | **0.0%** (0/289)   |
-| Lines until the first correct verdict              | p50 **5** · p90 19 |
-| Detected within 40 lines                           | 84.1%              |
-| Final verdict correct                              | 88.6%              |
-
-| Whole large files (204 files over 8 KB, detected in one call, as at `finalize`) | Value                               |
-| ------------------------------------------------------------------------------- | ----------------------------------- |
-| Same-family correct                                                             | **100%**                            |
-| Detected                                                                        | 93.6%                               |
-| Time per call                                                                   | 5.6 ms mean (input capped at 20 KB) |
-
-Before the CI-embedded-shell and `excludes` fixes, the whole-file figure was 94.8%: the `run: |` blocks of GitHub Actions workflows turned 7 YAML files into bash, and one Svelte component became typescript through its script block. A streaming evaluation that only looks at the first 40 lines cannot see this class of problem.
+Handwritten samples lean systematically towards textbook style. The first real corpus exposed Svelte components starting with `<script lang="ts">`, Julia docstrings whose body is Markdown, single-segment Scala package names colliding with Go's `package main`, and MS-DOS assembly written in MASM syntax; the synthetic fixtures had caught none of them. **Validate a rule change on the holdout split, and a new language on real project code.**
 
 ### Performance
 
-| Scenario                                                                                      | Time                                      | Source                      |
-| --------------------------------------------------------------------------------------------- | ----------------------------------------- | --------------------------- |
-| One detection, typical fence (8–36 lines)                                                     | p50 0.28 ms · p95 0.6 ms                  | GitHub corpus, reproducible |
-| One detection at the 20 KB cap                                                                | 5.6–7.7 ms                                | Local corpus                |
-| **All detection work for one fence streamed line by line** (mean 14.7 KB, 456 `update` calls) | **p50 4.9 ms · p90 8.4 ms · max 10.7 ms** | GitHub corpus, reproducible |
+| Scenario                                                                                     | Time                                      | Source                       |
+| -------------------------------------------------------------------------------------------- | ----------------------------------------- | ---------------------------- |
+| One detection, typical fence (8–35 lines)                                                    | p50 0.32 ms · p95 0.6 ms                  | GitHub holdout, reproducible |
+| One detection at the 20 KB cap                                                               | 5.6–7.7 ms                                | Prototype local corpus       |
+| **All detection work for one fence streamed line by line** (mean 7.9 KB, 250 `update` calls) | **p50 3.0 ms · p90 8.4 ms · max 34.9 ms** | GitHub holdout, reproducible |
 
 Measured on an Apple M3 Max with Node 24. The last row is the one that matters for streaming: the growth threshold is geometric and locking stops re-detection, so everything the detector does while a fence streams and closes adds up to a few milliseconds spread over seconds of output.
 
@@ -303,11 +282,12 @@ Two optimizations were tried and rejected on measurements:
 
 ## Known limitations
 
-- **Telling `.ts` from `.js` needs type syntax.** A TS snippet without type annotations yields `language: null, candidates: ['javascript', 'typescript']`. This is by design.
+- **Telling `.ts` from `.js` needs type syntax.** A TS snippet without type annotations is named `javascript` at 0.8, the family tie-break; the same holds for C code that could be C++ (`c`) and plain stylesheets (`css`).
+- **About 3% of verdicts on unseen code name the wrong family** (holdout split, one-shot), and 2.4% of streamed files show such a verdict at some line. See [Accuracy and performance](#accuracy-and-performance).
 - **`html` and `xml` are separated by rules only.** highlight.js uses one grammar for both, so it cannot help; for highlighting the distinction rarely matters.
-- **Per-language percentages on the GitHub corpus move a lot**: 7–15 files per language are enough to expose structural problems, not to pin a precise rate. Less has a low strict precision (57%): a Less file that only nests and uses no `@variables` is indistinguishable from SCSS or CSS, but it stays within the stylesheet family.
+- **Per-language percentages on the GitHub corpus move a lot**: 12 files per language are enough to expose structural problems, not to pin a precise rate. A Less file that only nests and uses no `@variables` is indistinguishable from SCSS or CSS, but it stays within the stylesheet family.
 - **Refinement within a family while streaming is normal.** A TSX file is valid TypeScript until its first JSX tag, so the verdict moves from `typescript` to `tsx`. Shiki's TS grammar highlights that part correctly, so this is not flicker; the tests only forbid cross-family flips.
-- **Snippets cut from the middle of a file can land in the wrong family** (97.9% loose precision on local random sampling): a Python slice that holds an SQL string, a Python dict literal shaped like JSON, an HTML slice that starts inside a `<style>` block. Those slices really are the other language's content. A streamed fence starts at the beginning of the code, so this does not happen there.
+- **Snippets cut from the middle of a file land in the wrong family more often than file starts do**: a Python slice that holds an SQL string, a Python dict literal shaped like JSON, an HTML slice that starts inside a `<style>` block. Those slices really are the other language's content. A streamed fence starts at the beginning of the code, so this does not happen there.
 - **Confusion within a family is not handled**: `build.gradle.kts` is detected as `groovy` (the Gradle DSL blocks look the same), which barely affects highlighting.
 
 ## Footguns
@@ -315,6 +295,7 @@ Two optimizations were tried and rejected on measurements:
 - **`null` is a normal result, not an error.** Most short or generic snippets (`npm install foo`, a lone `class Shape {}`) stay `null` on purpose. Render plain text, or pick from `candidates` if you have extra information such as a file name. Do not treat `candidates[0]` as the answer by default; that throws away the precision the detector is built for.
 - **Feed the accumulated text, not deltas.** The detector cannot follow deltas: `update('let x')` then `update(' = 1')` are unrelated texts. Each delta is treated as a new text and resets the detector, so the verdict never gets past what a single delta shows.
 - **One detector per code block.** The detector follows a single growing text. Reusing it for the next fence works (a non-extension resets it), but a longer replacement is only noticed at the next tail check, within 256 characters or 1/32 of the text of growth, or at a growth checkpoint or `finalize`, and the verdict for the old text stays until then. If you know a block was regenerated or replaced, call `reset()`, which does not wait for either check.
+- **A confidence of exactly 0.8 is a family verdict.** `c` at 0.8 may well be C++, `javascript` at 0.8 may be TypeScript without annotations, `css` at 0.8 may be SCSS. Highlighting is nearly the same; if you need the exact member, treat 0.8 as "family known" and look at `candidates`.
 - **Call `finalize` when the fence closes.** Until then the verdict may be based on a prefix, and a locked verdict never re-detects. `finalize` is cheap to repeat on re-renders with the same text.
 - **`finalize` keeps a cross-family verdict unless the new one is clearly better.** If a block streamed as YAML finishes with more shell than YAML, it stays `yaml`. That is intended; use `detectLanguage(full)` if you want the one-shot verdict regardless of history.
 - **`html` and `xml` are easy to confuse.** An XHTML-like or SVG fragment may come back as either. Map both to a markup grammar rather than branching on the difference.
@@ -335,7 +316,7 @@ node packages/code-language-detector/scripts/fetch-github-corpus.mjs [corpus-dir
 pnpm --filter @ai-markdown/code-language-detector evidence
 ```
 
-The corpus has two splits, reported separately. `tune` (`scripts/github-curated.tsv`) holds the files rules were designed against; `holdout` (`scripts/github-holdout.tsv`) is never used to design rules, so its numbers are the ones that say whether a change generalizes. The corpus directory defaults to `code-language-detector-corpus` under `os.tmpdir()`; pass another one to the fetch script and as `CORPUS_DIR` to the harnesses. `CORPUS_FILES_PER_LANGUAGE` caps the streaming sample per language (default 25). The fetch writes `<split>/<language>/` directories, replaces the ones it owns, leaves the rest of the directory alone, and reads every file at the commit its list pins, so repeated runs measure the same bytes.
+The corpus has two splits, reported separately. `tune` (`scripts/github-tune.tsv`) holds the files rules were designed against; `holdout` (`scripts/github-holdout.tsv`) is never used to design rules, so its numbers are the ones that say whether a change generalizes. Look for what to fix in the tuning split only. Once a holdout file has shaped a rule, it is tuning data: move its list into `github-tune.tsv` and curate a fresh holdout by the criteria in that list's header, without running the detector on the candidates. The corpus directory defaults to `code-language-detector-corpus` under `os.tmpdir()`; pass another one to the fetch script and as `CORPUS_DIR` to the harnesses. `CORPUS_FILES_PER_LANGUAGE` caps the streaming sample per language (default 25). The fetch writes `<split>/<language>/` directories, replaces the ones it owns, leaves the rest of the directory alone, and reads every file at the commit its list pins, so repeated runs measure the same bytes.
 
 The corpus files belong to their repositories and remain under those repositories' licenses. They are downloaded for local measurement only; do not commit them to this repository.
 
@@ -344,8 +325,8 @@ The corpus files belong to their repositories and remain under those repositorie
 1. Add a `DetectionRule` to `src/rules/<language>.ts`; for a new file, register it in `src/rules/index.ts`.
 2. Add a positive sample to `src/__tests__/fixtures.ts`, **and** a sample of the language it is most easily confused with.
 3. Run `pnpm --filter @ai-markdown/code-language-detector test`. The rule hygiene test enforces unique ids, no `g`/`y` flags, no nested quantifiers, positive scores for `definitive` languages, `excludes` only on start-anchored rules, and no catastrophic backtracking on pathological input. The `fixture metrics` test fails if the false positive rate rises above 0, precision drops below 100%, or coverage drops below its baseline (raise the baseline when coverage improves).
-4. **Run the evidence harnesses (see [Benchmarks](#benchmarks)) and confirm the streaming cross-family rate did not rise.** This step is not optional. Broad rules easily fix one case and break another: `md-heading` (a line starting with `# `) once turned YAML with a comment block into markdown, and `ini-key-value` (`key = value`) nearly polluted a whole range of languages. Both times the streaming measurement raised the alarm; unit tests and synthetic fixtures did not.
-5. Check the one-shot accuracy table when a change touches one of the corpus languages. For a new language, add business-logic files from popular projects to `scripts/github-curated.tsv` (pinned to a commit), add the member to `CodeLanguage` and its common names to `src/aliases.ts`, give it a popularity value in `src/popularity.ts` (a test checks every language has one) and a family in `src/families.ts` if it has close relatives; the converter tests check that Shiki bundles the id and highlight.js knows the mapped name.
+4. **Run the evidence harnesses (see [Benchmarks](#benchmarks)) and confirm the streaming cross-family rate did not rise on either split.** This step is not optional. Broad rules easily fix one case and break another: `md-heading` (a line starting with `# `) once turned YAML with a comment block into markdown, and `ini-key-value` (`key = value`) nearly polluted a whole range of languages. Both times the streaming measurement raised the alarm; unit tests and synthetic fixtures did not.
+5. Check the holdout one-shot table for the languages a change touches: coverage may move, loose precision must not drop. For a new language, add business-logic files from popular, permissively licensed projects to `scripts/github-tune.tsv` and `scripts/github-holdout.tsv` (different repositories, each pinned to a commit), add the member to `CodeLanguage` and its common names to `src/aliases.ts`, give it a popularity value in `src/popularity.ts` (a test checks every language has one) and a family in `src/families.ts` if it has close relatives; the converter tests check that Shiki bundles the id and highlight.js knows the mapped name.
 
 Before adding a rule, ask: is this pattern highly characteristic of the language, or does it at least narrow the candidates a lot? Keywords shared by many languages (`if`, `for`, `while`, `class`, `return`) do not belong in rules.
 
