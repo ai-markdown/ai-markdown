@@ -56,12 +56,14 @@ export function Answer() {
 
 Both providers and the stylesheet imports are part of this setup. KaTeX CSS is required for the math example. Keep the adapter object stable. Replacing the `pre` renderer transfers code formatting, copy, highlighting and diagram behavior to your component.
 
-Language auto-detection for unlabelled fences uses [`@ai-markdown/code-language-detector`](https://ai-markdown.github.io/docs/plugins/code-language-detector/), a dependency of this package, so it needs no further setup. Detection is synchronous and runs during render, server rendering included. A block the detector cannot place with confidence stays plaintext labelled "unknown", and the detector never overrides an explicit fence language. `codeBlock.languageFormat` names your adapter (highlight.js by default), and every language, whether written on the fence or detected, is handed to the highlighter in that adapter's spelling: ` ```objc ` reaches highlight.js as `objectivec`, and ` ```txt ` reaches Shiki as `text`. The tab label keeps the name as written:
+Language auto-detection for unlabelled fences is on by default and uses [`@ai-markdown/code-language-detector`](https://ai-markdown.github.io/docs/plugins/code-language-detector/), a dependency of this package, so it needs no further setup. Detection is synchronous and runs during render, server rendering included. A block the detector cannot place with confidence stays plaintext labelled "unknown", and the detector never overrides an explicit fence language. `codeBlock.languageFormat` names your adapter (highlight.js by default), and every language, whether written on the fence or detected, is handed to the highlighter in that adapter's spelling: ` ```objc ` reaches highlight.js as `objectivec`, and ` ```txt ` reaches Shiki as `text`. The tab label keeps the name as written:
 
 ```tsx
-<MantineAIMarkdown content={content} codeBlock={{ autoDetectUnknownLanguage: true }} />
+<MantineAIMarkdown content={content} /> // detection is on by default
 // with Mantine's Shiki adapter:
-// codeBlock={{ autoDetectUnknownLanguage: true, languageFormat: MantineLanguageFormat.Shiki }}
+// codeBlock={{ languageFormat: MantineLanguageFormat.Shiki }}
+// to keep unlabelled blocks plaintext:
+// codeBlock={{ autoDetectUnknownLanguage: false }}
 ```
 
 Mermaid renders while streaming are throttled by `codeBlock.mermaidIntervalMs` (default 300 ms; the final source always renders once streaming ends), and input above mermaid's `maxTextSize` shows an error instead of a placeholder diagram.

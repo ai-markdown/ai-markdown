@@ -59,6 +59,7 @@ const VUE = [
 const AMBIGUOUS = 'x = 1';
 const fence = (body: string) => '```\n' + body + '\n```';
 const AUTODETECT = { autoDetectUnknownLanguage: true };
+const AUTODETECT_OFF = { autoDetectUnknownLanguage: false };
 
 /** An adapter that records the language names the highlighter is asked for. */
 function recordingAdapter(): { adapter: CodeHighlightAdapter; languages: string[] } {
@@ -89,10 +90,11 @@ describe('language auto-detection (server render)', () => {
     expect(html).toContain('hljs-keyword');
   });
 
-  test('the option is off by default: the block stays plaintext with no language tab', () => {
-    const html = render(<MantineAIMarkdown content={fence(PYTHON)} />);
-    expect(html).not.toMatch(/>python</);
-    expect(html).not.toContain('hljs-keyword');
+  test('the option is on by default, and false keeps the block plaintext with no language tab', () => {
+    expect(render(<MantineAIMarkdown content={fence(PYTHON)} />)).toMatch(/>python</);
+    const off = render(<MantineAIMarkdown content={fence(PYTHON)} codeBlock={AUTODETECT_OFF} />);
+    expect(off).not.toMatch(/>python</);
+    expect(off).not.toContain('hljs-keyword');
   });
 
   test('when the detector abstains the block stays "unknown"', () => {

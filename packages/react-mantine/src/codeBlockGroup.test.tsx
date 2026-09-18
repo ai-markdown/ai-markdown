@@ -37,7 +37,7 @@ describe('codeBlock behavior group', () => {
   test('defaults resolve inside the hook when nothing is passed', () => {
     const html = renderMarkdown(<MantineAIMarkdown content={'*p*'} customComponents={{ em: OptionsProbe }} />);
     expect(html).toContain('data-expanded="true"');
-    expect(html).toContain('data-autodetect="false"');
+    expect(html).toContain('data-autodetect="true"');
   });
 
   test('partial codeBlock prop replaces the group; omitted fields fall to defaults', () => {
@@ -49,7 +49,7 @@ describe('codeBlock behavior group', () => {
       />
     );
     expect(html).toContain('data-expanded="false"');
-    expect(html).toContain('data-autodetect="false"');
+    expect(html).toContain('data-autodetect="true"');
   });
 
   test('defineMantineBehaviors fragment spreads into the component', () => {
@@ -67,12 +67,12 @@ describe('codeBlock behavior group', () => {
       </AIMarkdownBehaviorsProvider>
     );
     expect(html).toContain('data-expanded="false"');
-    expect(html).toContain('data-autodetect="false"');
+    expect(html).toContain('data-autodetect="true"');
   });
 
   test('the codeBlock prop wins over an outer Provider group (inner-wins merge)', () => {
     const html = renderMarkdown(
-      <AIMarkdownBehaviorsProvider value={{ codeBlock: { defaultExpanded: false, autoDetectUnknownLanguage: true } }}>
+      <AIMarkdownBehaviorsProvider value={{ codeBlock: { defaultExpanded: false, autoDetectUnknownLanguage: false } }}>
         <MantineAIMarkdown
           content={'*p*'}
           codeBlock={{ defaultExpanded: true }}
@@ -83,7 +83,7 @@ describe('codeBlock behavior group', () => {
     // Group replacement is atomic: the outer group's autoDetect does NOT
     // merge into the winning inner group — omitted fields fall to defaults.
     expect(html).toContain('data-expanded="true"');
-    expect(html).toContain('data-autodetect="false"');
+    expect(html).toContain('data-autodetect="true"');
   });
 
   test('the prop and an equivalent define fragment render identical bytes; the toggle takes effect', () => {

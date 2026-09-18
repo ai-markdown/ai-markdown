@@ -86,7 +86,7 @@ export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> 
   return useMemo(
     () => ({
       defaultExpanded: group?.defaultExpanded ?? true,
-      autoDetectUnknownLanguage: group?.autoDetectUnknownLanguage ?? false,
+      autoDetectUnknownLanguage: group?.autoDetectUnknownLanguage ?? true,
       languageFormat:
         group?.languageFormat === MantineLanguageFormat.Shiki
           ? MantineLanguageFormat.Shiki

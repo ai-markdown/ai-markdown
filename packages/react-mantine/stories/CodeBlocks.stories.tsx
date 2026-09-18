@@ -42,7 +42,7 @@ const meta: MantineMeta = {
           '| Option | Default | Effect |',
           '| --- | --- | --- |',
           '| `defaultExpanded` | `true` | `false` starts blocks collapsed at 320px with an expand button |',
-          '| `autoDetectUnknownLanguage` | `false` | `true` names fences with no info string through `@ai-markdown/code-language-detector` |',
+          '| `autoDetectUnknownLanguage` | `true` | Names fences with no info string through `@ai-markdown/code-language-detector`; `false` leaves them plain text |',
           '| `languageFormat` | `MantineLanguageFormat.HighlightJs` | Hands fence and detected languages to the highlighter in highlight.js names or, with `Shiki`, in Shiki names |',
           '',
           'The group replaces atomically — passing `codeBlock={{ defaultExpanded: false }}`',
@@ -163,12 +163,12 @@ export const JsonPrettyPrint: MantineStory = {
 /**
  * What happens to a fence with no info string, with the detector off and on.
  *
- * **Left, `autoDetectUnknownLanguage: false` (the default).** No language, so
- * no tab strip: the block renders through the plain `CodeHighlight` component
- * as unhighlighted monospace text. This is the conservative default — the
- * renderer says nothing about content it was told nothing about.
+ * **Left, `autoDetectUnknownLanguage: false`.** No language, so no tab strip:
+ * the block renders through the plain `CodeHighlight` component as
+ * unhighlighted monospace text. The renderer says nothing about content it was
+ * told nothing about.
  *
- * **Right, `true`.** `@ai-markdown/code-language-detector` reads the sample
+ * **Right, `true` (the default).** `@ai-markdown/code-language-detector` reads the sample
  * as Python, so the block gains a `python` tab and full token colouring. The
  * detector ships with the package and runs during render, so the label is
  * already in the server-rendered markup.
@@ -177,8 +177,7 @@ export const JsonPrettyPrint: MantineStory = {
  * Python. The detector is built to abstain rather than guess: three lines of
  * shell or a config excerpt with no telling syntax stay unlabelled
  * plaintext, because a wrong guess colours the block as something it is not.
- * Turn it on when your content pipeline tends to drop info strings, and leave
- * it off when your model reliably emits them.
+ * Turn it off if you would rather never colour a block the model did not label.
  */
 /** Module constant: the group is compared by value. */
 const AUTODETECT = { autoDetectUnknownLanguage: true };

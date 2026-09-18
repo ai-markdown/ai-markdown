@@ -43,13 +43,14 @@ export interface MantineCodeBlockOptions {
   defaultExpanded: boolean;
 
   /**
-   * When `true`, identifies the language of code blocks that lack an
-   * explicit language annotation with `@ai-markdown/code-language-detector`.
-   * The detector abstains rather than guess, so a block it cannot place stays
+   * Whether to identify the language of code blocks that lack an explicit
+   * language annotation, with `@ai-markdown/code-language-detector`. The
+   * detector abstains rather than guess, so a block it cannot place stays
    * plaintext with an "unknown" label. No further setup: it is a dependency
-   * of this package and runs synchronously, server rendering included.
+   * of this package and runs synchronously, server rendering included. Set
+   * `false` to render every unlabelled block as plaintext.
    *
-   * @default false
+   * @default true
    */
   autoDetectUnknownLanguage: boolean;
   /**
@@ -83,7 +84,7 @@ export interface MantineCodeBlockOptions {
 /** Shipped defaults for the `codeBlock` behavior group. */
 export const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions> = Object.freeze({
   defaultExpanded: true,
-  autoDetectUnknownLanguage: false,
+  autoDetectUnknownLanguage: true,
   languageFormat: MantineLanguageFormat.HighlightJs,
   formatJson: true,
   expandNestedJson: true,

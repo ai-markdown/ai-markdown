@@ -10,7 +10,7 @@ Mantine 集成包安装了一个默认的 `<pre>` 渲染器（`MantineAIMPreCode
 | ------------------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 已声明且受支持的语言（如 ` ```ts `） | `<CodeHighlightTabs>`    | 标签页标题 = 按原样书写的语言名称（转换为小写）；交给高亮器的是 `codeBlock.languageFormat` 所选拼写下的名称（` ```objc ` 以 `objectivec` 交给 highlight.js，` ```txt ` 以 `plaintext` 交给 highlight.js）                                                |
 | 已声明但未知的语言标识符             | `<CodeHighlightTabs>`    | 标签页标题 = 转换为小写的标识符；`codeBlock.languageFormat` 不转换的标识符以小写形式交给高亮器，Mantine 的高亮适配器会将它不支持的语言安全降级为纯文本展示                                                                                               |
-| 未声明任何语言                       | `<CodeHighlight>` 纯文本 | 标签页标题 = `"unknown"`。当设置 `codeBlock.autoDetectUnknownLanguage: true` 时，`@ai-markdown/code-language-detector` 在渲染期间（包括服务端渲染）于证据充分时标注语言，并在流式结束时确定最终结果；检测器放弃判断的代码块保持 `"unknown"`              |
+| 未声明任何语言                       | `<CodeHighlight>` 纯文本 | 标签页标题 = `"unknown"`。默认情况下（`codeBlock.autoDetectUnknownLanguage: true`），`@ai-markdown/code-language-detector` 在渲染期间（包括服务端渲染）于证据充分时标注语言，并在流式结束时确定最终结果；检测器放弃判断的代码块保持 `"unknown"`          |
 | ` ```mermaid `（大小写不敏感）       | 交互式 Mermaid 图表      | 详见 [Mermaid 图表](#mermaid-diagrams)；语言匹配不区分大小写                                                                                                                                                                                             |
 | ` ```json `（大小写不敏感）          | 美化格式化后的 JSON      | 代码块一旦呈现完整形态（以 `}` 或 `]` 结尾且括号在字符串外对称闭合），即会进行解析；字符串中嵌套的 JSON 对象/数组会被展开（原始字面量风格的字符串如 `"true"` 保持为字符串），并以 2 空格缩进排版，同时保留精确的数值 Token；格式化和嵌套展开均可单独关闭 |
 
@@ -68,10 +68,10 @@ const CODE_BLOCK = {
 
 ### 语言自动检测
 
-默认情况下，未标注语言的代码块会作为纯文本渲染，标签为“unknown”。可通过 `codeBlock` 属性开启自动检测：
+自动检测默认开启：未标注语言的代码块在检测器能够判定时会得到标签与语法高亮，否则保持纯文本，标签为“unknown”。如果希望所有未标注语言的代码块都按纯文本渲染，可通过 `codeBlock` 属性关闭：
 
 ```tsx
-<MantineAIMarkdown content={markdown} codeBlock={{ autoDetectUnknownLanguage: true }} />
+<MantineAIMarkdown content={markdown} codeBlock={{ autoDetectUnknownLanguage: false }} />
 ```
 
 检测由 [`@ai-markdown/code-language-detector`](../../../../packages/code-language-detector/README.md) 完成。它是本包的常规依赖，因此无需提供 highlight.js 实例，也无需额外安装。检测是同步的，在渲染期间执行，包括服务端渲染：检测出的标签页标题直接出现在 SSR 标记中，代码块不会先显示“unknown”再原位升级。证据不足时检测器会放弃判断而不是猜测，被放弃的代码块保持纯文本，标签为“unknown”。检测器永远不会覆盖显式声明的围栏语言。检测出的语言与书写在围栏上的语言经由同一套 [`languageFormat` 映射](#highlighter-language-names)交给高亮器。
