@@ -6,6 +6,21 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.2.2 — Language auto-detection on by default
+
+### 3.2.2
+
+This patch release aligns engine, core, React, Mantine and Vue at `3.2.2`. Engine, core, React and Vue are version-aligned only. `@ai-markdown/code-language-detector` remains at `1.1.0` and the highlight plugin at `1.0.2`.
+
+#### Mantine
+
+- **`codeBlock.autoDetectUnknownLanguage` now defaults to `true`.** Unlabelled code blocks get a label and highlighting whenever `@ai-markdown/code-language-detector` can place them, with no configuration. The detector abstains rather than guess, so a block it cannot place still renders as plaintext labelled "unknown", and an explicit fence language is never overridden. Detection needs no extra dependency and runs synchronously during render, server rendering included; a typical block costs about 0.3 ms.
+- **Visible change for existing apps.** Unlabelled blocks that rendered as plaintext in `3.2.1` now show a language tab and highlighting when the detector recognizes them. On real files the detector names the wrong language family for about 3% of blocks (see the detector README). To keep the previous behaviour, pass `codeBlock={{ autoDetectUnknownLanguage: false }}` or set it in `defineMantineBehaviors`.
+
+#### Verification
+
+All 102 Mantine unit tests pass, together with the React Storybook suite (111). No engine source changed since `3.2.1`, and the soak impact check does not require a campaign for this range.
+
 ## 3.2.1 — Code language detector 1.1.0
 
 ### 3.2.1
