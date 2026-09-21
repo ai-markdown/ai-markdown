@@ -30,6 +30,8 @@ export function rewriteUrl(url, source, entries, base = '/', storybook = '', loc
     : posix.normalize(posix.join(posix.dirname(source), decodeURI(pathname)));
   const page = entries.find((entry) => entry.source === target || entry.aliases?.includes(target));
   if (page) return `${normalizeBase(base)}${page.slug ? `${page.slug}/` : ''}${suffix}`;
+  const publicPrefix = 'apps/docs/public/';
+  if (target.startsWith(publicPrefix)) return `${normalizeBase(base)}${target.slice(publicPrefix.length)}${suffix}`;
   if (absoluteRepo) return url;
   return `${repo}/blob/main/${target}${suffix}`;
 }

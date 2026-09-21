@@ -1,0 +1,919 @@
+{
+  "schemaVersion": 1,
+  "mapId": "ai-markdown-development",
+  "revision": 5,
+  "language": "zh",
+  "project": {
+    "id": "ai-markdown",
+    "name": "ai-markdown · 开发与交付",
+    "revision": "b3473a473236ac643e26656897e0a12e5badb6e6",
+    "translations": {
+      "en": {
+        "name": "ai-markdown · Development and Delivery"
+      }
+    }
+  },
+  "modules": [
+    {
+      "id": "storybook-react",
+      "name": "React Storybook",
+      "role": "frontend",
+      "kind": "local",
+      "responsibility": "展示和验证 React、Mantine 两套组件故事。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "apps/storybook-react"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "apps/storybook-react/.storybook/main.ts",
+          "line": 1,
+          "note": "明确加载 React 与 Mantine 的 stories，并接入 Vitest、a11y。",
+          "translations": {
+            "en": {
+              "note": "Loads React and Mantine stories and integrates Vitest and accessibility checks."
+            }
+          },
+          "endLine": 20
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 1,
+        "column": 0
+      },
+      "translations": {
+        "en": {
+          "name": "React Storybook",
+          "responsibility": "Displays and verifies React and Mantine component stories."
+        }
+      }
+    },
+    {
+      "id": "storybook-vue",
+      "name": "Vue Storybook",
+      "role": "frontend",
+      "kind": "local",
+      "responsibility": "展示和验证 Vue 组件、交互与无障碍场景。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "apps/storybook-vue"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "apps/storybook-vue/.storybook/main.ts",
+          "line": 1,
+          "note": "使用 Vue Vite renderer 并加载 Vue stories。",
+          "translations": {
+            "en": {
+              "note": "Uses the Vue Vite renderer and loads Vue stories."
+            }
+          },
+          "endLine": 20
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 2,
+        "column": 0
+      },
+      "translations": {
+        "en": {
+          "name": "Vue Storybook",
+          "responsibility": "Displays and verifies Vue components, interactions and accessibility scenarios."
+        }
+      }
+    },
+    {
+      "id": "storybook-hub",
+      "name": "Storybook · 聚合入口",
+      "role": "frontend",
+      "kind": "local",
+      "responsibility": "通过 refs 聚合 React 和 Vue 两个独立目录。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "apps/storybook-hub"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "apps/storybook-hub/.storybook/main.ts",
+          "line": 6,
+          "note": "refs 指向 React 和 Vue Storybook。",
+          "translations": {
+            "en": {
+              "note": "Refs point to the React and Vue Storybooks."
+            }
+          },
+          "endLine": 15
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 0,
+        "column": 0
+      },
+      "translations": {
+        "en": {
+          "name": "Storybook · Hub",
+          "responsibility": "Aggregates separate React and Vue catalogs through refs."
+        }
+      }
+    },
+    {
+      "id": "docs",
+      "name": "文档站 · Astro",
+      "role": "frontend",
+      "kind": "local",
+      "responsibility": "Starlight 文档、双语内容与主页；从包 README 生成内容。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "apps/docs"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "apps/docs/astro.config.mjs",
+          "line": 12,
+          "note": "Starlight 和 contentIntegration 构建入口。",
+          "translations": {
+            "en": {
+              "note": "Build entry using Starlight and contentIntegration."
+            }
+          },
+          "endLine": 34
+        },
+        {
+          "path": "apps/docs/scripts/content.mjs",
+          "line": 33,
+          "note": "将包 README 纳入文档内容。",
+          "translations": {
+            "en": {
+              "note": "Includes package READMEs in documentation content."
+            }
+          },
+          "endLine": 42
+        },
+        {
+          "path": "apps/docs/src/pages/index.astro",
+          "line": 1,
+          "note": "首页委托 Home 组件。",
+          "translations": {
+            "en": {
+              "note": "The homepage delegates to the Home component."
+            }
+          },
+          "endLine": 4
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 0,
+        "column": 2
+      },
+      "translations": {
+        "en": {
+          "name": "Docs · Astro",
+          "responsibility": "Starlight documentation, bilingual content and homepage; generates content from package READMEs."
+        }
+      }
+    },
+    {
+      "id": "benchmarks",
+      "name": "浏览器性能基准",
+      "role": "generic",
+      "kind": "local",
+      "responsibility": "React、Mantine、纯文本对照三应用；共享驱动与指标采集。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "benchmarks"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "benchmarks/react-core/src/main.tsx",
+          "line": 23,
+          "note": "使用发布包入口的 React 基准。",
+          "translations": {
+            "en": {
+              "note": "React benchmark using the published package entry point."
+            }
+          },
+          "endLine": 29
+        },
+        {
+          "path": "benchmarks/react-mantine/src/main.tsx",
+          "line": 20,
+          "note": "独立 Mantine 基准。",
+          "translations": {
+            "en": {
+              "note": "A separate Mantine benchmark."
+            }
+          },
+          "endLine": 31
+        },
+        {
+          "path": "benchmarks/react-null/src/main.tsx",
+          "line": 80,
+          "note": "仅输出 pre 的成本对照。",
+          "translations": {
+            "en": {
+              "note": "A cost control that renders only a pre element."
+            }
+          },
+          "endLine": 85
+        },
+        {
+          "path": "benchmarks/runner/run.mjs",
+          "note": "构建三应用并由 Playwright 采样，不是性能发布门禁。",
+          "translations": {
+            "en": {
+              "note": "Builds three apps and samples them using Playwright; this is not a performance release gate."
+            }
+          }
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 1,
+        "column": 2
+      },
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "包含三个对照应用和采样驱动，职责是开发期性能测量而非产品前端。",
+        "translations": {
+          "en": {
+            "note": "Three comparison apps and a sampling driver serve development-time performance measurement, rather than the product frontend."
+          }
+        }
+      },
+      "translations": {
+        "en": {
+          "name": "Browser Benchmarks",
+          "responsibility": "React, Mantine and plain-text control apps with shared drivers and metrics."
+        }
+      }
+    },
+    {
+      "id": "corpus",
+      "name": "共享语料",
+      "role": "generic",
+      "kind": "local",
+      "responsibility": "生成 Markdown、数学、代码和 Mermaid 样本并校验一致性。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "corpus"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "corpus/package.json",
+          "line": 6,
+          "note": "emit、validate 命令与语料职责。",
+          "translations": {
+            "en": {
+              "note": "Corpus responsibilities and the emit and validate commands."
+            }
+          },
+          "endLine": 12
+        },
+        {
+          "path": "corpus/scripts/emit.mjs",
+          "line": 22,
+          "note": "生成 corpus/documents 中的样本文档。",
+          "translations": {
+            "en": {
+              "note": "Generates sample documents in corpus/documents."
+            }
+          },
+          "endLine": 35
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 1,
+        "column": 1
+      },
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "这是样本文本、生成器和验证工具，不是运行时数据库。",
+        "translations": {
+          "en": {
+            "note": "Sample text, generators and validation tooling, rather than a runtime database."
+          }
+        }
+      },
+      "translations": {
+        "en": {
+          "name": "Shared Corpus",
+          "responsibility": "Generates Markdown, math, code and Mermaid fixtures and checks consistency."
+        }
+      }
+    },
+    {
+      "id": "tooling",
+      "name": "开发与发布工具",
+      "role": "generic",
+      "kind": "local",
+      "responsibility": "Storybook 共享工具、API 契约、测试／soak、发布与站点组装。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "tooling"
+        },
+        {
+          "kind": "directory",
+          "path": "scripts"
+        },
+        {
+          "kind": "directory",
+          "path": ".github"
+        },
+        {
+          "kind": "file",
+          "path": "package.json"
+        },
+        {
+          "kind": "file",
+          "path": "pnpm-workspace.yaml"
+        },
+        {
+          "kind": "file",
+          "path": "eslint.config.js"
+        },
+        {
+          "kind": "file",
+          "path": ".prettierignore"
+        },
+        {
+          "kind": "file",
+          "path": ".gitignore"
+        },
+        {
+          "kind": "file",
+          "path": "vitest.config.ts"
+        },
+        {
+          "kind": "file",
+          "path": "CONTRIBUTING.md"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "package.json",
+          "note": "集中开发、验证和发布命令。",
+          "translations": {
+            "en": {
+              "note": "Centralizes development, verification and release commands."
+            }
+          }
+        },
+        {
+          "path": "scripts/assemble-pages.mjs",
+          "line": 8,
+          "note": "文档与 Storybook 组装到同一 Pages 产物。",
+          "translations": {
+            "en": {
+              "note": "Assembles documentation and Storybook into one Pages artifact."
+            }
+          },
+          "endLine": 24
+        },
+        {
+          "path": "scripts/soak/coverage-map.json",
+          "note": "Engine 算法对应 soak 检查。",
+          "translations": {
+            "en": {
+              "note": "Maps Engine algorithms to soak checks."
+            }
+          }
+        },
+        {
+          "path": "tooling/storybook-kit/common/corpus.ts",
+          "line": 1,
+          "note": "Storybook 工具直接读取生成语料。",
+          "translations": {
+            "en": {
+              "note": "Storybook tooling reads the generated corpus directly."
+            }
+          },
+          "endLine": 4
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 0,
+        "column": 1
+      },
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "这是构建、测试、共享 Storybook 配置及发布脚本，不是产品运行时服务。",
+        "translations": {
+          "en": {
+            "note": "Build, test, shared Storybook configuration and release scripts, rather than a product runtime service."
+          }
+        }
+      },
+      "translations": {
+        "en": {
+          "name": "Development Tooling",
+          "responsibility": "Shared Storybook tooling, API contracts, tests, soak checks, releases and site assembly."
+        }
+      }
+    },
+    {
+      "id": "product-packages",
+      "name": "产品包 · 引用",
+      "role": "generic",
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "本节点聚合七个本地发布包作为工具链作用对象；运行时职责与内部关系见产品图，不是额外服务。",
+        "translations": {
+          "en": {
+            "note": "Aggregates seven local published packages as tooling targets; runtime responsibilities and internal relationships are in the product map. This is not an extra service."
+          }
+        }
+      },
+      "kind": "local",
+      "responsibility": "React、Vue、Mantine、Core、Engine、语法插件与语言识别；内部链路见产品图。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/engine"
+        },
+        {
+          "kind": "directory",
+          "path": "packages/core"
+        },
+        {
+          "kind": "directory",
+          "path": "packages/react"
+        },
+        {
+          "kind": "directory",
+          "path": "packages/vue"
+        },
+        {
+          "kind": "directory",
+          "path": "packages/react-mantine"
+        },
+        {
+          "kind": "directory",
+          "path": "packages/remark-mark-highlight"
+        },
+        {
+          "kind": "directory",
+          "path": "packages/code-language-detector"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "README.md",
+          "line": 63,
+          "note": "产品包范围见 Packages；此节点仅表达开发和交付对象。",
+          "translations": {
+            "en": {
+              "note": "See Packages for the product scope; this node represents only the objects of development and delivery."
+            }
+          },
+          "endLine": 73
+        },
+        {
+          "path": "scripts/release-packages.mjs",
+          "line": 4,
+          "note": "发布分组与包目录定义。",
+          "translations": {
+            "en": {
+              "note": "Defines release groups and package directories."
+            }
+          },
+          "endLine": 13
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 2,
+        "column": 1
+      },
+      "translations": {
+        "en": {
+          "name": "Product Packages",
+          "responsibility": "React, Vue, Mantine, Core, Engine, syntax and language detection; see the product map for internal dependencies."
+        }
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "id": "storybook-hub-storybook-react",
+      "from": "storybook-hub",
+      "to": "storybook-react",
+      "label": "聚合 React 目录",
+      "evidence": [
+        {
+          "path": "apps/storybook-hub/.storybook/main.ts",
+          "line": 6,
+          "note": "refs.react 指向 React Storybook。",
+          "translations": {
+            "en": {
+              "note": "refs.react points to the React Storybook."
+            }
+          },
+          "endLine": 15
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Aggregate the React catalog"
+        }
+      }
+    },
+    {
+      "id": "storybook-hub-storybook-vue",
+      "from": "storybook-hub",
+      "to": "storybook-vue",
+      "label": "聚合 Vue 目录",
+      "evidence": [
+        {
+          "path": "apps/storybook-hub/.storybook/main.ts",
+          "line": 6,
+          "note": "refs.vue 指向 Vue Storybook。",
+          "translations": {
+            "en": {
+              "note": "refs.vue points to the Vue Storybook."
+            }
+          },
+          "endLine": 15
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Aggregate the Vue catalog"
+        }
+      }
+    },
+    {
+      "id": "storybook-react-product-packages",
+      "from": "storybook-react",
+      "to": "product-packages",
+      "label": "展示／验证 React 与 Mantine",
+      "evidence": [
+        {
+          "path": "apps/storybook-react/.storybook/main.ts",
+          "line": 1,
+          "note": "stories 包含 packages/react/stories。",
+          "translations": {
+            "en": {
+              "note": "Stories include packages/react/stories."
+            }
+          },
+          "endLine": 20
+        },
+        {
+          "path": "apps/storybook-react/.storybook/main.ts",
+          "line": 1,
+          "note": "stories 包含 packages/react-mantine/stories。",
+          "translations": {
+            "en": {
+              "note": "Stories include packages/react-mantine/stories."
+            }
+          },
+          "endLine": 20
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Show and verify React and Mantine"
+        }
+      }
+    },
+    {
+      "id": "storybook-vue-product-packages",
+      "from": "storybook-vue",
+      "to": "product-packages",
+      "label": "展示／验证 Vue",
+      "evidence": [
+        {
+          "path": "apps/storybook-vue/.storybook/main.ts",
+          "line": 1,
+          "note": "stories 包含 packages/vue/stories。",
+          "translations": {
+            "en": {
+              "note": "Stories include packages/vue/stories."
+            }
+          },
+          "endLine": 20
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Show and verify Vue"
+        }
+      }
+    },
+    {
+      "id": "storybook-react-tooling",
+      "from": "storybook-react",
+      "to": "tooling",
+      "label": "共享构建与样本",
+      "evidence": [
+        {
+          "path": "apps/storybook-react/.storybook/main.ts",
+          "line": 1,
+          "note": "使用 withWorkspaceSources 和共享 assets。",
+          "translations": {
+            "en": {
+              "note": "Uses withWorkspaceSources and shared assets."
+            }
+          },
+          "endLine": 20
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Shared build setup and fixtures"
+        }
+      }
+    },
+    {
+      "id": "storybook-vue-tooling",
+      "from": "storybook-vue",
+      "to": "tooling",
+      "label": "共享构建与样本",
+      "evidence": [
+        {
+          "path": "apps/storybook-vue/.storybook/main.ts",
+          "line": 1,
+          "note": "使用 withWorkspaceSources 和共享 assets。",
+          "translations": {
+            "en": {
+              "note": "Uses withWorkspaceSources and shared assets."
+            }
+          },
+          "endLine": 20
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Shared build setup and fixtures"
+        }
+      }
+    },
+    {
+      "id": "tooling-corpus",
+      "from": "tooling",
+      "to": "corpus",
+      "label": "读取演示语料",
+      "evidence": [
+        {
+          "path": "tooling/storybook-kit/common/corpus.ts",
+          "line": 1,
+          "note": "从 corpus/documents 导入四类 raw 文本。",
+          "translations": {
+            "en": {
+              "note": "Imports four categories of raw text from corpus/documents."
+            }
+          },
+          "endLine": 4
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Read demo corpus"
+        }
+      }
+    },
+    {
+      "id": "benchmarks-product-packages",
+      "from": "benchmarks",
+      "to": "product-packages",
+      "label": "测量 React 与 Mantine 集成",
+      "evidence": [
+        {
+          "path": "benchmarks/react-core/src/main.tsx",
+          "line": 23,
+          "note": "导入 React 发布包入口。",
+          "translations": {
+            "en": {
+              "note": "Imports the published React package entry point."
+            }
+          },
+          "endLine": 29
+        },
+        {
+          "path": "benchmarks/react-mantine/src/main.tsx",
+          "line": 20,
+          "note": "导入 Mantine 发布包入口。",
+          "translations": {
+            "en": {
+              "note": "Imports the published Mantine package entry point."
+            }
+          },
+          "endLine": 31
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Measure React and Mantine integrations"
+        }
+      }
+    },
+    {
+      "id": "tooling-product-packages",
+      "from": "tooling",
+      "to": "product-packages",
+      "label": "验证 Engine 算法（soak）",
+      "evidence": [
+        {
+          "path": "scripts/soak/coverage-map.json",
+          "note": "记录增量解析等算法与 oracle 对应关系。",
+          "translations": {
+            "en": {
+              "note": "Maps incremental parsing and related algorithms to verification oracles."
+            }
+          }
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "detail",
+      "translations": {
+        "en": {
+          "label": "Verify Engine algorithms with soak checks"
+        }
+      }
+    },
+    {
+      "id": "tooling-docs",
+      "from": "tooling",
+      "to": "docs",
+      "label": "组装文档构建产物",
+      "evidence": [
+        {
+          "path": "scripts/assemble-pages.mjs",
+          "line": 8,
+          "note": "读取 apps/docs/dist。",
+          "translations": {
+            "en": {
+              "note": "Reads apps/docs/dist."
+            }
+          },
+          "endLine": 24
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Assemble documentation build output"
+        }
+      }
+    },
+    {
+      "id": "tooling-storybook-hub",
+      "from": "tooling",
+      "to": "storybook-hub",
+      "label": "组装聚合演示站",
+      "evidence": [
+        {
+          "path": "scripts/assemble-pages.mjs",
+          "line": 8,
+          "note": "验证并复制包含 React、Vue 子目录的 storybook-static。",
+          "translations": {
+            "en": {
+              "note": "Validates and copies storybook-static, including React and Vue subdirectories."
+            }
+          },
+          "endLine": 24
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Assemble the combined demo site"
+        }
+      }
+    },
+    {
+      "id": "docs-product-packages",
+      "from": "docs",
+      "to": "product-packages",
+      "label": "从 Core、Engine 与插件 README 生成文档",
+      "evidence": [
+        {
+          "path": "apps/docs/scripts/content.mjs",
+          "line": 33,
+          "note": "从包 README 构建文档；这是构建时内容依赖，不是浏览器运行时调用。",
+          "translations": {
+            "en": {
+              "note": "Builds documentation from package READMEs; a build-time content dependency, not a browser runtime call."
+            }
+          },
+          "endLine": 42
+        },
+        {
+          "path": "apps/docs/scripts/content.mjs",
+          "line": 33,
+          "note": "包 README 作为构建输入；不表示文档页面在运行时调用该包。",
+          "translations": {
+            "en": {
+              "note": "Package READMEs are build inputs; this does not indicate runtime package calls from documentation pages."
+            }
+          },
+          "endLine": 42
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Build docs from Core, Engine and plugin READMEs"
+        }
+      }
+    },
+    {
+      "id": "tooling-publish-packages",
+      "from": "tooling",
+      "to": "product-packages",
+      "label": "检查版本与发布包",
+      "kind": "control",
+      "visibility": "overview",
+      "evidence": [
+        {
+          "path": "scripts/publish-packages.mjs",
+          "line": 6,
+          "note": "按 releaseDirectories 选择包，先运行发布检查再发布。",
+          "translations": {
+            "en": {
+              "note": "Selects packages using releaseDirectories and runs release checks before publishing."
+            }
+          },
+          "endLine": 10
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "translations": {
+        "en": {
+          "label": "Check versions and publish packages"
+        }
+      }
+    }
+  ]
+}

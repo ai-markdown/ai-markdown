@@ -1,0 +1,610 @@
+{
+  "schemaVersion": 1,
+  "mapId": "ai-markdown-workspace",
+  "revision": 6,
+  "language": "zh",
+  "project": {
+    "id": "ai-markdown",
+    "name": "ai-markdown · 产品运行时架构",
+    "revision": "b3473a473236ac643e26656897e0a12e5badb6e6",
+    "translations": {
+      "en": {
+        "name": "ai-markdown · Product Runtime"
+      }
+    }
+  },
+  "modules": [
+    {
+      "id": "engine",
+      "name": "Engine · 解析引擎",
+      "role": "generic",
+      "kind": "local",
+      "responsibility": "预处理、完整／增量解析、HAST 转换与文档引用注册表。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/engine"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "packages/engine/src/index.ts",
+          "note": "公开框架无关算法和注册表接口。",
+          "translations": {
+            "en": {
+              "note": "Exposes framework-independent algorithms and registry interfaces."
+            }
+          }
+        },
+        {
+          "path": "packages/engine/src/components/markdown/processor.ts",
+          "line": 25,
+          "note": "组合 remark、rehype 和 unified 解析流水线。",
+          "translations": {
+            "en": {
+              "note": "Composes the remark, rehype and unified parsing pipeline."
+            }
+          },
+          "endLine": 35
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 2,
+        "column": 2
+      },
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "源码导出可在浏览器与服务端复用的解析算法，不是独立后端服务。",
+        "translations": {
+          "en": {
+            "note": "Exports parsing algorithms reusable in browsers and on servers, rather than a standalone backend service."
+          }
+        }
+      },
+      "translations": {
+        "en": {
+          "name": "Engine · Parsing",
+          "responsibility": "Preprocessing, full and incremental parsing, HAST transformation and document reference registries."
+        }
+      }
+    },
+    {
+      "id": "core",
+      "name": "Core · 共享协调",
+      "role": "generic",
+      "kind": "local",
+      "responsibility": "解析会话、块规划、贡献发布、脚注聚合与平滑展示协调。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/core"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "packages/core/src/index.ts",
+          "line": 1,
+          "note": "导出会话、块规划与协调公共契约。",
+          "translations": {
+            "en": {
+              "note": "Exports public contracts for sessions, block planning and coordination."
+            }
+          },
+          "endLine": 30
+        },
+        {
+          "path": "packages/core/src/pipelineSession.ts",
+          "line": 1,
+          "note": "调用 Engine；增量失败退回完整流水线。",
+          "translations": {
+            "en": {
+              "note": "Calls Engine and falls back to the full pipeline after incremental parsing fails."
+            }
+          },
+          "endLine": 19
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 1,
+        "column": 2
+      },
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "公开契约是框架无关会话、块规划和协调器，不能归为服务或独立缓存。",
+        "translations": {
+          "en": {
+            "note": "Public contracts provide framework-independent sessions, block planning and coordination, rather than a service or standalone cache."
+          }
+        }
+      },
+      "translations": {
+        "en": {
+          "name": "Core · Coordination",
+          "responsibility": "Parsing sessions, block planning, contribution publication, footnote aggregation and smooth reveal coordination."
+        }
+      }
+    },
+    {
+      "id": "react",
+      "name": "React · 渲染适配",
+      "role": "frontend",
+      "kind": "local",
+      "responsibility": "React 组件、上下文、块缓存、流式展示和 DOM 生命周期。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/react"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "packages/react/src/components/MarkdownContent.tsx",
+          "line": 49,
+          "note": "渲染主体消费共享 Core 与 Engine。",
+          "translations": {
+            "en": {
+              "note": "The rendering component consumes shared Core and Engine APIs."
+            }
+          },
+          "endLine": 68
+        },
+        {
+          "path": "packages/react/src/components/smoothStream/coordinator.ts",
+          "line": 1,
+          "note": "转出 Core 的框架无关协调器。",
+          "translations": {
+            "en": {
+              "note": "Re-exports the framework-independent Core coordinator."
+            }
+          },
+          "endLine": 4
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 0,
+        "column": 1
+      },
+      "translations": {
+        "en": {
+          "name": "React · Rendering",
+          "responsibility": "React components, contexts, block caching, streaming display and DOM lifecycle."
+        }
+      }
+    },
+    {
+      "id": "vue",
+      "name": "Vue · 渲染适配",
+      "role": "frontend",
+      "kind": "local",
+      "responsibility": "Vue 组件与 composable；整帧 HAST 转 VNode、挂载后发布贡献。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/vue"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "packages/vue/src/useMarkdownChunk.ts",
+          "line": 3,
+          "note": "复用 Core 会话与 Engine 插件；不使用 React 块缓存。",
+          "translations": {
+            "en": {
+              "note": "Reuses Core sessions and Engine plugins without the React block cache."
+            }
+          },
+          "endLine": 22
+        },
+        {
+          "path": "packages/vue/src/index.ts",
+          "line": 1,
+          "note": "Vue 包公共导出。",
+          "translations": {
+            "en": {
+              "note": "Public exports of the Vue package."
+            }
+          },
+          "endLine": 24
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 0,
+        "column": 3
+      },
+      "translations": {
+        "en": {
+          "name": "Vue · Rendering",
+          "responsibility": "Vue components and composables; whole-frame HAST to VNodes and contribution publication after mount."
+        }
+      }
+    },
+    {
+      "id": "mantine",
+      "name": "Mantine · 富内容 UI",
+      "role": "frontend",
+      "kind": "local",
+      "responsibility": "组合 React；排版、代码高亮、语言识别与 Mermaid 展示。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/react-mantine"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "packages/react-mantine/src/MantineAIMarkdown.tsx",
+          "line": 15,
+          "note": "通过 React 公共 API 组合 UI。",
+          "translations": {
+            "en": {
+              "note": "Composes the UI through public React APIs."
+            }
+          },
+          "endLine": 30
+        },
+        {
+          "path": "packages/react-mantine/src/components/customized/PreCode.tsx",
+          "line": 3,
+          "note": "接入代码语言检测器。",
+          "translations": {
+            "en": {
+              "note": "Integrates code language detection."
+            }
+          },
+          "endLine": 13
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 0,
+        "column": 0
+      },
+      "translations": {
+        "en": {
+          "name": "Mantine · Rich Content",
+          "responsibility": "Composes React with typography, code highlighting, language detection and Mermaid display."
+        }
+      }
+    },
+    {
+      "id": "highlight",
+      "name": "Mark · 语法插件",
+      "role": "generic",
+      "kind": "local",
+      "responsibility": "独立 remark 插件：解析 ==mark== 并生成高亮节点。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/remark-mark-highlight"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "packages/remark-mark-highlight/src/index.ts",
+          "line": 18,
+          "note": "注册 micromark 与 mdast 扩展。",
+          "translations": {
+            "en": {
+              "note": "Registers micromark and mdast extensions."
+            }
+          },
+          "endLine": 32
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 2,
+        "column": 3
+      },
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "这是 micromark/remark 语法扩展库，不是前后端应用或存储组件。",
+        "translations": {
+          "en": {
+            "note": "A micromark/remark syntax extension library, rather than a frontend/backend app or storage component."
+          }
+        }
+      },
+      "translations": {
+        "en": {
+          "name": "Mark · Syntax Plugin",
+          "responsibility": "Standalone remark plugin parsing ==mark== syntax into highlight nodes."
+        }
+      }
+    },
+    {
+      "id": "language",
+      "name": "代码语言识别",
+      "role": "generic",
+      "kind": "local",
+      "responsibility": "代码特征评分、流式检测及 highlight.js／Shiki 名称映射。",
+      "ownership": [
+        {
+          "kind": "directory",
+          "path": "packages/code-language-detector"
+        }
+      ],
+      "evidence": [
+        {
+          "path": "packages/code-language-detector/src/index.ts",
+          "line": 1,
+          "note": "导出批量和流式检测与名称转换。",
+          "translations": {
+            "en": {
+              "note": "Exports batch and streaming detection and language-name conversion."
+            }
+          },
+          "endLine": 8
+        },
+        {
+          "path": "packages/code-language-detector/src/detector.ts",
+          "line": 98,
+          "note": "检测评分实现。",
+          "translations": {
+            "en": {
+              "note": "Implements language detection scoring."
+            }
+          },
+          "endLine": 135
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "layout": {
+        "row": 1,
+        "column": 0
+      },
+      "roleAssessment": {
+        "basis": "out-of-taxonomy",
+        "note": "这是本地语言检测算法库；内部含缓存不代表整个模块是缓存服务。",
+        "translations": {
+          "en": {
+            "note": "A local language detection library; internal caching does not make the entire module a cache service."
+          }
+        }
+      },
+      "translations": {
+        "en": {
+          "name": "Language Detection",
+          "responsibility": "Code feature scoring, streaming detection and highlight.js/Shiki language-name mapping."
+        }
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "id": "core-engine",
+      "from": "core",
+      "to": "engine",
+      "label": "解析与注册表契约",
+      "evidence": [
+        {
+          "path": "packages/core/src/pipelineSession.ts",
+          "line": 1,
+          "note": "从 Engine 导入 parseStage、transformStage 与增量入口。",
+          "translations": {
+            "en": {
+              "note": "Imports parseStage, transformStage and incremental parsing from Engine."
+            }
+          },
+          "endLine": 19
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Parsing and registry contracts"
+        }
+      }
+    },
+    {
+      "id": "react-core",
+      "from": "react",
+      "to": "core",
+      "label": "会话、块计划与协调",
+      "evidence": [
+        {
+          "path": "packages/react/src/components/MarkdownContent.tsx",
+          "line": 49,
+          "note": "渲染主体使用共享计算接口。",
+          "translations": {
+            "en": {
+              "note": "The rendering component uses shared computation interfaces."
+            }
+          },
+          "endLine": 68
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Sessions, block plans and coordination"
+        }
+      }
+    },
+    {
+      "id": "react-engine",
+      "from": "react",
+      "to": "engine",
+      "label": "插件与解析契约",
+      "evidence": [
+        {
+          "path": "packages/react/src/components/markdown/Markdown.tsx",
+          "line": 23,
+          "note": "直接使用 Engine 的解析／转换接口。",
+          "translations": {
+            "en": {
+              "note": "Directly uses Engine parsing and transformation interfaces."
+            }
+          },
+          "endLine": 23
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Plugin and parsing contracts"
+        }
+      }
+    },
+    {
+      "id": "vue-core",
+      "from": "vue",
+      "to": "core",
+      "label": "会话与贡献发布",
+      "evidence": [
+        {
+          "path": "packages/vue/src/useMarkdownChunk.ts",
+          "line": 3,
+          "note": "导入会话、贡献准备与脚注聚合。",
+          "translations": {
+            "en": {
+              "note": "Imports sessions, contribution preparation and footnote aggregation."
+            }
+          },
+          "endLine": 22
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Sessions and contribution publication"
+        }
+      }
+    },
+    {
+      "id": "vue-engine",
+      "from": "vue",
+      "to": "engine",
+      "label": "插件与引用扫描",
+      "evidence": [
+        {
+          "path": "packages/vue/src/useMarkdownChunk.ts",
+          "line": 3,
+          "note": "导入 Engine 插件链和定义扫描。",
+          "translations": {
+            "en": {
+              "note": "Imports Engine plugin chains and definition scanning."
+            }
+          },
+          "endLine": 22
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Plugins and reference scanning"
+        }
+      }
+    },
+    {
+      "id": "mantine-react",
+      "from": "mantine",
+      "to": "react",
+      "label": "组合公开组件",
+      "evidence": [
+        {
+          "path": "packages/react-mantine/src/MantineAIMarkdown.tsx",
+          "line": 15,
+          "note": "导入 AIMarkdown 及公共配置接口。",
+          "translations": {
+            "en": {
+              "note": "Imports AIMarkdown and its public configuration interfaces."
+            }
+          },
+          "endLine": 30
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Compose public components"
+        }
+      }
+    },
+    {
+      "id": "mantine-language",
+      "from": "mantine",
+      "to": "language",
+      "label": "检测代码语言",
+      "evidence": [
+        {
+          "path": "packages/react-mantine/src/components/customized/PreCode.tsx",
+          "line": 3,
+          "note": "导入独立代码语言检测包。",
+          "translations": {
+            "en": {
+              "note": "Imports the standalone code language detection package."
+            }
+          },
+          "endLine": 13
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Detect code language"
+        }
+      }
+    },
+    {
+      "id": "engine-highlight",
+      "from": "engine",
+      "to": "highlight",
+      "label": "安装 mark 语法",
+      "evidence": [
+        {
+          "path": "packages/engine/src/components/pluginChain.ts",
+          "line": 35,
+          "note": "导入 remarkMark 插件。",
+          "translations": {
+            "en": {
+              "note": "Imports the remarkMark plugin."
+            }
+          },
+          "endLine": 35
+        }
+      ],
+      "status": "supported",
+      "openQuestions": [],
+      "kind": "dependency",
+      "visibility": "overview",
+      "translations": {
+        "en": {
+          "label": "Install mark syntax"
+        }
+      }
+    }
+  ]
+}

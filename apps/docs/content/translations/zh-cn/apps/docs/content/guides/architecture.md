@@ -1,5 +1,14 @@
 # 架构设计全景（Architecture Overview）
 
+## 交互式架构快照
+
+以下两张图于 2026 年 9 月 21 日使用 [Birdview](https://github.com/Qiuner/birdview) 0.2.1 生成，地图由 agent 整理，并依据源码提交 `b3473a473236ac643e26656897e0a12e5badb6e6` 核对。它们是文档快照，不是实时依赖分析，也不构成开发流程要求。
+
+- [产品运行时架构](../../public/architecture/birdview/runtime.html)：七个产品模块及运行时依赖。
+- [开发与交付](../../public/architecture/birdview/development.html)：示例、文档、基准、语料和发布工具，产品包仅作为一个引用节点。
+
+两张图均支持中文／English 切换，可离线打开。旁边保留了[源数据和生成说明](../../public/architecture/birdview/README.md)；查看图或构建文档不需要安装 Birdview。快照过时时，以源码和下方持续维护的架构说明为准。
+
 本代码库将底层的 Markdown 计算处理与上层的 React / Vue UI 渲染彻底解耦。`@ai-markdown/engine` 负责文本规范化、语法解析、抽象语法树转换、增量解析状态机以及跨片段文档注册表（Document registries）。共享的 `@ai-markdown/core` 提供了流水线解析会话、块级规划（Block planning）、贡献数据发布、汇总脚注 HAST 树生成以及打字机平滑呈现调度。`@ai-markdown/react` 作为 React 适配器使用上述核心成果，提供 Context 上下文、各类插槽以及多级渲染缓存。`@ai-markdown/react-mantine` 则通过组合 React 适配器的公共 API，提供针对 Mantine 设计系统的专属排版与代码/图表组件。
 
 在排查渲染缺陷、调整性能优化策略或开发新集成时，请通读本指南。最核心的关键认知在于清晰区分以下四个完全独立的离散事件：输入源文本变动、语法树重新计算、块级规划重新生成、以及 React 使用方组件重新渲染。这些事件具有完全不同的触发条件与依赖项。订阅 Context 的更新绝不需要重新解析 Markdown，而增量解析的成功命中也并不意味着后续的所有处理开销都能绝对与最新到达的单个 Token 成正比。

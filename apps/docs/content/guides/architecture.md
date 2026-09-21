@@ -1,5 +1,14 @@
 # Architecture Overview
 
+## Interactive architecture snapshots
+
+These two diagrams were generated with [Birdview](https://github.com/Qiuner/birdview) 0.2.1 on September 21, 2026, from an agent-authored map checked against source revision `b3473a473236ac643e26656897e0a12e5badb6e6`. They are documentation snapshots, not live dependency analysis or a required development workflow.
+
+- [Product runtime architecture](../../public/architecture/birdview/runtime.html): the seven product modules and their runtime dependencies.
+- [Development and delivery](../../public/architecture/birdview/development.html): examples, documentation, benchmarks, corpus and release tooling, with product packages shown as a single reference node.
+
+Both viewers support Chinese and English and work offline. Use their language selector to switch the diagram content. The [source data and provenance](../../public/architecture/birdview/README.md) are retained alongside the HTML; viewing or building this documentation does not require Birdview. The source code and maintained explanation below take precedence if a snapshot becomes stale.
+
 The repository separates Markdown computation from React and Vue rendering. `@ai-markdown/engine` owns normalization, parsing, tree transformation, incremental state, and document registries. The shared `@ai-markdown/core` adds pipeline sessions, block planning, contribution publishing, aggregate footnote HAST and smooth reveal coordination. `@ai-markdown/react` consumes those results as a React adapter, supplies contexts and slots, and manages render caches. `@ai-markdown/react-mantine` composes the React adapter's public API to provide Mantine typography and code/diagram UI.
 
 Read this guide when tracing a rendering defect, changing an optimization, or building an integration. The important distinction is between an input changing, a syntax tree being recomputed, a block plan being rebuilt, and a React consumer rendering. Those are separate events with different dependencies. A context update need not reparse Markdown, and a successful incremental parse does not make all remaining work proportional to the latest token.

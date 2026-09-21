@@ -6,6 +6,29 @@ const entries = [
   { source: 'apps/docs/content/guides/guide.md', slug: 'docs/guides/guide' },
   { source: 'packages/vue/README.md', slug: 'docs/vue' },
 ];
+test('public documentation artifacts are served locally under the deployment base in either locale', () => {
+  for (const locale of ['', 'zh-cn']) {
+    assert.equal(
+      rewriteUrl(
+        '../../public/architecture/birdview/runtime.html',
+        'apps/docs/content/guides/architecture.md',
+        entries,
+        '/preview/',
+        '',
+        locale
+      ),
+      '/preview/architecture/birdview/runtime.html'
+    );
+  }
+  assert.equal(
+    rewriteUrl(
+      '../../public/architecture/birdview/development.json?download=1',
+      'apps/docs/content/guides/architecture.md',
+      entries
+    ),
+    '/architecture/birdview/development.json?download=1'
+  );
+});
 test('repository links preserve anchors and deployment prefixes', () => {
   assert.equal(
     rewriteUrl('../../apps/docs/content/guides/guide.md#setup', 'packages/vue/README.md', entries, '/preview/docs/'),
