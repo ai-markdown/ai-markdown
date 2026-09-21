@@ -29,7 +29,7 @@ pnpm build
 
 You'll need:
 
-- The Node version pinned in CI (currently 22.23.2) for reproducible validation
+- The Node version pinned in CI (currently 22.23.2) for reproducible validation. Vitest 5 requires Node `^22.12.0 || ^24.0.0 || >=26.0.0`; the published packages' consumer support is separate.
 - pnpm 11.x (this repo pins the exact version via the `packageManager` field — Corepack, or pnpm itself, will fetch it)
 
 > pnpm settings live in `pnpm-workspace.yaml`, not in a `pnpm` field in `package.json` — pnpm 11 ignores that field. `pnpm check:overrides` fails the build if one reappears, or if the lockfile no longer matches the declared overrides.
@@ -58,6 +58,10 @@ pnpm preflight
 ```
 
 CI runs static checks, package and browser tests, build/export validation and soak-impact reporting on every PR. See the [development command reference](https://ai-markdown.github.io/docs/guides/development-commands/) for prerequisites, focused checks and compatibility aliases. `preflight` does not run a long soak or validate release approval.
+
+Vitest 5 caches transformed Node test modules on disk (`fsModuleCache`), including across soak shard processes. Tests still evaluate in isolated workers with their own seed and environment. To discard the cache, run `pnpm exec vitest --clearCache`; `--fsModuleCache=false` disables it for a diagnostic test run. Browser tests use their own Vite cache.
+
+Storybook 10.6.0's peer ranges predate Vitest 5. The workspace allows only the tested 5.0.1 combination and explicitly preserves the previous 1200×900 browser viewport. Mutation testing disables the disk module cache and carries a pnpm patch for Stryker 9.6.1: both its coverage IDs and test-name filters must use Vitest 5's `>` suite separator, otherwise mutants silently run zero tests.
 
 ### Changing the shared core
 

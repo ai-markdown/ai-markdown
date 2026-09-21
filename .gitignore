@@ -1,4 +1,5 @@
 node_modules/
+.vitest/
 dist/
 storybook-static/
 .stryker-tmp/

@@ -9,6 +9,9 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    // Soak shards run in separate processes. Reuse transforms on disk while
+    // keeping each shard's environment, module evaluation and tests isolated.
+    fsModuleCache: true,
     name: 'unit',
     setupFiles: process.env.SOAK_TASK ? ['../../scripts/soak/task-setup.mjs'] : [],
     environment: 'node',

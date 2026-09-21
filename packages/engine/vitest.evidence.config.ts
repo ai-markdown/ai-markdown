@@ -15,6 +15,7 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
   test: {
+    fsModuleCache: true,
     name: 'evidence',
     environment: 'node',
     include: ['src/**/*.evidence.ts'],

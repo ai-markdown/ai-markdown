@@ -113,3 +113,17 @@ overrides:
   # stale cruft — do not "clean up". Re-test before lifting.
   react-doctor: 0.8.1
   react-grab: 0.1.48
+
+# Storybook 10.6 predates Vitest 5. Keep this exception scoped to the exact
+# combination verified by both Storybook catalogs and the browser viewport
+# migration in vitest.config.ts; do not accept future majors implicitly.
+peerDependencyRules:
+  allowedVersions:
+    '@storybook/addon-vitest@10.6.0>vitest': '5.0.1'
+    '@storybook/addon-vitest@10.6.0>@vitest/browser': '5.0.1'
+    '@storybook/addon-vitest@10.6.0>@vitest/browser-playwright': '5.0.1'
+
+# Vitest 5 joins suite/test names with " > ". Keep coverage IDs and mutant
+# selection in sync until Stryker supports that separator upstream.
+patchedDependencies:
+  '@stryker-mutator/vitest-runner@9.6.1': patches/@stryker-mutator__vitest-runner@9.6.1.patch
