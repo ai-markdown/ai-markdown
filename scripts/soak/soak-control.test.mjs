@@ -1,7 +1,7 @@
 import process from 'node:process';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
@@ -222,6 +222,114 @@ test('concurrent overlapping seed reservations cannot both succeed', async (t) =
   );
   assert.equal(outcomes.filter((r) => r.status === 'fulfilled').length, 1);
 });
+
+// Use quick subprocesses to exercise cross-leg scheduling without running the
+// fuzz/census workloads. Real Vitest setup and reporting are exercised below.
+for (const scenario of [
+  {
+    name: 'full run prioritizes short checks and oracle',
+    legs: LEGS,
+    order: ['dir', 'scanner', 'oracle', 'latex', 'fuzz', 'census'],
+  },
+  {
+    name: 'subset preserves selection with execution priority',
+    legs: ['fuzz', 'scanner', 'oracle'],
+    order: ['scanner', 'oracle', 'fuzz'],
+  },
+  {
+    name: 'fail-fast leaves later legs unstarted',
+    legs: ['fuzz', 'dir', 'oracle'],
+    order: ['dir'],
+    failure: true,
+    failFast: true,
+  },
+  {
+    name: 'collect mode continues into later legs',
+    legs: ['fuzz', 'dir', 'oracle'],
+    order: ['dir', 'oracle', 'fuzz'],
+    failure: true,
+    failFast: false,
+  },
+]) {
+  test(scenario.name, (t) => {
+    const dir = temp(t);
+    const fixtureRoot = `${dir}/fixture`;
+    const run = `${dir}/run`;
+    for (const path of ['scripts/soak', 'packages/engine', 'node_modules/vitest'])
+      mkdirSync(`${fixtureRoot}/${path}`, { recursive: true });
+    mkdirSync(run);
+    for (const file of ['soak-runner', 'soak-contract', 'soak-metadata'])
+      copyFileSync(script(file), `${fixtureRoot}/scripts/soak/${file}.mjs`);
+    writeFileSync(
+      `${fixtureRoot}/node_modules/vitest/vitest.mjs`,
+      `import process from 'node:process';
+import { appendFileSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+const task = JSON.parse(process.env.SOAK_TASK);
+appendFileSync(resolve(dirname(task.output), 'started.jsonl'), JSON.stringify(task) + '\\n');
+writeFileSync(task.output, JSON.stringify({ ...task, environment: task.environment }));
+const failed = task.id === process.env.CONTROL_FAILED_TASK;
+const report = {
+  success: !failed, numTotalTests: 1, numPassedTests: failed ? 0 : 1,
+  numFailedTests: failed ? 1 : 0, numPendingTests: 0, numTodoTests: 0,
+  testResults: [{ name: resolve(process.argv[3]), status: failed ? 'failed' : 'passed',
+    assertionResults: [{ status: failed ? 'failed' : 'passed', failureMessages: [] }] }],
+};
+writeFileSync(process.argv.find((arg) => arg.startsWith('--outputFile.json=')).slice('--outputFile.json='.length), JSON.stringify(report));
+process.stdout.write(failed ? 'Tests 1 failed\\n' : 'Tests 1 passed\\n');
+process.exitCode = failed ? 1 : 0;
+`
+    );
+    const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' }).stdout.trim();
+    const m = {
+      schemaVersion: 2,
+      runId: 'scheduling',
+      label: 'scheduling',
+      mode: scenario.legs.length === LEGS.length ? 'full' : 'subset',
+      runKind: 'replay',
+      profile: 'smoke',
+      repository: { commit: git('rev-parse', 'HEAD'), dirty: !!git('status', '--porcelain') },
+      startedAt: new Date().toISOString(),
+      seedBase: 700001,
+      legs: scenario.legs,
+      shards: 2,
+      workers: 1,
+      failFast: scenario.failFast ?? true,
+      parameters,
+    };
+    put(`${run}/manifest.json`, m);
+    const outcome = spawnSync(process.execPath, [`${fixtureRoot}/scripts/soak/soak-runner.mjs`, run], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 10000,
+      env: { ...process.env, CONTROL_FAILED_TASK: scenario.failure ? 'dir-0' : '' },
+    });
+    assert.ifError(outcome.error);
+    assert.equal(outcome.status, scenario.failure ? 1 : 0, outcome.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(`${run}/manifest.json`)), m);
+    const result = JSON.parse(readFileSync(`${run}/result.json`));
+    assert.equal(result.status, scenario.failure ? 'failed' : 'passed');
+    assert.deepEqual(Object.keys(result.legs), scenario.order);
+    const started = readFileSync(`${run}/started.jsonl`, 'utf8').trim().split('\n').map(JSON.parse);
+    const expectedIds = scenario.order.flatMap((leg) =>
+      Array.from({ length: scenario.failure && m.failFast ? 1 : m.shards }, (_, i) => `${leg}-${i}`)
+    );
+    assert.deepEqual(
+      started.map((task) => task.id),
+      expectedIds
+    );
+    for (const task of started) {
+      const [leg, shard] = task.id.split('-');
+      assert.deepEqual(task.environment, taskEnvironment(m, leg, Number(shard)));
+    }
+    if (!scenario.failure && m.mode === 'full') {
+      const aggregated = spawnSync(process.execPath, [script('soak-aggregate'), '--profile', 'smoke', run], {
+        encoding: 'utf8',
+      });
+      assert.equal(aggregated.status, 0, aggregated.stderr);
+    }
+  });
+}
 
 // Exercise the actual Vitest subprocess and its setup/reporting boundary.
 async function realRun(t, workers, interrupt = false, fault = false, failFast = true, denyGroupKill = false) {

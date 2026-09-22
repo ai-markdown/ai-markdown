@@ -96,6 +96,20 @@ logical shards, while `WORKERS` defaults to detected cores minus two. Use
 reducing coverage. Release runs require at least 14 logical shards. `FAIL_FAST=1`
 is the default; use `FAIL_FAST=0` to collect failures across all legs.
 
+Execution proceeds through direction, scanner, oracle, LaTeX, fuzz, then census,
+so shorter checks and oracle failures surface before the long campaign. Leg
+selection, logical shards, seeds and budgets are unchanged by this ordering.
+
+Census shares immutable P3 reference preparation across a document's probes and
+checks P2 once per distinct scanner profile and cut sequence; P1 still drives
+every selected rendering configuration through fresh engine state. Oracle reference
+parses are reused only within one document and its zero-distance probes. Sample
+budgets, probe batteries, actual engine frames and anti-vacuity floors stay intact.
+`node scripts/soak/optimization-evidence.mjs <baseline-commit>` compares the two
+optimized harness files with their baseline versions on fixed diagnostic slices,
+checking test identities, coverage counters and diagnostic classifications while
+measuring time. These comparisons are not release-profile evidence.
+
 Each task writes a log, a Vitest JSON report, a task exit record and a runtime
 record of effective test parameters and worker CPU/peak RSS. Aggregate completed
 runs with `node scripts/soak/soak-aggregate.mjs .soak-logs/<run-id>`. Schema 2

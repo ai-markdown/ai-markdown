@@ -309,6 +309,7 @@ test('policy/control tests use CI, execution tools use smoke, sampling contracts
     'soak-control.test.mjs',
     'check-release.mjs',
     'soak-watch.sh',
+    'optimization-evidence.mjs',
     'coverage-map.json',
     'README.md',
   ])

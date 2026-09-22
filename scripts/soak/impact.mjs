@@ -48,6 +48,7 @@ const CONTROL_FILES = new Set([
   'scripts/soak/coverage-map.json',
   'scripts/soak/soak-watch.sh',
   'scripts/soak/gate-evidence.sh',
+  'scripts/soak/optimization-evidence.mjs',
 ]);
 const SMOKE_FILES = new Set([
   'scripts/soak/smoke.mjs',

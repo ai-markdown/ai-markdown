@@ -4,12 +4,17 @@ import { spawn, execFileSync } from 'node:child_process';
 import { openSync, closeSync, readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
-import { LEGS, TASK_FILES, taskEnvironment, validateTask, validateManifest } from './soak-contract.mjs';
+import { TASK_FILES, taskEnvironment, validateTask, validateManifest } from './soak-contract.mjs';
 
 const dir = resolve(process.argv[2]);
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const m = JSON.parse(readFileSync(`${dir}/manifest.json`, 'utf8'));
 validateManifest(m);
+
+// Surface short-leg and oracle failures before the long fuzz/census campaign.
+// Execution priority does not change the manifest, logical shards or seeds.
+const EXECUTION_ORDER = ['dir', 'scanner', 'oracle', 'latex', 'fuzz', 'census'];
+const orderedLegs = [...m.legs].sort((a, b) => EXECUTION_ORDER.indexOf(a) - EXECUTION_ORDER.indexOf(b));
 
 const active = new Set();
 let stopped = false;
@@ -123,7 +128,7 @@ async function task(leg, shard) {
 
 const legs = {};
 try {
-  for (const leg of LEGS.filter((leg) => m.legs.includes(leg))) {
+  for (const leg of orderedLegs) {
     const start = Date.now();
     const completed = [];
     let next = 0;
