@@ -26,7 +26,7 @@ The local runner defaults to 2 warm-up rounds and a 400 ms pause between samples
 node benchmarks/runner/compare.mjs <before.json> <after.json>
 ```
 
-There is no automatic renderer-performance budget. The GitHub [benchmark workflow](../.github/workflows/benchmark.yml) is **manual dispatch only**; automatic release-tag collection was removed on 2026-09-03. Its dispatch defaults are separate from the local runner's defaults. The workflow's self-test can fail a dispatched run because it validates the measuring instrument, not a library speed threshold.
+A separate [bounded performance check](sentinel/README.md) automatically compares React and Vue against the PR base or previous main commit. The exploratory matrix described below has no automatic performance budget. The GitHub [benchmark workflow](../.github/workflows/benchmark.yml) is **manual dispatch only**; automatic release-tag collection was removed on 2026-09-03. Its dispatch defaults are separate from the local runner's defaults. The workflow's self-test can fail a dispatched run because it validates the measuring instrument, not a library speed threshold.
 
 The earlier baseline-collection attempt had four workflow runs and no successful baseline: three tag runs failed around a leaked preview server, and one manual run reached the former 120-minute cap after 40 of 84 cells. The workflow now has a 240-minute cap, but this is not evidence that automatic collection has been validated or resumed.
 

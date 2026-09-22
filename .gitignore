@@ -40,3 +40,6 @@ apps/docs/.astro/
 apps/docs/src/content/docs/
 
 _site/
+
+# Second revision built by the bounded performance workflow.
+/.benchmark-baseline/

@@ -14,6 +14,7 @@ const steps = [
   ['check:public-api'],
   ['test:command-control'],
   ['test:soak-control'],
+  ['test:perf-control'],
   ['test:release-control'],
   ['test:unit'],
   ['packcheck'],

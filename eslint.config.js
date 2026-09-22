@@ -27,6 +27,7 @@ export default defineConfig(
       // Flat config does not read .gitignore, so without this entry a root
       // `pnpm lint` reports every local script as an error.
       '**/.local-notes/**',
+      '.benchmark-baseline/**',
       // Composed GitHub Pages site written by scripts/assemble-pages.mjs
       // (already listed in .prettierignore). Bundled output, not source.
       '_site/**',

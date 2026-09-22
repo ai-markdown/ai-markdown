@@ -1,0 +1,61 @@
+name: Renderer performance
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/performance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'packages/**'
+      - 'benchmarks/**'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - 'pnpm-workspace.yaml'
+      - '.github/workflows/performance.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: renderer-performance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sentinel:
+    name: Bounded React and Vue performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha || github.event.before }}
+          path: .benchmark-baseline
+      - uses: pnpm/setup@v2
+        with:
+          runtime: node@22.23.2
+          cache: true
+          install: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --dir .benchmark-baseline install --frozen-lockfile
+      - run: pnpm test:perf-control
+      - name: Build both library revisions
+        run: |
+          pnpm --filter '@ai-markdown/react...' --filter @ai-markdown/vue build
+          pnpm --dir .benchmark-baseline --filter '@ai-markdown/react...' --filter @ai-markdown/vue build
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Compare identical workloads in the same browser and machine
+        run: pnpm bench:sentinel --baseline .benchmark-baseline
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: renderer-performance-evidence
+          path: benchmarks/results/sentinel-*.json
+          retention-days: 30
