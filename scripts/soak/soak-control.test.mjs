@@ -331,3 +331,71 @@ test('a previously replayed stream cannot become fresh evidence', (t) => {
 test('process-group denial still persists interruption and cleans other workers', { timeout: 20000 }, (t) =>
   realRun(t, 2, true, false, true, true)
 );
+
+test(
+  'bounded smoke pins every budget and propagates launcher and evidence failures',
+  { skip: process.platform === 'win32' },
+  (t) => {
+    const dir = temp(t);
+    const log = resolve(dir, 'environment.json');
+    writeFileSync(
+      resolve(dir, 'bash'),
+      `#!${process.execPath}
+require('node:fs').writeFileSync(process.env.SMOKE_TEST_LOG, JSON.stringify(process.env));
+process.exit(Number(process.env.SMOKE_TEST_EXIT));
+`,
+      { mode: 0o755 }
+    );
+    for (const status of [7, 0]) {
+      const result = spawnSync(process.execPath, [script('smoke')], {
+        encoding: 'utf8',
+        timeout: 15000,
+        env: {
+          ...process.env,
+          PATH: `${dir}:${process.env.PATH}`,
+          SMOKE_TEST_LOG: log,
+          SMOKE_TEST_EXIT: String(status),
+          SOAK_PROFILE: 'release',
+          RUN_KIND: 'fresh',
+          LEGS: 'latex',
+          SHARDS: '99',
+          WORKERS: '99',
+          FUZZ1: '1',
+          FUZZ2: '1',
+          FUZZ3: '1',
+          FUZZ4: '1',
+          ORACLE: '1',
+          CENSUS_K: '4',
+          CENSUS_NAME_K: '4',
+          CENSUS_STRIDE: '99',
+          CENSUS_NAME_STRIDE: '99',
+          FALLBACK_ORACLE_SAMPLE: '999',
+          FAIL_FAST: '0',
+        },
+      });
+      assert.ifError(result.error);
+      assert.equal(result.status, status || 1, result.stderr);
+      if (status === 0) assert.match(result.stderr, /missing manifest.json|missing result.json/);
+      const env = JSON.parse(readFileSync(log, 'utf8'));
+      for (const [key, value] of Object.entries({
+        SOAK_PROFILE: 'smoke',
+        RUN_KIND: 'replay',
+        LEGS: LEGS.join(','),
+        SHARDS: '2',
+        WORKERS: '2',
+        FUZZ1: '1000',
+        FUZZ2: '1000',
+        FUZZ3: '1000',
+        FUZZ4: '1000',
+        ORACLE: '100',
+        CENSUS_K: '2',
+        CENSUS_NAME_K: '2',
+        CENSUS_STRIDE: '1',
+        CENSUS_NAME_STRIDE: '1',
+        FALLBACK_ORACLE_SAMPLE: '20',
+        FAIL_FAST: '1',
+      }))
+        assert.equal(env[key], value, key);
+    }
+  }
+);

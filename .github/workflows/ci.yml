@@ -43,8 +43,10 @@ jobs:
 
   soak-impact:
     name: Assess engine soak impact
+    timeout-minutes: 15
     outputs:
       required: ${{ steps.impact.outputs.required }}
+      smoke_required: ${{ steps.impact.outputs.smoke_required }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout candidate and release history
@@ -60,14 +62,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
       # Report the candidate's cumulative impact since the preceding train tag.
-      # This job does not execute soak or approve a release.
+      # Tool changes run bounded smoke; full campaigns stay local.
       - name: Report engine soak requirement
         id: impact
         run: pnpm check:soak-impact
+      - name: Build engine workspace dependencies
+        if: steps.impact.outputs.smoke_required == 'true'
+        run: pnpm --filter '@ai-markdown/engine...' build
+      - name: Verify soak toolchain (bounded six-leg smoke)
+        if: steps.impact.outputs.smoke_required == 'true'
+        run: pnpm test:soak-smoke
+      - name: Upload soak smoke reports
+        if: always() && steps.impact.outputs.smoke_required == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: ci-soak-smoke
+          path: .soak-logs/toolchain-smoke-*/
+          include-hidden-files: true
+          retention-days: 7
 
   soak-status:
     name: >-
-      ${{ needs.soak-impact.outputs.required == 'true' && '⚠ Engine soak REQUIRED before release' ||
+      ${{ needs.soak-impact.result != 'success' && '⚠ Engine soak assessment or smoke FAILED' ||
+          needs.soak-impact.outputs.required == 'true' && '⚠ Engine soak FULL required before release' ||
+          needs.soak-impact.outputs.smoke_required == 'true' && '✓ Engine soak SMOKE verified' ||
           needs.soak-impact.outputs.required == 'false' && '✓ Engine soak NOT REQUIRED' ||
           '⚠ Engine soak assessment UNAVAILABLE' }}
     needs: soak-impact
@@ -76,12 +94,20 @@ jobs:
     permissions: {}
     env:
       SOAK_REQUIRED: ${{ needs.soak-impact.outputs.required }}
+      SOAK_SMOKE: ${{ needs.soak-impact.outputs.smoke_required }}
+      ASSESSMENT_RESULT: ${{ needs.soak-impact.result }}
     steps:
       - name: Surface decision in the PR check list
         run: |
+          if [ "$ASSESSMENT_RESULT" != success ]; then
+            echo "::error::Engine soak assessment or bounded smoke failed."; exit 1
+          fi
+          if [ "$SOAK_SMOKE" = true ]; then
+            echo "Bounded six-leg toolchain smoke passed. This is not full release-profile evidence." >> "$GITHUB_STEP_SUMMARY"
+          fi
           case "$SOAK_REQUIRED" in
-            true) echo "Engine soak is REQUIRED before release. This successful reporting check is not soak evidence. Complete the local release profile and approve the release gate." >> "$GITHUB_STEP_SUMMARY" ;;
-            false) echo "Engine soak is NOT REQUIRED for the assessed range. Release CI reassesses the final candidate." >> "$GITHUB_STEP_SUMMARY" ;;
+            true) echo "Full engine soak is REQUIRED before release. This successful reporting check is not soak evidence. Complete the local release profile and approve the release gate." >> "$GITHUB_STEP_SUMMARY" ;;
+            false) echo "Full engine soak is NOT REQUIRED for the assessed range. Release CI reassesses the final candidate." >> "$GITHUB_STEP_SUMMARY" ;;
             *) echo "::error::Engine soak assessment is unavailable; do not infer that soak is unnecessary."; exit 1 ;;
           esac
 
