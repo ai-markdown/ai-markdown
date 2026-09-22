@@ -20,16 +20,9 @@
  *   below): full `expect(renderNew).toBe(renderLegacy)` byte-for-byte
  *   equality. This is the strong contract.
  *
- * - **Cross-chunk path** (`describe('cross-chunk semantic equivalence')`):
- *   regex-strip and sort. Backref anchors are stripped, all remaining
- *   tags are dropped, and the resulting token sets are compared via
- *   set equality. This is **semantic** equivalence only — aggregate
- *   footer whitespace, attribute ordering, separator characters, and
- *   in-body markup divergence between the single-doc and chunked
- *   renderings are NOT enforced here. The chunked output is a
- *   deliberately weaker guarantee because the aggregate footer is
- *   synthesised separately from mdast-util-to-hast's footer emission.
- *   Do not assume the chunked output is byte-stable across releases.
+ * - **Wrapped SSR path**: compares a single wrapped chunk against standalone
+ *   output while the registry is empty. Cross-chunk resolution requires
+ *   mounting effects and is tested in crossChunkSemantics.test.tsx.
  */
 
 import { describe, test, expect } from 'vitest';
@@ -596,41 +589,4 @@ describe('cross-chunk semantic equivalence', () => {
       expect(html).toContain('<img src="https://example.com/g"');
     });
   });
-
-  function extractFootnoteItems(html: string): { label: string; text: string }[] {
-    // crude but bounded: match all <li id="..." data-footnote-ref … >...</li>
-    const re = /<li[^>]+id="[^"]*-user-content-fn-([^"]+)"[^>]*>([\s\S]*?)<\/li>/g;
-    const out: { label: string; text: string }[] = [];
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(html))) {
-      // Strip backref anchors (and their ↩ glyph children) before tag-strip
-      // so single-doc rendering (which keeps backrefs) compares cleanly to
-      // chunked rendering, where the aggregate footer is synthesised outside
-      // mdast-util-to-hast's footer() and emits no backref anchors at all.
-      const withoutBackrefs = m[2].replace(/<a[^>]*data-footnote-backref[^>]*>[\s\S]*?<\/a>/g, '');
-      // strip remaining tags from text content
-      const txt = withoutBackrefs.replace(/<[^>]*>/g, '').trim();
-      out.push({ label: m[1], text: txt });
-    }
-    return out;
-  }
-
-  const corpus: [name: string, full: string, split: string[]][] = [
-    ['fn-simple', 'See [^x].\n\n[^x]: hello', ['See [^x].\n', '\n[^x]: hello']],
-    ['linkref-full', '[click][x]\n\n[x]: https://example.com', ['[click][x]\n', '\n[x]: https://example.com']],
-    ['linkref-shortcut', '[x]\n\n[x]: https://example.com', ['[x]\n', '\n[x]: https://example.com']],
-    ['linkref-collapsed', '[x][]\n\n[x]: https://example.com', ['[x][]\n', '\n[x]: https://example.com']],
-  ];
-
-  for (const [name, full, split] of corpus) {
-    test(`semantic equivalence: ${name}`, () => {
-      const singleHtml = renderSingle(full, name);
-      const chunkedHtml = renderChunked(split, name);
-      const singleItems = extractFootnoteItems(singleHtml);
-      const chunkedItems = extractFootnoteItems(chunkedHtml);
-      // Sort by label for stable comparison; chunked may scatter footers.
-      const norm = (xs: typeof singleItems) => xs.slice().sort((a, b) => a.label.localeCompare(b.label));
-      expect(norm(chunkedItems)).toEqual(norm(singleItems));
-    });
-  }
 });
