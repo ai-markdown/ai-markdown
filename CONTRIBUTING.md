@@ -130,6 +130,8 @@ confirm that no metadata writer is active before removing that stale lock.
 
 A green soak is an **engine-impacting release** gate, not a per-PR one; CI does not execute the full campaign. `pnpm check:soak-impact` separates full engine campaigns from bounded toolchain smoke. Vitest/cache/runner upgrades run `pnpm test:soak-smoke` automatically in CI and release verification; engine, generator, oracle and sampling changes still require full soak. Validate local evidence with `pnpm check:release-soak --evidence <run-dir>...`; release CI waits for `soak-approval` when required. See [soak coverage](https://ai-markdown.github.io/docs/guides/soak-coverage/) for trigger rules, evidence reuse, and reviewer responsibilities. If your PR changes engine behavior, say in the description whether you ran it and what the result was.
 
+Soak reports must match the independent suite/test identities in `scripts/soak/test-inventory.json`, including manifest-scaled names. When intentionally adding or renaming a soak case, review that inventory alongside the test. Never regenerate the expected set from the report being validated: that would accept accidental filtering or missing collection. Validate the change with `pnpm test:soak-control` and the bounded six-leg smoke.
+
 #### Where a number goes
 
 Tightening one of these instruments produces two kinds of number, and they need different homes:

@@ -1,0 +1,119 @@
+{
+  "fuzz": [
+    [
+      "splice fuzz arbiter (runs={runs} seed={seed} fallbackOracleSample={fallbackOracleSample})",
+      "benign-biased family: equivalence + hot splice path"
+    ],
+    [
+      "splice fuzz arbiter (runs={runs} seed={seed} fallbackOracleSample={fallbackOracleSample})",
+      "hazard-dense family: equivalence + generator coverage meters"
+    ],
+    [
+      "splice fuzz arbiter (runs={runs} seed={seed} fallbackOracleSample={fallbackOracleSample})",
+      "cross-chunk family: phantom-suffix churn under fuzzed docs"
+    ]
+  ],
+  "dir": [
+    [
+      "boundary direction battery (runs={runs} seed={seed}, futures=30)",
+      "frozen output is stable under every hazard future"
+    ],
+    [
+      "task-list content column",
+      "`- [x] a` and `-   [x] a` are distinct states and answer a two-column setext future differently"
+    ]
+  ],
+  "scanner": [
+    [
+      "def-label scanner — fuzz equivalence under the scanner boundary profile",
+      "hazard corpus: scanner equals full parse at every snapshot"
+    ],
+    [
+      "def-label scanner — fuzz equivalence under the scanner boundary profile",
+      "benign corpus: scanner equals full parse at every snapshot"
+    ]
+  ],
+  "census": [
+    [
+      "splice exhaustive sweep (fragment band K={censusK}, alphabet=33)",
+      "all sequences × all 2-cuts (+ sampled 3-cuts)"
+    ],
+    ["name-class census (K={censusNameK}, alphabet=65 from 22 classes)", "every derived name-class line sequence"],
+    ["state-directed search (depth=2, keep=3)", "abstract state coverage and F20 reachability"]
+  ],
+  "oracle": [
+    ["oracle self-tests (must fire / must stay quiet)", "the formElement counterexample fires at both identity layers"],
+    ["oracle self-tests (must fire / must stay quiet)", "the def-list back-claim fires on the M oracle"],
+    ["oracle self-tests (must fire / must stay quiet)", "list continuation across the blank fires on the M oracle"],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "a footnote definition tail retargets an orphan ref (R dimension)"
+    ],
+    ["oracle self-tests (must fire / must stay quiet)", "a raw-text element open across the blank fires (F10 shape)"],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "a planted under-block fires on the P snapshot gate (the gate is not blind)"
+    ],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "a zero-width node AT the boundary stays quiet on the P snapshot gate (281d artifact)"
+    ],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "a still-open raw-text element does not turn footer furniture into a frozen claim (F21)"
+    ],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "a document cannot forge the footer exemption and silence the gate"
+    ],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "the per-document vacuity counter responds to a blinded document"
+    ],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "the M oracle stays quiet on paragraph prefixes for every probe"
+    ],
+    [
+      "oracle self-tests (must fire / must stay quiet)",
+      "the engine probe stays quiet on paragraph prefixes for every probe"
+    ],
+    ["oracle sweep — pinned realistic corpus", "GFM_BASICS"],
+    ["oracle sweep — pinned realistic corpus", "PROSE_SAMPLE"],
+    ["oracle sweep — pinned realistic corpus", "TABLES_DOC"],
+    ["oracle sweep — pinned realistic corpus", "TASK_LIST_DOC"],
+    ["oracle sweep — pinned realistic corpus", "FOOTNOTES_DOC"],
+    ["oracle sweep — pinned realistic corpus", "DEFINITION_LIST_DOC"],
+    ["oracle sweep — pinned realistic corpus", "MATH_DOC"],
+    ["oracle sweep — pinned realistic corpus", "CJK_MIXED_DOC"],
+    ["oracle sweep — pinned realistic corpus", "RTL_DOC"],
+    ["oracle sweep — pinned realistic corpus", "MARK_HIGHLIGHT_DOC"],
+    ["oracle sweep — pinned realistic corpus", "SMARTYPANTS_DOC"],
+    ["oracle sweep — pinned realistic corpus", "COMMENTS_DOC"],
+    ["oracle sweep — pinned realistic corpus", "URL_SCHEMES_DOC"],
+    ["oracle sweep — pinned realistic corpus", "LINKED_PROSE_DOC"],
+    ["oracle sweep — pinned realistic corpus", "CODE_SAMPLES_DOC"],
+    ["oracle sweep — pinned realistic corpus", "SECRETS_DOC"],
+    ["oracle sweep — pinned realistic corpus", "KITCHEN_SINK"],
+    ["oracle sweep — pinned realistic corpus", "REF_RESOLUTION_LINK"],
+    ["oracle sweep — pinned realistic corpus", "REF_RESOLUTION_FOOTNOTE"],
+    ["oracle sweep — pinned realistic corpus", "REF_RESOLUTION_TITLED"],
+    ["oracle sweep — pinned realistic corpus", "TAB_INDENT_DOC"],
+    ["oracle sweep — pinned realistic corpus", "TAB_FENCE_TABLE_DOC"],
+    ["oracle sweep — pinned realistic corpus", "TAG_PREFIX_BLOCKS_DOC"],
+    ["oracle sweep — pinned realistic corpus", "TAG_PREFIX_TABLE_MIX_DOC"],
+    ["oracle sweep — fuzz corpus (env-scaled)", "benign × {oracle}"],
+    ["oracle sweep — fuzz corpus (env-scaled)", "hazard × {oracle}"],
+    ["pinned corpus integrity", "the fuzz slice is deterministic for this fast-check build"]
+  ],
+  "latex": [
+    [
+      "latex entry-point equivalence fuzz (runs={runs} seed={seed})",
+      "line soup: incremental equals stateless at every append"
+    ],
+    [
+      "latex entry-point equivalence fuzz (runs={runs} seed={seed})",
+      "composed seam: freeze, whitespace seam, whole-string tail"
+    ]
+  ]
+}

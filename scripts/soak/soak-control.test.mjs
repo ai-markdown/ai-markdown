@@ -7,7 +7,7 @@ import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { spawnSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { LEGS, TASK_FILES, seedOverlap, taskEnvironment } from './soak-contract.mjs';
+import { LEGS, TASK_FILES, seedOverlap, taskEnvironment, expectedTests } from './soak-contract.mjs';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const script = (name) => resolve(root, `scripts/soak/${name}.mjs`);
@@ -56,12 +56,13 @@ function fixture(dir) {
   for (const leg of LEGS)
     for (let shard = 0; shard < 14; shard++) {
       const id = `${leg}-${shard}`;
+      const names = expectedTests(m, leg, shard);
       writeFileSync(`${dir}/${id}.log`, 'Tests  1 passed (1)\n');
       put(`${dir}/${id}.task.json`, { id, runId: m.runId, exitCode: 0, signal: null, status: 'passed' });
       put(`${dir}/${id}.vitest.json`, {
         success: true,
-        numTotalTests: 1,
-        numPassedTests: 1,
+        numTotalTests: names.length,
+        numPassedTests: names.length,
         numFailedTests: 0,
         numPendingTests: 0,
         numTodoTests: 0,
@@ -69,7 +70,12 @@ function fixture(dir) {
           {
             name: `/fixture/src/${TASK_FILES[leg]}`,
             status: 'passed',
-            assertionResults: [{ status: 'passed', failureMessages: [] }],
+            assertionResults: names.map((path) => ({
+              ancestorTitles: path.slice(0, -1),
+              title: path.at(-1),
+              status: 'passed',
+              failureMessages: [],
+            })),
           },
         ],
       });
@@ -114,6 +120,10 @@ for (const fault of [
   'wrong-file',
   'empty-assertions',
   'failed-assertion',
+  'omitted-test',
+  'duplicate-test',
+  'wrong-test',
+  'wrong-suite',
 ]) {
   test(`rejects ${fault} evidence`, (t) => {
     const dir = temp(t);
@@ -160,6 +170,17 @@ for (const fault of [
     if (fault === 'failed-assertion')
       edit('vitest', (d) => {
         d.testResults[0].assertionResults = [{ status: 'failed' }];
+      });
+    if (['omitted-test', 'duplicate-test', 'wrong-test', 'wrong-suite'].includes(fault))
+      edit('vitest', (d) => {
+        const assertions = d.testResults[0].assertionResults;
+        if (fault === 'omitted-test') {
+          assertions.pop();
+          d.numTotalTests = d.numPassedTests = assertions.length;
+        }
+        if (fault === 'duplicate-test') assertions[1] = assertions[0];
+        if (fault === 'wrong-test') assertions[0].title = 'unexpected passing test';
+        if (fault === 'wrong-suite') assertions[0].ancestorTitles = ['unexpected suite'];
       });
     if (fault === 'log') writeFileSync(`${dir}/fuzz-0.log`, 'Tests 1 failed | 1 passed\nTests 1 passed\n');
     assert.notEqual(aggregate(dir).status, 0);
@@ -260,20 +281,25 @@ for (const scenario of [
     mkdirSync(run);
     for (const file of ['soak-runner', 'soak-contract', 'soak-metadata'])
       copyFileSync(script(file), `${fixtureRoot}/scripts/soak/${file}.mjs`);
+    copyFileSync(resolve(root, 'scripts/soak/test-inventory.json'), `${fixtureRoot}/scripts/soak/test-inventory.json`);
     writeFileSync(
       `${fixtureRoot}/node_modules/vitest/vitest.mjs`,
       `import process from 'node:process';
-import { appendFileSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { expectedTests } from '../../scripts/soak/soak-contract.mjs';
 import { dirname, resolve } from 'node:path';
 const task = JSON.parse(process.env.SOAK_TASK);
 appendFileSync(resolve(dirname(task.output), 'started.jsonl'), JSON.stringify(task) + '\\n');
 writeFileSync(task.output, JSON.stringify({ ...task, environment: task.environment }));
 const failed = task.id === process.env.CONTROL_FAILED_TASK;
+const manifest = JSON.parse(readFileSync(resolve(dirname(task.output), 'manifest.json')));
+const [leg, shard] = task.id.split('-');
+const names = expectedTests(manifest, leg, Number(shard));
 const report = {
-  success: !failed, numTotalTests: 1, numPassedTests: failed ? 0 : 1,
+  success: !failed, numTotalTests: names.length, numPassedTests: failed ? 0 : names.length,
   numFailedTests: failed ? 1 : 0, numPendingTests: 0, numTodoTests: 0,
   testResults: [{ name: resolve(process.argv[3]), status: failed ? 'failed' : 'passed',
-    assertionResults: [{ status: failed ? 'failed' : 'passed', failureMessages: [] }] }],
+    assertionResults: names.map((path) => ({ ancestorTitles: path.slice(0, -1), title: path.at(-1), status: failed ? 'failed' : 'passed', failureMessages: [] })) }],
 };
 writeFileSync(process.argv.find((arg) => arg.startsWith('--outputFile.json=')).slice('--outputFile.json='.length), JSON.stringify(report));
 process.stdout.write(failed ? 'Tests 1 failed\\n' : 'Tests 1 passed\\n');
