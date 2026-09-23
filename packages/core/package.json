@@ -50,7 +50,7 @@
     "unist-util-visit": "^5.1.0"
   },
   "devDependencies": {
-    "@types/node": "^25.9.6",
+    "@types/node": "^25.9.8",
     "unified": "^11.0.5",
     "remark-parse": "^11.0.0",
     "remark-gfm": "^4.0.1",
@@ -60,7 +60,7 @@
     "@ai-markdown/rehype-raw": "7.0.3",
     "rehype-sanitize": "^6.0.0",
     "vfile": "^6.0.3",
-    "fast-check": "^4.9.0"
+    "fast-check": "^4.10.1"
   },
   "publishConfig": {
     "access": "public"
