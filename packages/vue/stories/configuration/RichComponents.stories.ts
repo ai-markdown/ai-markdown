@@ -40,6 +40,8 @@ const BusinessImage = createMarkdownImage({
     error: () => h('span', '!'),
     preview: () => h('span', 'View photo'),
     gallery: h('span', 'Open album'),
+    zoomIn: () => h('span', '+'),
+    zoomOut: h('span', '−'),
   },
 });
 export const CustomImageIcons: StoryObj<typeof AIMarkdown> = {

@@ -31,8 +31,7 @@
   margin-inline-end: auto;
 }
 .aimd-toolbar button,
-.aimd-diagram button,
-.aimd-image-dialog button {
+.aimd-diagram button {
   font: inherit;
   color: inherit;
   cursor: pointer;
@@ -96,27 +95,6 @@
 }
 .aimd-image-trigger img {
   max-width: 100%;
-}
-.aimd-image-dialog {
-  max-width: 95vw;
-  max-height: 95vh;
-  padding: 1rem;
-  border: 0;
-  border-radius: 0.5rem;
-}
-.aimd-image-dialog::backdrop {
-  background: #000b;
-}
-.aimd-image-dialog > button {
-  display: block;
-  margin-inline-start: auto;
-  margin-block-end: 0.5rem;
-}
-.aimd-image-dialog img {
-  display: block;
-  max-width: 85vw;
-  max-height: 80vh;
-  object-fit: contain;
 }
 
 .aimd-image {
@@ -196,23 +174,268 @@
   outline: 2px solid #4a85e8;
   outline-offset: 2px;
 }
-@media (hover: none) {
-  .aimd-image-cover {
-    inset: auto 0.5rem 0.5rem auto;
-    padding: 0.4rem;
-    border-radius: 0.35rem;
-    opacity: 1;
-  }
+/* Preview layout adapted from the supplied PreviewImage reference. */
+.aimd-image {
+  position: relative;
+  display: inline-block;
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
 }
-@media (prefers-reduced-motion: reduce) {
-  .aimd-image-cover {
-    transition: none;
-  }
+.aimd-image-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+}
+.aimd-image-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background-color: rgba(0, 0, 0, 0);
+  opacity: 0;
+  cursor: pointer;
+  transition:
+    opacity 0.25s,
+    background-color 0.25s;
+}
+.aimd-image:hover .aimd-image-cover {
+  opacity: 1;
+  background-color: rgba(0, 0, 0, 0.4);
+}
+.aimd-image-placeholder {
+  position: absolute;
+  inset: 0;
 }
 
-.aimd-image-viewport img {
-  margin-inline: auto;
+.aimd-image-preview {
+  position: fixed;
+  overflow: hidden;
+  user-select: none;
+  inset: 0;
+  z-index: 1100;
+}
+.aimd-image-preview-mask {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.65);
+}
+.aimd-image-preview-body {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  inset: 0;
+}
+.aimd-image-preview-body > * {
+  pointer-events: auto;
+}
+.aimd-image-preview-img {
+  max-width: 100%;
+  max-height: 70%;
+}
+.aimd-image-preview-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  border: 0;
+  border-radius: 50%;
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.aimd-image-preview-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.aimd-image-preview-switch {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+  border: 0;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  backdrop-filter: blur(4px);
+  cursor: pointer;
+  font: inherit;
+  transition: background 0.2s;
+}
+.aimd-image-preview-switch:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+.aimd-image-preview-switch-disabled {
+  cursor: default;
+  opacity: 0.2;
+}
+.aimd-image-preview-switch-prev {
+  inset-inline-start: 16px;
+}
+.aimd-image-preview-switch-next {
+  inset-inline-end: 16px;
+}
+.aimd-image-preview-footer {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  align-items: center;
+  transform: translateX(-50%);
+}
+.aimd-image-preview-progress {
+  color: #fff;
+}
+.aimd-image-preview-actions {
+  display: flex;
+  gap: 8px;
+  padding: 8px 16px;
+  background: rgba(0, 0, 0, 0.4);
+  border-radius: 99px;
+  backdrop-filter: blur(4px);
+}
+.aimd-image-preview-actions-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.8);
+  background: transparent;
+  border: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  font: inherit;
+  transition:
+    color 0.15s,
+    background 0.15s;
+}
+.aimd-image-preview-actions-action:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.15);
+}
+.aimd-image-preview-actions-action-disabled {
+  color: rgba(255, 255, 255, 0.3);
+  cursor: default;
+  opacity: 0.5;
+}
+/* Shared rc-image skin; native dialog supplies Vue's focus and modal semantics. */
+dialog.aimd-image-preview {
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: white;
+}
+dialog.aimd-image-preview::backdrop {
+  background: transparent;
 }
 .aimd-image-preview:focus {
   outline: none;
+}
+.aimd-image-preview-surface {
+  display: contents;
+}
+.aimd-image-preview-body .aimd-image-feedback {
+  position: absolute;
+  inset: 0;
+  color: white;
+  pointer-events: none;
+}
+.aimd-image-preview-img {
+  touch-action: none;
+  transition: transform 0.3s;
+}
+.aimd-image-preview-moving .aimd-image-preview-img {
+  transition-duration: 0s;
+}
+.aimd-image-preview-movable .aimd-image-preview-img {
+  cursor: grab;
+}
+.aimd-image-preview-moving .aimd-image-preview-img {
+  cursor: grabbing;
+}
+.aimd-image-preview button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.aimd-image-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+.aimd-image-fade-appear,
+.aimd-image-fade-enter,
+.aimd-image-fade-enter-from,
+.aimd-image-fade-leave-active {
+  opacity: 0;
+}
+.aimd-image-fade-appear-active,
+.aimd-image-fade-enter-active {
+  opacity: 1;
+}
+.aimd-image-fade-appear-active,
+.aimd-image-fade-enter-active,
+.aimd-image-fade-leave-active {
+  transition: opacity 0.3s;
+}
+.aimd-image-fade-enter-from,
+.aimd-image-fade-leave-to {
+  opacity: 0;
+}
+.aimd-image-fade-appear .aimd-image-preview-body,
+.aimd-image-fade-enter .aimd-image-preview-body,
+.aimd-image-fade-enter-from .aimd-image-preview-body {
+  transform: scale(0);
+}
+.aimd-image-fade-appear-active .aimd-image-preview-body,
+.aimd-image-fade-enter-active .aimd-image-preview-body {
+  transform: scale(1);
+  transition: transform 0.3s;
+}
+.aimd-image-fade-enter-from .aimd-image-preview-body {
+  transform: scale(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .aimd-image-cover,
+  .aimd-image-preview,
+  .aimd-image-preview-body,
+  .aimd-image-preview-img {
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.aimd-image-trigger:focus-visible .aimd-image-cover {
+  background-color: rgba(0, 0, 0, 0.4);
 }

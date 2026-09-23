@@ -1,3 +1,4 @@
+import { ImagePreview } from './imagePreview';
 import {
   defineComponent,
   h,
@@ -6,7 +7,6 @@ import {
   onMounted,
   ref,
   shallowRef,
-  Teleport,
   watch,
   nextTick,
   type Component,
@@ -20,7 +20,6 @@ import {
   getImageGallery,
   imageGroupSelector,
   imageIconPaths,
-  lockImagePreviewScroll,
   type ImageGalleryItem,
   type ImageIconName,
   type ImageLoadStatus,
@@ -70,17 +69,12 @@ export function createMarkdownImage({
     props: { node: Object as PropType<Element>, streaming: Boolean, metadata: null },
     setup(_, { attrs }) {
       const image = ref<HTMLImageElement>(),
-        trigger = ref<HTMLButtonElement>(),
-        dialog = ref<HTMLDialogElement>();
+        trigger = ref<HTMLButtonElement>();
       const enabled = ref(false),
         selected = shallowRef<object | null>(null),
         items = shallowRef<readonly ImageGalleryItem[]>([]),
-        original = ref(false),
-        zoom = ref(1),
-        rotation = ref(0),
         status = ref<ImageLoadStatus>('loading'),
-        loadedSource = ref(''),
-        previewStatus = ref<ImageLoadStatus>('loading');
+        loadedSource = ref('');
       let observer: MutationObserver | undefined;
       const update = () => {
         const parent = image.value?.closest('.aimd-image');
@@ -153,35 +147,18 @@ export function createMarkdownImage({
       );
       const close = () => {
         selected.value = null;
-        trigger.value?.focus();
       };
       const current = () => items.value.find((item) => item.id === selected.value);
-      watch([() => current()?.id, () => current()?.src], () => {
-        original.value = false;
-        zoom.value = 1;
-        rotation.value = 0;
-        previewStatus.value = 'loading';
-        if (selected.value && !current()) close();
-        else if (selected.value)
-          void nextTick(() => dialog.value?.querySelector<HTMLElement>('.aimd-image-preview')?.focus());
-      });
       watch(
-        () => Boolean(current()),
-        (open, _, onCleanup) => {
-          if (open) onCleanup(lockImagePreviewScroll(document.body));
-          if (open && dialog.value && !dialog.value.open) dialog.value.showModal();
-          else if (!open) dialog.value?.close();
-        },
-        { flush: 'post' }
+        () => current(),
+        (item) => {
+          if (selected.value && !item) close();
+        }
       );
       onBeforeUnmount(() => observer?.disconnect());
       return () => {
         const item = current(),
           index = items.value.findIndex((entry) => entry.id === selected.value);
-        const move = (delta: number) => {
-          const target = items.value[index + delta];
-          if (target) selected.value = target.id;
-        };
         const feedback = (state: ImageLoadStatus, alt = '') =>
           state !== 'ready' &&
           h('span', { class: 'aimd-image-feedback', role: state === 'error' ? 'alert' : 'status' }, [
@@ -240,138 +217,17 @@ export function createMarkdownImage({
               : content
           ),
           enabled.value &&
-            h(
-              Teleport,
-              { to: 'body' },
-              h(
-                'dialog',
-                {
-                  ref: dialog,
-                  class: 'aimd-image-dialog',
-                  'aria-label': item?.alt || 'Image preview',
-                  onCancel: (event: Event) => {
-                    event.preventDefault();
-                    close();
-                  },
-                  onClose: close,
-                  onClick: (event: MouseEvent) => {
-                    if (event.target === event.currentTarget) close();
-                  },
-                },
-                item
-                  ? [
-                      h(
-                        'div',
-                        {
-                          class: 'aimd-image-preview',
-                          tabindex: -1,
-                          onKeydown: (event: KeyboardEvent) => {
-                            if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-                            if (event.key === 'ArrowLeft' && index > 0) {
-                              event.preventDefault();
-                              move(-1);
-                            }
-                            if (event.key === 'ArrowRight' && index < items.value.length - 1) {
-                              event.preventDefault();
-                              move(1);
-                            }
-                          },
-                        },
-                        [
-                          h('div', { class: 'aimd-toolbar', role: 'group', 'aria-label': 'Image preview actions' }, [
-                            h('button', { type: 'button', autofocus: true, onClick: close }, 'Close preview'),
-                            items.value.length > 1 && [
-                              h(
-                                'button',
-                                { type: 'button', disabled: index === 0, onClick: () => move(-1) },
-                                'Previous image'
-                              ),
-                              h('span', { role: 'status' }, `${index + 1} / ${items.value.length}`),
-                              h(
-                                'button',
-                                { type: 'button', disabled: index === items.value.length - 1, onClick: () => move(1) },
-                                'Next image'
-                              ),
-                            ],
-                            h(
-                              'button',
-                              {
-                                type: 'button',
-                                'aria-pressed': original.value,
-                                onClick: () => {
-                                  original.value = !original.value;
-                                  zoom.value = 1;
-                                },
-                              },
-                              original.value ? 'Fit image' : 'Original size'
-                            ),
-                            h(
-                              'button',
-                              {
-                                type: 'button',
-                                disabled: zoom.value <= 0.5,
-                                onClick: () => {
-                                  zoom.value = Math.max(0.5, zoom.value - 0.25);
-                                },
-                              },
-                              'Zoom out'
-                            ),
-                            h(
-                              'button',
-                              {
-                                type: 'button',
-                                disabled: zoom.value >= 3,
-                                onClick: () => {
-                                  zoom.value = Math.min(3, zoom.value + 0.25);
-                                },
-                              },
-                              'Zoom in'
-                            ),
-                            h(
-                              'button',
-                              {
-                                type: 'button',
-                                onClick: () => {
-                                  rotation.value = (rotation.value + 90) % 360;
-                                },
-                              },
-                              'Rotate image'
-                            ),
-                          ]),
-                          feedback(previewStatus.value),
-                          h(
-                            'div',
-                            {
-                              class: 'aimd-image-viewport',
-                              style: { overflow: 'auto', maxWidth: '90vw', maxHeight: '80vh' },
-                            },
-                            [
-                              h('img', {
-                                key: item.src + index,
-                                src: item.src,
-                                alt: item.alt,
-                                style: {
-                                  visibility: previewStatus.value === 'ready' ? 'visible' : 'hidden',
-                                  maxWidth: original.value ? 'none' : '85vw',
-                                  maxHeight: original.value ? 'none' : '75vh',
-                                  transform: `rotate(${rotation.value}deg) scale(${zoom.value})`,
-                                  transformOrigin: 'center',
-                                },
-                                onLoad: () => {
-                                  if (current()?.src === item.src) previewStatus.value = 'ready';
-                                },
-                                onError: () => {
-                                  if (current()?.src === item.src) previewStatus.value = 'error';
-                                },
-                              }),
-                            ]
-                          ),
-                        ]
-                      ),
-                    ]
-                  : []
-              )
-            ),
+            h(ImagePreview, {
+              open: Boolean(item),
+              items: items.value,
+              current: index,
+              renderIcon: (name: ImageIconName) => icon(name, icons),
+              onCurrentChange: (next: number) => {
+                selected.value = items.value[next]?.id ?? null;
+              },
+              onClose: close,
+              afterClose: () => trigger.value?.focus(),
+            }),
         ];
       };
     },

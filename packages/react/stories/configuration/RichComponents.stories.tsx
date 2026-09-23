@@ -41,6 +41,8 @@ const BusinessImage = createMarkdownImage({
     error: () => <span>!</span>,
     preview: () => <span>View photo</span>,
     gallery: <span>Open album</span>,
+    zoomIn: () => <span>+</span>,
+    zoomOut: <span>−</span>,
   },
 });
 export const CustomImageIcons: ReactStory = {

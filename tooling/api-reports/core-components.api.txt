@@ -85,7 +85,8 @@ declare function lockImagePreviewScroll(target: {
         overflow: string;
     };
 }): () => void;
-type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery';
+type ImageActionIconName = 'rotateLeft' | 'rotateRight' | 'zoomIn' | 'zoomOut' | 'close' | 'prev' | 'next' | 'flipX' | 'flipY';
+type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery' | ImageActionIconName;
 type ImageLoadStatus = 'loading' | 'ready' | 'error';
 declare const imageIconPaths: Record<ImageIconName, readonly string[]>;
 declare const imageGroupSelector = "[data-aimd-image-scope], .aim-typography-root, .aimd-vue, .mantine-Typography-root";
@@ -102,6 +103,47 @@ interface ImageGallery {
     remove: (id: object) => void;
 }
 declare function getImageGallery(scope: object): ImageGallery;
+declare const imageActionLabels: Record<ImageActionIconName, string>;
+interface ImageTransform {
+    x: number;
+    y: number;
+    rotate: number;
+    scale: number;
+    flipX: boolean;
+    flipY: boolean;
+}
+interface ImageGeometry {
+    width: number;
+    height: number;
+    left: number;
+    top: number;
+    viewportWidth: number;
+    viewportHeight: number;
+}
+declare const initialImageTransform: () => ImageTransform;
+declare function imageTransformStyle(transform: ImageTransform): string;
+declare function zoomImage(transform: ImageTransform, ratio: number, geometry: ImageGeometry, centerX?: number, centerY?: number, touch?: boolean): ImageTransform;
+declare function imageWheelRatio(delta: number): number;
+declare function reboundImage(transform: ImageTransform, geometry: ImageGeometry, bounds: {
+    left: number;
+    top: number;
+}): ImageTransform;
+declare function imagePinchCenter(oldA: {
+    x: number;
+    y: number;
+}, oldB: {
+    x: number;
+    y: number;
+}, a: {
+    x: number;
+    y: number;
+}, b: {
+    x: number;
+    y: number;
+}): {
+    x: number;
+    y: number;
+};
 interface CodeRendererInput {
     code: string;
     language: string;
@@ -118,4 +160,4 @@ interface CodeBlockOptions {
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
 }
-export { type CodeBlockOptions, type CodeFrame, type CodeRendererInput, type CodeSource, type DiagramEngine, type DiagramRequest, type DiagramState, type ImageGallery, type ImageGalleryItem, type ImageIconName, type ImageLoadStatus, MERMAID_DEFAULT_MAX_TEXT_SIZE, type MermaidInitTarget, type TableProjection, createCodeFrame, createDiagramController, createJsonCompletenessScanner, createRenderQueue, ensureMermaidInitialized, extractCode, getImageGallery, getMermaidMaxTextSize, imageGroupSelector, imageIconPaths, jsonLooksComplete, lockImagePreviewScroll, mermaidRenderQueue, normalizeRenderers, prettyPrintJson, projectTable, resetMermaidInitializationForTests, serializeTable };
+export { type CodeBlockOptions, type CodeFrame, type CodeRendererInput, type CodeSource, type DiagramEngine, type DiagramRequest, type DiagramState, type ImageActionIconName, type ImageGallery, type ImageGalleryItem, type ImageGeometry, type ImageIconName, type ImageLoadStatus, type ImageTransform, MERMAID_DEFAULT_MAX_TEXT_SIZE, type MermaidInitTarget, type TableProjection, createCodeFrame, createDiagramController, createJsonCompletenessScanner, createRenderQueue, ensureMermaidInitialized, extractCode, getImageGallery, getMermaidMaxTextSize, imageActionLabels, imageGroupSelector, imageIconPaths, imagePinchCenter, imageTransformStyle, imageWheelRatio, initialImageTransform, jsonLooksComplete, lockImagePreviewScroll, mermaidRenderQueue, normalizeRenderers, prettyPrintJson, projectTable, reboundImage, resetMermaidInitializationForTests, serializeTable, zoomImage };

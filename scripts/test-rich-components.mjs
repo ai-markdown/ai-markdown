@@ -1,4 +1,4 @@
-/* global console, process, document, window, navigator, URL */
+/* global console, process, document, window, navigator, URL, getComputedStyle */
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFileSync } from 'node:fs';
@@ -85,6 +85,7 @@ const url = `http://127.0.0.1:${server.address().port}`;
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ permissions: ['clipboard-read', 'clipboard-write'], acceptDownloads: true });
 const page = await context.newPage();
+page.setDefaultTimeout(15000);
 const diagnostics = [];
 page.on('pageerror', (error) => diagnostics.push(String(error)));
 page.on('console', (message) => {
@@ -105,18 +106,23 @@ try {
     const trigger = root.getByRole('button', { name: 'Preview image: plain' });
     await trigger.focus();
     await page.keyboard.press('Enter');
-    await page.locator('dialog[open]').waitFor();
+    await page.locator('.aimd-image-preview[aria-modal="true"]').waitFor();
     check(await page.locator('p dialog').count(), 0, 'dialog is portalled outside paragraphs');
-    check(await page.evaluate(() => document.body.style.overflow), 'hidden', 'preview locks background scrolling');
-    await page.getByRole('button', { name: 'Original size', exact: true }).click();
     check(
-      await page.getByRole('button', { name: 'Fit image', exact: true }).getAttribute('aria-pressed'),
-      'true',
-      'original/fit view'
+      await page.evaluate(() => getComputedStyle(document.body).overflowY),
+      'hidden',
+      'preview locks background scrolling'
     );
+    await page.locator('.aimd-image-preview-img').waitFor({ state: 'visible' });
+    check(await page.getByRole('button', { name: 'Zoom out', exact: true }).isDisabled(), true, 'minimum zoom is 1x');
+    check(await page.locator('.aimd-image-preview-actions button').count(), 6, 'reference toolbar has six actions');
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('dialog[open]'));
-    check(await page.evaluate(() => document.body.style.overflow), '', 'closing restores scrolling');
+    await page.waitForFunction(() => !document.querySelector('.aimd-image-preview[aria-modal="true"]'));
+    check(
+      await page.evaluate(() => getComputedStyle(document.body).overflowY),
+      'visible',
+      'closing restores scrolling'
+    );
     check(await trigger.evaluate((node) => node === document.activeElement), true, 'Escape restores focus');
     await trigger.evaluate((node) => node.parentElement.setAttribute('role', 'link'));
     await page.waitForFunction((fw) => !document.querySelector(`#${fw} .aimd-image-trigger`), framework);
@@ -170,9 +176,9 @@ try {
     await update('Inline ![plain](/image.svg) image.');
     await trigger.waitFor();
     await trigger.click();
-    await page.locator('dialog[open]').waitFor();
+    await page.locator('.aimd-image-preview[aria-modal="true"]').waitFor();
     await update('Inline ![changed](/image.svg?v=2) image.');
-    await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+    await page.waitForFunction(() => !document.querySelector('.aimd-image-preview[aria-modal="true"]'));
     checks++;
     // Ready/loading/error surfaces and gallery navigation use installed adapters.
     await page.route('**/pending.svg', () => {});
@@ -193,16 +199,18 @@ try {
       'loading images cannot open preview'
     );
     await root.getByRole('button', { name: 'Preview image: first', exact: true }).click();
-    await page.locator('dialog[open]').waitFor();
+    await page.locator('.aimd-image-preview[aria-modal="true"]').waitFor();
     check(
-      await page.locator('dialog[open] [role="status"]').first().textContent(),
+      await page.locator('.aimd-image-preview-progress').first().textContent(),
       '1 / 2',
       'gallery excludes pending, failed and other Markdown roots'
     );
     await page.getByRole('button', { name: 'Next image', exact: true }).click();
-    await page.waitForFunction(() => document.querySelector('dialog[open]')?.getAttribute('aria-label') === 'second');
+    await page.waitForFunction(
+      () => document.querySelector('.aimd-image-preview[aria-modal="true"]')?.getAttribute('aria-label') === 'second'
+    );
     await page.waitForFunction(() => {
-      const img = document.querySelector('dialog[open] img');
+      const img = document.querySelector('.aimd-image-preview[aria-modal="true"] img');
       return img?.complete && img.naturalWidth > 0 && img.style.visibility === 'visible';
     });
     check(
@@ -211,16 +219,90 @@ try {
       'gallery stops at the last image'
     );
     await page.keyboard.press('ArrowLeft');
-    await page.waitForFunction(() => document.querySelector('dialog[open]')?.getAttribute('aria-label') === 'first');
+    await page.waitForFunction(
+      () => document.querySelector('.aimd-image-preview[aria-modal="true"]')?.getAttribute('aria-label') === 'first'
+    );
     await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
-    await page.getByRole('button', { name: 'Rotate image', exact: true }).click();
+    await page.getByRole('button', { name: 'Rotate right', exact: true }).click();
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('rotate(90deg)')
+    );
     check(
-      await page.locator('dialog[open] img').evaluate((img) => img.style.transform),
-      'rotate(90deg) scale(1.25)',
+      await page.locator('.aimd-image-preview[aria-modal="true"] img').evaluate((img) => img.style.transform),
+      'translate3d(0px, 0px, 0px) scale3d(1.5, 1.5, 1) rotate(90deg)',
       'preview zoom and rotation'
     );
+    const previewImage = page.locator('.aimd-image-preview-img');
+    await page.getByRole('button', { name: 'Flip horizontally', exact: true }).click();
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(-1.5, 1.5, 1)')
+    );
+    await page.getByRole('button', { name: 'Flip vertically', exact: true }).click();
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(-1.5, -1.5, 1)')
+    );
+    await page.getByRole('button', { name: 'Rotate left', exact: true }).click();
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('rotate(0deg)')
+    );
+    await previewImage.dblclick();
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(-1, -1, 1)')
+    );
+    await previewImage.hover();
+    await page.mouse.wheel(0, -100);
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(-1.5, -1.5, 1)')
+    );
+    // A small image returns to the center after dragging, matching upstream.
+    await previewImage.hover();
+    await page.mouse.down();
+    const imageBox = await previewImage.boundingBox();
+    await page.mouse.move(imageBox.x + imageBox.width / 2 + 70, imageBox.y + imageBox.height / 2 + 40, { steps: 5 });
+    await page.mouse.up();
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.startsWith('translate3d(0px, 0px, 0px)')
+    );
+    await page.getByRole('button', { name: 'Next image', exact: true }).click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.aimd-image-preview-img')?.style.transform ===
+        'translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotate(0deg)'
+    );
+    // Exercise real touch dispatch: expand, shrink below the minimum, then rebound.
+    await previewImage.waitFor({ state: 'visible' });
+    const touchBox = await previewImage.boundingBox();
+    const center = { x: touchBox.x + touchBox.width / 2, y: touchBox.y + touchBox.height / 2 };
+    const touchSession = await context.newCDPSession(page);
+    const touches = (offset) => [
+      { x: center.x - offset, y: center.y, id: 0 },
+      { x: center.x + offset, y: center.y, id: 1 },
+    ];
+    await touchSession.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touches(20) });
+    await touchSession.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches(40) });
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(2, 2, 1)')
+    );
+    await touchSession.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches(10) });
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(0.5, 0.5, 1)')
+    );
+    await touchSession.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(1, 1, 1)')
+    );
+    await touchSession.detach();
+    checks += 3;
+    // The keyboard cannot move focus into the background while the preview is open.
+    for (let tab = 0; tab < 10; tab++) await page.keyboard.press('Tab');
+    check(
+      await page.evaluate(() => Boolean(document.activeElement?.closest('.aimd-image-preview'))),
+      true,
+      'focus remains in preview'
+    );
+    checks += 7;
     await page.keyboard.press('Escape');
-    await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+    await page.waitForFunction(() => !document.querySelector('.aimd-image-preview[aria-modal="true"]'));
     check(
       await root
         .getByRole('button', { name: 'Preview image: first', exact: true })
@@ -241,8 +323,8 @@ try {
   const mantineTrigger = page.locator('#mantine').getByRole('button', { name: 'Preview image: mantine' });
   await mantineTrigger.click();
   await page.getByRole('dialog', { name: 'mantine', exact: true }).waitFor();
-  check(await page.locator('dialog[open]').count(), 0, 'Mantine Modal owns the preview without a nested native dialog');
-  await page.getByRole('button', { name: 'Original size', exact: true }).click();
+  check(await page.locator('dialog[open]').count(), 0, 'Mantine shares the rc-image portal');
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
   await page.keyboard.press('Escape');
   await page.getByRole('dialog', { name: 'mantine', exact: true }).waitFor({ state: 'hidden' });
   await page.waitForFunction(() => document.activeElement?.getAttribute('aria-label') === 'Preview image: mantine');

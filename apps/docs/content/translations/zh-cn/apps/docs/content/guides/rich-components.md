@@ -103,7 +103,7 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 ## 图片预览
 
-普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；支持适应尺寸、原图尺寸、独立的加载/错误反馈和背景滚动锁。中性实现使用原生 modal dialog，通过 Portal/Teleport 挂到 body，不破坏段落内图片的 HTML 结构。
+普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；预览按 [rc-image](https://github.com/react-component/image) 的体验实现：全屏暗色遮罩、两侧切图、底部悬浮工具栏，支持水平/垂直翻转、左右旋转、缩放。缩放范围为 1–50 倍，每步乘/除 1.5；滚轮和双击围绕指针缩放，拖拽越界后回弹，触摸支持平移和双指缩放。切图会重置变换，保留独立加载/错误反馈、焦点限制和背景滚动锁。React/Mantine 直接使用 rc-image 内核，Vue 通过原生 dialog 实现同一套交互规则。预览挂到 body，不破坏段落结构。
 
 链接、按钮以及对应交互 role 内的图片保留原有行为，动态修改 role 也会重新判断。预览使用浏览器实际选中的 `currentSrc`，没有时才用已清洗的 `src`，支持响应式图片。`src`/`srcSet` 变化会关闭预览；图片属性和事件仍落在实际 img 上。没有新增高清地址解析器或第二次 URL 策略处理。
 
@@ -121,7 +121,7 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 ## Mantine 与默认样式
 
-`@ai-markdown/react-mantine/components` 提供同名的三个注册组件和代码块工厂。普通代码和内置 Mermaid 保留原来的高亮 provider、JSON 默认值及图表交互；显式语言扩展使用中性源码/复制外框。图片用 Mantine Modal 承载共享预览行为，表格使用共享 React 组件；除原有 Mantine 样式外，可导入 `@ai-markdown/react/components/styles.css`。
+`@ai-markdown/react-mantine/components` 提供同名的三个注册组件和代码块工厂。普通代码和内置 Mermaid 保留原来的高亮 provider、JSON 默认值及图表交互；显式语言扩展使用中性源码/复制外框。图片与 React 使用相同的 rc-image 内核和预览样式，表格使用共享 React 组件；除原有 Mantine 样式外，可导入 `@ai-markdown/react/components/styles.css`。
 
 默认 CSS 是可选的，以 `aimd-*` 类限定范围。代码块和表格暴露 `--aimd-border`、`--aimd-surface`、`--aimd-text`；代码块主题跟随 React 上下文或 Vue 工厂配置，表格支持上层 `[data-color-scheme="dark"]` 和 Mantine 的暗色属性。应用可以直接覆盖类和变量，不需要为改样式再包组件。
 
@@ -131,7 +131,7 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 缩略图加载时显示 `image` 占位图标，失败时显示 `image-off` 和图片说明。可预览的图片在悬浮或键盘聚焦时显示入口：单图使用 `image-play`，多图使用 `gallery-thumbnails`。
 
-通过工厂配置四个语义图标，返回的组件可以直接注册，无需再次包装：
+通过工厂配置语义图标，返回的组件可以直接注册，无需再次包装：
 
 ```tsx
 import { createMarkdownImage } from '@ai-markdown/react/components/image';
@@ -147,10 +147,12 @@ const AppImage = createMarkdownImage({
 // customComponents={{ img: AppImage }}
 ```
 
-React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/components/image` 导出，接受 Vue 组件或 `h(...)` 创建的 VNode。Mantine 从 `@ai-markdown/react-mantine/components` 导出工厂，仍使用 Mantine Modal。未配置的图标保留默认值，`null` 可以隐藏图标。图标仅作装饰，按钮保留无障碍名称；自定义图标内不要放交互控件。
+React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/components/image` 导出，接受 Vue 组件或 `h(...)` 创建的 VNode。Mantine 从 `@ai-markdown/react-mantine/components` 导出工厂，与 React 共用 rc-image 预览。未配置的图标保留默认值，`null` 可以隐藏图标。图标仅作装饰，按钮保留无障碍名称；自定义图标内不要放交互控件。
 
-默认将最近 Markdown 排版根节点内已加载、可预览的图片组成画廊，顺序与页面一致。加载中、加载失败和链接中的图片不会加入；不同 Markdown 根节点互不混组。预览支持上/下一张、左右方向键、缩放、旋转以及原图/适应尺寸。选中图片被移除时关闭预览，Esc 关闭后焦点回到最初打开预览的图片。
+默认将最近 Markdown 排版根节点内已加载、可预览的图片组成画廊，顺序与页面一致。加载中、加载失败和链接中的图片不会加入；不同 Markdown 根节点互不混组。预览支持上/下一张、左右方向键、缩放、旋转和翻转。选中图片被移除时关闭预览，Esc 关闭后焦点回到最初打开预览的图片。
 
 `group: false` 可关闭分组；`group: '[data-photo-album]'` 可指定业务容器作为分组边界。自定义排版根节点可添加 `data-aimd-image-scope` 来启用自动分组；找不到分组容器时按单图处理。`preview: false` 仅关闭预览，保留加载/错误反馈。
 
 可选默认样式提供 `.aimd-image`、`.aimd-image-cover`、`.aimd-image-feedback`、`.aimd-image-icon`，缩略图状态由 `data-status="loading|ready|error"` 标记，可直接覆盖样式。
+
+工具栏也支持通过 `icons` 配置图标或组件：`close`、`prev`、`next`、`flipX`、`flipY`、`rotateLeft`、`rotateRight`、`zoomIn`、`zoomOut`。导入组件样式即可使用全屏预览布局；自行提供样式时需覆盖 `.aimd-image-preview-*`。

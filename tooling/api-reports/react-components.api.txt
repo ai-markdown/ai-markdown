@@ -1,6 +1,6 @@
 // Generated from the built public declaration. Review changes before updating.
 export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code.js';
-export { ImageIconProps, ImagePreviewDialogProps, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImageProps, createMarkdownImage } from './image.js';
+export { ImageIconProps, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImageProps, createMarkdownImage } from './image.js';
 export { MarkdownTable, MarkdownTableProps } from './table.js';
 export { CodeBlockOptions, CodeRendererInput, ImageIconName } from '@ai-markdown/core/components';
 export { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from './code/plain.js';
@@ -36,19 +36,13 @@ export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBloc
 
 // Relative declaration: dist/components/image.d.ts
 import * as react from 'react';
-import { ReactNode, ComponentPropsWithoutRef, ComponentType } from 'react';
+import { ComponentPropsWithoutRef, ReactNode, ComponentType } from 'react';
 import { Element } from 'hast';
 import { ImageIconName } from '@ai-markdown/core/components';
 export { ImageIconName } from '@ai-markdown/core/components';
 type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
     node?: Element;
 };
-interface ImagePreviewDialogProps {
-    open: boolean;
-    label: string;
-    onClose: () => void;
-    children: ReactNode;
-}
 interface ImageIconProps {
     className?: string;
     'aria-hidden'?: boolean;
@@ -58,11 +52,10 @@ interface MarkdownImageOptions {
     icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
     group?: string | false;
     preview?: boolean;
-    Dialog?: ComponentType<ImagePreviewDialogProps>;
 }
-declare function createMarkdownImage({ Dialog, icons, group, preview: allowPreview, }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
+declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
 declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
-export { type ImageIconProps, type ImagePreviewDialogProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, createMarkdownImage };
+export { type ImageIconProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, createMarkdownImage };
 
 // Relative declaration: dist/components/table.d.ts
 import * as react from 'react';

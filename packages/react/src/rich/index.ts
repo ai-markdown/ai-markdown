@@ -4,7 +4,6 @@ export type { MarkdownCodeBlockProps, MarkdownCodeBlockOptions, CodeRendererInpu
 export { MarkdownImage, createMarkdownImage } from './image';
 export type {
   MarkdownImageProps,
-  ImagePreviewDialogProps,
   MarkdownImageOptions,
   MarkdownImageIcon,
   ImageIconProps,

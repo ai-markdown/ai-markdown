@@ -179,7 +179,8 @@
     "hast-util-to-jsx-runtime": "^2.3.6",
     "unist-util-visit": "^5.1.0",
     "@ai-markdown/core": "workspace:*",
-    "@ai-markdown/code-language-detector": "workspace:^"
+    "@ai-markdown/code-language-detector": "workspace:^",
+    "@rc-component/image": "1.10.0"
   },
   "devDependencies": {
     "@ai-markdown/rehype-raw": "7.0.3",

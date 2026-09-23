@@ -1,32 +1,37 @@
 'use client';
 import {
   createElement,
+  cloneElement,
+  Children,
+  isValidElement,
+  type ReactElement,
   useEffect,
+  useCallback,
   useRef,
   useState,
   type ComponentPropsWithoutRef,
   type ComponentType,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
+import RcImageImport from '@rc-component/image';
+// Native ESM consumers receive the CommonJS namespace; bundlers unwrap it.
+const RcImage =
+  'PreviewGroup' in RcImageImport
+    ? RcImageImport
+    : (RcImageImport as unknown as { default: typeof RcImageImport }).default;
 import type { Element as HastElement } from 'hast';
 import {
   getImageGallery,
   imageGroupSelector,
   imageIconPaths,
-  lockImagePreviewScroll,
+  imageActionLabels,
+  type ImageActionIconName,
   type ImageGalleryItem,
   type ImageIconName,
   type ImageLoadStatus,
 } from '@ai-markdown/core/components';
 export type { ImageIconName } from '@ai-markdown/core/components';
 export type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & { node?: HastElement };
-export interface ImagePreviewDialogProps {
-  open: boolean;
-  label: string;
-  onClose: () => void;
-  children: ReactNode;
-}
 export interface ImageIconProps {
   className?: string;
   'aria-hidden'?: boolean;
@@ -37,7 +42,6 @@ export interface MarkdownImageOptions {
   /** Nearest ancestor selector; defaults to the Markdown root. false disables grouping. */
   group?: string | false;
   preview?: boolean;
-  Dialog?: ComponentType<ImagePreviewDialogProps>;
 }
 function ImageIcon({ name, icons }: { name: ImageIconName; icons?: MarkdownImageOptions['icons'] }) {
   const custom = icons?.[name];
@@ -75,143 +79,56 @@ function ImageIcon({ name, icons }: { name: ImageIconName; icons?: MarkdownImage
     </span>
   );
 }
-function NativeImageDialog({ open, label, onClose, children }: ImagePreviewDialogProps) {
-  const dialog = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
-    if (open && dialog.current && !dialog.current.open) dialog.current.showModal();
-    else if (!open) dialog.current?.close();
-    if (open) return lockImagePreviewScroll(document.body);
-  }, [open]);
-  return createPortal(
-    <dialog
-      ref={dialog}
-      className="aimd-image-dialog"
-      aria-label={label}
-      onCancel={(event) => {
-        event.preventDefault();
-        onClose();
-      }}
-      onClose={onClose}
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
+function PreviewSurface({
+  original,
+  src,
+  icons,
+}: {
+  original: ReactElement;
+  src: string;
+  icons?: MarkdownImageOptions['icons'];
+}) {
+  const [status, setStatus] = useState<ImageLoadStatus>('loading');
+  const surface = useCallback((node: HTMLSpanElement | null) => {
+    const img = node?.querySelector('img');
+    if (img?.complete) setStatus(img.naturalWidth ? 'ready' : 'error');
+  }, []);
+  const element = original as ReactElement<{ style?: React.CSSProperties }>;
+  return (
+    <span
+      ref={surface}
+      className="aimd-image-preview-surface"
+      onLoadCapture={() => setStatus('ready')}
+      onErrorCapture={() => setStatus('error')}
     >
-      {children}
-    </dialog>,
-    document.body
+      {cloneElement(element, {
+        style: { ...element.props.style, visibility: status === 'ready' ? 'visible' : 'hidden' },
+      })}
+      {status !== 'ready' && (
+        <span className="aimd-image-feedback" role={status === 'error' ? 'alert' : 'status'} data-source={src}>
+          <ImageIcon name={status === 'error' ? 'error' : 'placeholder'} icons={icons} />
+          <span>{status === 'error' ? 'Image could not be loaded.' : 'Loading image…'}</span>
+        </span>
+      )}
+    </span>
   );
 }
-function ImagePreviewContent({
-  item,
-  close,
-  icons,
-  previous,
-  next,
-  position,
-}: {
-  item: ImageGalleryItem;
-  close: () => void;
-  icons?: MarkdownImageOptions['icons'];
-  previous?: () => void;
-  next?: () => void;
-  position?: string;
-}) {
-  const [original, setOriginal] = useState(false),
-    [zoom, setZoom] = useState(1),
-    [rotation, setRotation] = useState(0),
-    [status, setStatus] = useState<ImageLoadStatus>('loading');
-  const content = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    content.current?.focus();
-  }, []);
+function actionIcon(name: ImageActionIconName, icons?: MarkdownImageOptions['icons']) {
   return (
-    <div
-      className="aimd-image-preview"
-      ref={content}
-      tabIndex={-1}
-      onKeyDown={(event) => {
-        if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
-        if (event.key === 'ArrowLeft' && previous) {
-          event.preventDefault();
-          previous();
-        }
-        if (event.key === 'ArrowRight' && next) {
-          event.preventDefault();
-          next();
-        }
-      }}
-    >
-      <div className="aimd-toolbar" role="group" aria-label="Image preview actions">
-        <button type="button" autoFocus onClick={close}>
-          Close preview
-        </button>
-        {position && (
-          <>
-            <button type="button" disabled={!previous} onClick={previous}>
-              Previous image
-            </button>
-            <span role="status">{position}</span>
-            <button type="button" disabled={!next} onClick={next}>
-              Next image
-            </button>
-          </>
-        )}
-        <button
-          type="button"
-          aria-pressed={original}
-          onClick={() => {
-            setOriginal((value) => !value);
-            setZoom(1);
-          }}
-        >
-          {original ? 'Fit image' : 'Original size'}
-        </button>
-        <button type="button" disabled={zoom <= 0.5} onClick={() => setZoom((value) => Math.max(0.5, value - 0.25))}>
-          Zoom out
-        </button>
-        <button type="button" disabled={zoom >= 3} onClick={() => setZoom((value) => Math.min(3, value + 0.25))}>
-          Zoom in
-        </button>
-        <button type="button" onClick={() => setRotation((value) => (value + 90) % 360)}>
-          Rotate image
-        </button>
-      </div>
-      {status !== 'ready' && (
-        <p className="aimd-image-feedback" role={status === 'error' ? 'alert' : 'status'}>
-          <ImageIcon name={status === 'error' ? 'error' : 'placeholder'} icons={icons} />
-          {status === 'error' ? 'Image could not be loaded.' : 'Loading image…'}
-        </p>
-      )}
-      <div className="aimd-image-viewport" style={{ overflow: 'auto', maxWidth: '90vw', maxHeight: '80vh' }}>
-        <img
-          src={item.src}
-          alt={item.alt}
-          style={{
-            visibility: status === 'ready' ? 'visible' : 'hidden',
-            maxWidth: original ? 'none' : '85vw',
-            maxHeight: original ? 'none' : '75vh',
-            transform: `rotate(${rotation}deg) scale(${zoom})`,
-            transformOrigin: 'center',
-          }}
-          onLoad={() => setStatus('ready')}
-          onError={() => setStatus('error')}
-        />
-      </div>
-    </div>
+    <>
+      <ImageIcon name={name} icons={icons} />
+      <span className="aimd-image-sr-only">{imageActionLabels[name]}</span>
+    </>
   );
 }
 /** Configure once, then register the result directly as customComponents.img. */
-export function createMarkdownImage({
-  Dialog = NativeImageDialog,
-  icons,
-  group,
-  preview: allowPreview = true,
-}: MarkdownImageOptions = {}) {
+export function createMarkdownImage({ icons, group, preview: allowPreview = true }: MarkdownImageOptions = {}) {
   return function MarkdownImage({ node: _node, ...props }: MarkdownImageProps) {
     const image = useRef<HTMLImageElement>(null),
       trigger = useRef<HTMLButtonElement>(null);
     const [enabled, setEnabled] = useState(false),
       [selected, setSelected] = useState<object | null>(null),
+      [previewIndex, setPreviewIndex] = useState(0),
       [status, setStatus] = useState<ImageLoadStatus>('loading'),
       [loadedSource, setLoadedSource] = useState(''),
       [items, setItems] = useState<readonly ImageGalleryItem[]>([]);
@@ -326,7 +243,10 @@ export function createMarkdownImage({
               ref={trigger}
               disabled={status !== 'ready'}
               aria-label={`Preview image${props.alt ? `: ${props.alt}` : ''}`}
-              onClick={() => setSelected(image.current)}
+              onClick={() => {
+                setPreviewIndex(items.findIndex((entry) => entry.id === image.current));
+                setSelected(image.current);
+              }}
             >
               {contents}
             </button>
@@ -335,19 +255,52 @@ export function createMarkdownImage({
           )}
         </span>
         {enabled && (
-          <Dialog open={Boolean(item)} label={item?.alt || 'Image preview'} onClose={close}>
-            {item && (
-              <ImagePreviewContent
-                key={item.src + index}
-                item={item}
-                icons={icons}
-                close={close}
-                position={items.length > 1 ? `${index + 1} / ${items.length}` : undefined}
-                previous={index > 0 ? () => setSelected(items[index - 1].id) : undefined}
-                next={index < items.length - 1 ? () => setSelected(items[index + 1].id) : undefined}
-              />
+          <RcImage.PreviewGroup
+            previewPrefixCls="aimd-image-preview"
+            items={items.map(({ src, alt }) => ({ src, alt }))}
+            icons={Object.fromEntries(
+              (Object.keys(imageActionLabels) as ImageActionIconName[]).map((name) => [name, actionIcon(name, icons)])
             )}
-          </Dialog>
+            preview={{
+              open: Boolean(item),
+              current: index >= 0 ? index : previewIndex,
+              alt: items[index >= 0 ? index : previewIndex]?.alt || 'Image preview',
+              zIndex: 1100,
+              motionName: 'aimd-image-fade',
+              onOpenChange: (open) => {
+                if (!open) setSelected(null);
+              },
+              afterOpenChange: (open) => {
+                if (!open) trigger.current?.focus();
+              },
+              onChange: (next) => {
+                setPreviewIndex(next);
+                setSelected(items[next]?.id ?? null);
+              },
+              countRender: (current, total) => (total > 1 ? `${current} / ${total}` : null),
+              imageRender: (original, info) => (
+                <PreviewSurface
+                  key={info.image.url + (index >= 0 ? index : previewIndex)}
+                  original={original}
+                  src={info.image.url}
+                  icons={icons}
+                />
+              ),
+              actionsRender: (original) =>
+                cloneElement(
+                  original as ReactElement<{ children?: ReactNode }>,
+                  {},
+                  Children.map((original.props as { children?: ReactNode }).children, (child) => {
+                    if (!isValidElement(child)) return child;
+                    const label = (child.props as { 'aria-label'?: ImageActionIconName })['aria-label'];
+                    return cloneElement(child as ReactElement<{ 'aria-label'?: string; title?: string }>, {
+                      'aria-label': label ? imageActionLabels[label] : undefined,
+                      title: label ? imageActionLabels[label] : undefined,
+                    });
+                  })
+                ),
+            }}
+          />
         )}
       </>
     );
