@@ -125,6 +125,17 @@ try {
         .slice(corpus.indexOf('### block-quotes\n'), corpus.indexOf('### block-thematic-breaks\n'))
         .trim();
       assert(sample.length > 0);
+      const frame = page.frames().find((candidate) => candidate.url().includes('/vue/iframe.html'));
+      assert(frame, 'Vue playground preview frame missing');
+      await frame.waitForFunction(
+        (id) =>
+          window.__STORYBOOK_PREVIEW__?.storyRenders.some((render) => render.id === id && render.phase === 'finished'),
+        entry.id
+      );
+      // Addon selection persists independently from the rendered story. Exercise
+      // a non-Controls starting state instead of relying on the default panel.
+      await page.getByRole('tab', { name: /^Interactions/ }).click();
+      await page.getByRole('tab', { name: /^Controls/ }).click();
       await page.locator('#control-content').fill(sample);
       const preview = page.frameLocator('iframe[src*="/vue/iframe.html"]');
       await preview.locator('#storybook-root table').waitFor({ state: 'detached' });
@@ -164,6 +175,7 @@ try {
     .split('### block-thematic-breaks\n')[0]
     .trim();
   assert(comparisonSource.length > 0);
+  await page.getByRole('tab', { name: /^Controls/ }).click();
   await page.locator('#control-content').fill(comparisonSource);
   await pluginFrame.waitForFunction(() =>
     ['enabled', 'disabled'].every(
@@ -184,6 +196,7 @@ try {
       window.__STORYBOOK_PREVIEW__?.storyRenders.some((render) => render.id === id && render.phase === 'finished'),
     contextStory
   );
+  await page.getByRole('tab', { name: /^Controls/ }).click();
   await page.locator('#control-metadata').fill('Metadata from Controls');
   await contextFrame.waitForFunction(
     () => {
@@ -229,6 +242,7 @@ try {
         'Frames:',
         page.frames().map((frame) => frame.url())
       );
+      console.error('Selected addon:', await page.locator('[role=tab][aria-selected=true]').allTextContents());
       console.error((await page.locator('body').innerText()).slice(0, 3000));
     }
   throw error;

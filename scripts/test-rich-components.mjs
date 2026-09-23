@@ -317,6 +317,38 @@ try {
       0,
       'removing images restores the single-image icon'
     );
+    // Reopening and removing an open owner must not retain transforms, portals,
+    // scroll locks, listeners, or stale gallery entries during streaming updates.
+    const single = root.getByRole('button', { name: 'Preview image: first', exact: true });
+    await single.click();
+    await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+    await page.waitForFunction(() =>
+      document.querySelector('.aimd-image-preview-img')?.style.transform.includes('scale3d(1.5, 1.5, 1)')
+    );
+    await page.getByRole('button', { name: 'Close preview', exact: true }).click();
+    await page.locator('.aimd-image-preview').waitFor({ state: 'detached' });
+    await single.click();
+    await page.waitForFunction(
+      () =>
+        document.querySelector('.aimd-image-preview-img')?.style.transform ===
+        'translate3d(0px, 0px, 0px) scale3d(1, 1, 1) rotate(0deg)'
+    );
+    await update('Preview owner removed.');
+    await page.locator('.aimd-image-preview').waitFor({ state: 'detached' });
+    await page.waitForFunction(() => getComputedStyle(document.body).overflowY === 'visible');
+    await page.mouse.move(200, 200);
+    await page.mouse.up();
+    await update('![replacement](/image.svg)');
+    await root.getByRole('button', { name: 'Preview image: replacement', exact: true }).click();
+    await page.locator('.aimd-image-preview-img').waitFor({ state: 'visible' });
+    check(
+      await page.getByRole('button', { name: 'Next image', exact: true }).count(),
+      0,
+      'removed gallery entries do not survive remount'
+    );
+    await page.keyboard.press('Escape');
+    await page.locator('.aimd-image-preview').waitFor({ state: 'detached' });
+    checks += 2;
     await page.unroute('**/pending.svg');
     await page.unroute('**/broken.svg');
   }
