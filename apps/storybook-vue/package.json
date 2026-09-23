@@ -10,7 +10,7 @@
     "@storybook/vue3-vite": "10.6.0",
     "@storybook/addon-vitest": "10.6.0",
     "@storybook/addon-a11y": "10.6.0",
-    "vue": "^3.5.0",
+    "vue": "^3.5.43",
     "@ai-markdown/vue": "workspace:*",
     "katex": "^0.17.0",
     "typescript": "^6.0.3",
