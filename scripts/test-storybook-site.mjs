@@ -43,9 +43,17 @@ try {
   page.setDefaultTimeout(30000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  // Catalog examples must not download remote images/fonts/scripts.
+  // Live demos use Picsum; fulfill only its seeded photo requests locally so
+  // acceptance remains deterministic and does not depend on a third-party CDN.
+  const isPicsumImage = (req) =>
+    req.resourceType() === 'image' && /^https:\/\/picsum\.photos\/seed\/[a-z0-9-]+\/\d+\/\d+$/.test(req.url());
+  const photoFixture = await readFile('tooling/storybook-kit/assets/placeholder-200x300.svg');
+  await page.route('https://picsum.photos/**', (route) =>
+    isPicsumImage(route.request()) ? route.fulfill({ contentType: 'image/svg+xml', body: photoFixture }) : route.abort()
+  );
+  // All other remote assets remain unexpected.
   page.on('request', (req) => {
-    if (/^https?:/.test(req.url()) && new URL(req.url()).origin !== origin)
+    if (/^https?:/.test(req.url()) && new URL(req.url()).origin !== origin && !isPicsumImage(req))
       errors.push(`External request: ${req.url()}`);
   });
   const react = await (await fetch(base + 'react/index.json')).json();

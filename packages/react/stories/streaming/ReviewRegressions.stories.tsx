@@ -54,6 +54,8 @@ const referenceForms = [
   '[entity][a&amp;b]',
   '![entity][a&amp;b]',
 ];
+const escapedImage = 'https://picsum.photos/seed/ai-markdown-escaped/200/300';
+const entityImage = 'https://picsum.photos/seed/ai-markdown-entity/200/300';
 export const ReferenceIdentifiers: StoryObj = {
   render: () => (
     <>
@@ -61,7 +63,7 @@ export const ReferenceIdentifiers: StoryObj = {
         <div data-ref={i} key={content}>
           <AIMarkdownDocuments>
             <AIMarkdown documentId={`ref-${i}`} content={content} />
-            <AIMarkdown documentId={`ref-${i}`} content={'[a\\*b]: /escaped\n\n[a&amp;b]: /entity'} />
+            <AIMarkdown documentId={`ref-${i}`} content={`[a\\*b]: ${escapedImage}\n\n[a&amp;b]: ${entityImage}`} />
           </AIMarkdownDocuments>
         </div>
       ))}
@@ -72,7 +74,7 @@ export const ReferenceIdentifiers: StoryObj = {
       referenceForms.forEach((source, i) => {
         const image = source.startsWith('!');
         const element = canvasElement.querySelector(`[data-ref="${i}"] ${image ? 'img' : 'a'}`);
-        expect(element?.getAttribute(image ? 'src' : 'href')).toBe(i < 6 ? '/escaped' : '/entity');
+        expect(element?.getAttribute(image ? 'src' : 'href')).toBe(i < 6 ? escapedImage : entityImage);
       })
     );
   },

@@ -1,4 +1,4 @@
-/** The same direct-registration example for both adapters. All assets local. */
+/** The same direct-registration example for both adapters. Photos use a stable Picsum seed. */
 export const RICH_COMPONENTS_EXAMPLE = [
   '## Code, images and tables',
   '```json',
@@ -7,7 +7,7 @@ export const RICH_COMPONENTS_EXAMPLE = [
   '```mermaid',
   'graph LR; Markdown-->Components; Components-->React; Components-->Vue',
   '```',
-  'Click this image to preview it: ![Local placeholder](/placeholder-200x300.svg)',
+  'Click this image to preview it: ![Sample photo from Picsum](https://picsum.photos/seed/ai-markdown-preview/200/300)',
   '',
   '| Component | Registration |',
   '| :-- | :-- |',

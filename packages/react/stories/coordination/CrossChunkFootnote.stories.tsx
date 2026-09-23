@@ -124,7 +124,7 @@ export const OrphanDef: StoryObj<typeof meta> = {
  * References live in chunks 1–3, definitions in chunks 4–5, and each of the
  * three reference kinds crosses the boundary: a footnote (`[^markdown]`,
  * `[^streaming]`), a link reference (`[docs]`, `[api]`), and an image
- * reference (`[arch-img]`, resolving to a locally served placeholder).
+ * reference (`[arch-img]`, resolving to a seeded Picsum photo).
  *
  * Two details are worth checking rather than taking on trust:
  *
@@ -157,10 +157,10 @@ export const FiveChunksScattered: StoryObj<typeof meta> = {
             content={[
               '## Architecture',
               '',
-              'Components are composed [^markdown] hierarchically. Below is the architecture',
-              'diagram:',
+              'Components are composed [^markdown] hierarchically. The illustrative photo below',
+              'resolves from a reference defined in a later chunk:',
               '',
-              '![Architecture diagram][arch-img]',
+              '![Illustrative photo][arch-img]',
             ].join('\n')}
           />
           <AIMarkdown
@@ -189,7 +189,7 @@ export const FiveChunksScattered: StoryObj<typeof meta> = {
             content={[
               '[^streaming]: Token-by-token streaming support for LLM outputs.',
               '',
-              '[arch-img]: ./placeholder-200x300.svg "Architecture overview"',
+              '[arch-img]: https://picsum.photos/seed/ai-markdown-reference/200/300 "Illustrative photo"',
               '',
               '[api]: https://example.com/api',
             ].join('\n')}
