@@ -1,0 +1,9 @@
+// Generated from the built public declaration. Review changes before updating.
+import * as react from 'react';
+import { ComponentProps } from 'react';
+import { Element } from 'hast';
+type MarkdownTableProps = ComponentProps<'table'> & {
+    node?: Element;
+};
+declare function MarkdownTable({ node, children, ...props }: MarkdownTableProps): react.JSX.Element;
+export { MarkdownTable, type MarkdownTableProps };

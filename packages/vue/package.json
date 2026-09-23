@@ -14,7 +14,8 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "components"
   ],
   "exports": {
     ".": {
@@ -30,10 +31,51 @@
       "require": "./dist/index.cjs"
     },
     "./package.json": "./package.json",
-    "./styles.css": "./dist/styles.css"
+    "./styles.css": "./dist/styles.css",
+    "./components": {
+      "types": {
+        "import": "./dist/components/index.d.ts",
+        "require": "./dist/components/index.d.cts"
+      },
+      "import": "./dist/components/index.js",
+      "require": "./dist/components/index.cjs"
+    },
+    "./components/code": {
+      "types": {
+        "import": "./dist/components/code.d.ts",
+        "require": "./dist/components/code.d.cts"
+      },
+      "import": "./dist/components/code.js",
+      "require": "./dist/components/code.cjs"
+    },
+    "./components/code/plain": {
+      "types": {
+        "import": "./dist/components/code/plain.d.ts",
+        "require": "./dist/components/code/plain.d.cts"
+      },
+      "import": "./dist/components/code/plain.js",
+      "require": "./dist/components/code/plain.cjs"
+    },
+    "./components/image": {
+      "types": {
+        "import": "./dist/components/image.d.ts",
+        "require": "./dist/components/image.d.cts"
+      },
+      "import": "./dist/components/image.js",
+      "require": "./dist/components/image.cjs"
+    },
+    "./components/table": {
+      "types": {
+        "import": "./dist/components/table.d.ts",
+        "require": "./dist/components/table.d.cts"
+      },
+      "import": "./dist/components/table.js",
+      "require": "./dist/components/table.cjs"
+    },
+    "./components/styles.css": "./dist/components/styles.css"
   },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-dist.mjs",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-dist.mjs && node ../../scripts/copy-component-styles.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest --run"
   },
@@ -42,7 +84,8 @@
     "@ai-markdown/engine": "workspace:*",
     "@types/hast": "^3.0.5",
     "unist-util-visit": "^5.1.0",
-    "property-information": "^7.2.0"
+    "property-information": "^7.2.0",
+    "@ai-markdown/code-language-detector": "workspace:^"
   },
   "devDependencies": {
     "vue": "^3.5.0",
@@ -52,7 +95,8 @@
     "react-dom": "^19",
     "@types/node": "^25.9.6",
     "@ai-markdown/storybook-kit": "workspace:*",
-    "@storybook/vue3-vite": "10.6.0"
+    "@storybook/vue3-vite": "10.6.0",
+    "mermaid": "^11.17.2"
   },
   "publishConfig": {
     "access": "public"
@@ -68,11 +112,34 @@
   },
   "peerDependencies": {
     "vue": "^3.5.0",
-    "katex": "^0.16 || ^0.17"
+    "katex": "^0.16 || ^0.17",
+    "mermaid": "^11.17.2"
   },
   "peerDependenciesMeta": {
     "katex": {
       "optional": true
+    },
+    "mermaid": {
+      "optional": true
+    }
+  },
+  "typesVersions": {
+    "*": {
+      "components": [
+        "./dist/components/index.d.ts"
+      ],
+      "components/code": [
+        "./dist/components/code.d.ts"
+      ],
+      "components/code/plain": [
+        "./dist/components/code/plain.d.ts"
+      ],
+      "components/image": [
+        "./dist/components/image.d.ts"
+      ],
+      "components/table": [
+        "./dist/components/table.d.ts"
+      ]
     }
   }
 }

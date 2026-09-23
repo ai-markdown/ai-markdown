@@ -1,0 +1,34 @@
+// Generated from the built public declaration. Review changes before updating.
+import * as react from 'react';
+import { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from '@ai-markdown/react/components/code/plain';
+export { CodeRendererInput, MarkdownCodeBlockProps } from '@ai-markdown/react/components/code/plain';
+import { a as MantineCodeBlockOptions } from './defs-chunk.js';
+import * as _ai_markdown_react_components_image from '@ai-markdown/react/components/image';
+export { MarkdownTable } from '@ai-markdown/react/components/table';
+import '@ai-markdown/react';
+interface MantineMarkdownCodeBlockOptions extends Omit<MarkdownCodeBlockOptions, 'highlight'>, Partial<MantineCodeBlockOptions> {
+}
+declare function createMarkdownCodeBlock(options?: MantineMarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+declare const MarkdownImage: ({ node: _node, ...props }: _ai_markdown_react_components_image.MarkdownImageProps) => react.JSX.Element;
+export { type MantineMarkdownCodeBlockOptions, MarkdownCodeBlock, MarkdownImage, createMarkdownCodeBlock };
+
+// Relative declaration: dist/defs-chunk.d.ts
+import { AIMarkdownMetadata } from '@ai-markdown/react';
+declare enum MantineLanguageFormat {
+    HighlightJs = "highlight-js",
+    Shiki = "shiki"
+}
+interface MantineCodeBlockOptions {
+    defaultExpanded: boolean;
+    autoDetectUnknownLanguage: boolean;
+    languageFormat?: MantineLanguageFormat;
+    formatJson?: boolean;
+    expandNestedJson?: boolean;
+    highlightIntervalMs?: number;
+    mermaidIntervalMs?: number;
+}
+declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
+interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
+}
+export { type MantineAIMarkdownMetadata as M, type MantineCodeBlockOptions as a, MantineLanguageFormat as b, defaultMantineCodeBlockOptions as d };

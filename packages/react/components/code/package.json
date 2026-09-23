@@ -1,0 +1,8 @@
+{
+  "name": "@ai-markdown/react/components/code",
+  "private": true,
+  "main": "../../dist/components/code.cjs",
+  "module": "../../dist/components/code.js",
+  "types": "../../dist/components/code.d.ts",
+  "sideEffects": false
+}

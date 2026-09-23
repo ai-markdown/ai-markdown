@@ -58,7 +58,8 @@
     "dev:docs": "pnpm --filter @ai-markdown/docs dev",
     "assemble:pages": "node scripts/assemble-pages.mjs",
     "bench:sentinel": "node benchmarks/sentinel/run.mjs",
-    "test:perf-control": "node --test benchmarks/sentinel/compare.test.mjs"
+    "test:perf-control": "node --test benchmarks/sentinel/compare.test.mjs",
+    "test:rich-components": "node scripts/check-packed-consumers.mjs --browser"
   },
   "keywords": [
     "react",

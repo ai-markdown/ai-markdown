@@ -59,6 +59,7 @@ try {
     'Basics/Footnotes & Definition Lists',
     'Basics/Engine Plugins',
     'Customization/Custom Components',
+    'Customization/Rich Components',
     'Customization/Metadata',
     'Customization/URL Sanitization',
     'Customization/Content Preprocessors',
@@ -122,6 +123,17 @@ try {
       await preview.locator('#storybook-root blockquote').first().waitFor();
       assert.equal(await preview.locator('#storybook-root h3').first().textContent(), 'block-quotes');
     }
+  }
+  // Public component subentries and the Markdown root must share context in
+  // the static build too; development source aliases can hide a duplicate.
+  for (const framework of ['react', 'vue']) {
+    await page.goto(
+      `${base}${framework}/iframe.html?id=customization-rich-components--direct-registration&viewMode=story`
+    );
+    await page.locator('#storybook-root .aimd-diagram svg').waitFor();
+    assert.equal(await page.locator('#storybook-root .aimd-code').count(), 2);
+    assert.equal(await page.locator('#storybook-root .aimd-table-scroll table').count(), 1);
+    assert.equal(await page.locator('#storybook-root .aimd-image-trigger').count(), 1);
   }
   // Plugin comparisons must read live Controls, not capture their initial source.
   const pluginStory = 'basics-engine-plugins--smartypants';

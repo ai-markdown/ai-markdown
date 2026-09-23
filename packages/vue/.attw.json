@@ -1,4 +1,4 @@
 {
-  "//": "styles.css is a stylesheet export — attw treats every exports subpath as a JS/types entrypoint and reports NoResolution on it; excluding it keeps the JS entrypoints gated.",
-  "excludeEntrypoints": ["./styles.css"]
+  "//": "styles.css is a stylesheet export \u2014 attw treats every exports subpath as a JS/types entrypoint and reports NoResolution on it; excluding it keeps the JS entrypoints gated.",
+  "excludeEntrypoints": ["./styles.css", "./components/styles.css"]
 }

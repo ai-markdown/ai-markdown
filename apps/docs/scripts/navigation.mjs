@@ -42,6 +42,7 @@ export const sidebar = [
       page('docs/guides/markdown-features', 'Markdown syntax', 'Markdown 语法'),
       page('docs/guides/cjk-typography', 'CJK & mixed-language text', '中日韩与混合排版'),
       page('docs/guides/content-preprocessors', 'Content preprocessing', '内容预处理'),
+      page('docs/guides/rich-components', 'Code, diagrams, images & tables', '代码块、图表、图片与表格'),
       page('docs/guides/custom-components', 'React custom components', 'React 自定义组件'),
       page('docs/guides/custom-typography', 'React typography', 'React 排版'),
       page('docs/guides/design-tokens', 'React CSS variables', 'React CSS 变量'),

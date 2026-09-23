@@ -3,7 +3,7 @@ import { defineConfig } from 'tsup';
 // Keep the engine external: its registry state must have a single owner.
 export default defineConfig([
   {
-    entry: { index: 'src/index.ts' },
+    entry: { index: 'src/index.ts', 'components/index': 'src/components/index.ts' },
     format: ['esm', 'cjs'],
     dts: true,
     sourcemap: true,

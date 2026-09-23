@@ -41,11 +41,11 @@ const srcImportsEngine = readdirSync('src', { recursive: true })
 if (srcImportsEngine) {
   const inlined = readdirSync('dist', { recursive: true })
     .map(String)
-    // Every executable ENTRY, root and subpath alike: `dist/plugins/index.js`
+    // Engine-bearing entries only (component subentries intentionally omit it): `dist/plugins/index.js`
     // is `plugins/index.js` from readdirSync — a `startsWith('index')`
     // filter skipped it (2026-08-19 review r2 P3). Chunk files (if tsup ever
     // splits) are excluded by name; entries are the `index.*` files.
-    .filter((f) => (f.endsWith('.js') || f.endsWith('.cjs')) && /(^|\/)index\.(js|cjs)$/.test(f))
+    .filter((f) => (f.endsWith('.js') || f.endsWith('.cjs')) && /^(?:plugins\/)?index(?:\.dev)?\.(js|cjs)$/.test(f))
     .filter((f) => !readFileSync(`dist/${f}`, 'utf8').includes(ENGINE_SPECIFIER));
 
   if (inlined.length > 0) {

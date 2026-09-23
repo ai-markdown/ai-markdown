@@ -15,7 +15,7 @@ import { CopyButton } from '@mantine/core';
 import { prettyPrintJson } from './formatJson';
 import { createJsonCompletenessScanner } from './jsonCompleteness';
 import { useCodeFrame } from './useCodeFrame';
-import { MantineLanguageFormat } from '../../defs';
+import { MantineLanguageFormat, type MantineCodeBlockOptions } from '../../defs';
 export { jsonLooksComplete } from './jsonCompleteness';
 export { prettyPrintJson } from './formatJson';
 
@@ -205,6 +205,8 @@ const MantineAIMPreCode = memo(
     props: HTMLAttributes<HTMLPreElement> & {
       codeText: string;
       existLanguage?: string;
+      options?: Partial<MantineCodeBlockOptions>;
+      disableSpecial?: boolean;
     }
   ) => {
     const { fontSize } = useAIMarkdownTheme();
@@ -216,7 +218,7 @@ const MantineAIMPreCode = memo(
       formatJson,
       expandNestedJson,
       highlightIntervalMs,
-    } = useMantineCodeBlockOptions();
+    } = useMantineCodeBlockOptions(props.options);
 
     const detectedLanguage = useDetectedLanguage(
       props.codeText,
@@ -244,7 +246,8 @@ const MantineAIMPreCode = memo(
       return [normalize(codeLanguage), codeLanguage];
     }, [codeLanguage, languageFormat]);
 
-    const isSpecialCodeBlock = SPECIAL_LANGUAGES.has(codeLanguage);
+    const isSpecialCodeBlock =
+      Boolean(props.existLanguage) && !props.disableSpecial && SPECIAL_LANGUAGES.has(codeLanguage);
 
     const [scanJson] = useState(createJsonCompletenessScanner);
     const jsonComplete = useMemo(
@@ -279,11 +282,11 @@ const MantineAIMPreCode = memo(
     const specialCodeBlockContent = useMemo(() => {
       switch (codeLanguage) {
         case SpecialCodeLanguage.Mermaid:
-          return <MantineAIMMermaidCode code={props.codeText} />;
+          return <MantineAIMMermaidCode code={props.codeText} options={props.options} />;
         default:
           return null;
       }
-    }, [codeLanguage, props.codeText]);
+    }, [codeLanguage, props.codeText, props.options]);
 
     return isSpecialCodeBlock ? (
       specialCodeBlockContent

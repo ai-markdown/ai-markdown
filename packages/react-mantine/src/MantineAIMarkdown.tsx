@@ -13,7 +13,7 @@
  */
 
 import { memo, useMemo } from 'react';
-import AIMarkdown from '@ai-markdown/react';
+import { AIMarkdown } from '@ai-markdown/react';
 import {
   type AIMarkdownProps,
   type AIMarkdownCustomComponents,
@@ -27,7 +27,7 @@ import {
 import MantineAIMarkdownTypography from './components/typography/MantineTypography';
 import MantineAIMDefaultExtraStyles from './components/extra-styles/DefaultExtraStyles';
 import { MantineAIMarkdownMetadata, MantineCodeBlockOptions } from './defs';
-import MantineAIMPreCode from './components/customized/PreCode';
+import { MarkdownCodeBlock } from './rich/code';
 import { useMantineComputedColorScheme } from './hooks/useMantineComputedColorScheme';
 
 /**
@@ -83,48 +83,7 @@ const MANTINE_STABILITY_TABLE: AIMarkdownStabilityTable<{
  * is not a recognized code element.
  */
 const DefaultCustomComponents: AIMarkdownCustomComponents = {
-  pre: ({ node, ...usefulProps }) => {
-    const code = node?.children[0] as
-      | {
-          type: string;
-          tagName?: string;
-          position?: { start?: { offset?: number } };
-          properties?: Record<string, unknown>;
-          children: { value?: string }[];
-        }
-      | undefined;
-    if (
-      !code ||
-      code.type !== 'element' ||
-      code.tagName !== 'code' ||
-      !code.position ||
-      node?.children.length !== 1 ||
-      code.children.some((child) => !('value' in child) || typeof child.value !== 'string') ||
-      Object.keys(code.properties ?? {}).some((key) => key !== 'className') ||
-      Object.keys(node.properties ?? {}).length > 0
-    ) {
-      return <pre {...usefulProps} />;
-    }
-    const key = `pre-code-${node?.position?.start?.offset || 0}`;
-    // hast allows `className` as a string as well as an array (a consumer's
-    // rehype plugin may write either); `.find` on a string threw and took
-    // the whole tree down (2026-08-19 review).
-    const classNames = code.properties?.className;
-    const classList = Array.isArray(classNames)
-      ? (classNames as unknown[]).filter((c): c is string => typeof c === 'string')
-      : typeof classNames === 'string'
-        ? classNames.split(/\s+/)
-        : [];
-    const detectedLanguage = classList
-      .find((className) => className.startsWith('language-'))
-      ?.substring('language-'.length);
-    if (classList.some((className) => !className.startsWith('language-'))) return <pre {...usefulProps} />;
-    // A `<code>` inside `<pre>` normally carries ONE text child; if an
-    // upstream plugin splits it, the pieces are contiguous source — join
-    // with '' (a '\n' joiner would invent line breaks the source lacks).
-    const codeText = code.children.map((child: { value?: string }) => child.value ?? '').join('');
-    return <MantineAIMPreCode key={key} codeText={codeText} existLanguage={detectedLanguage} />;
-  },
+  pre: MarkdownCodeBlock,
 };
 
 /**

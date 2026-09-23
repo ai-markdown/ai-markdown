@@ -30,18 +30,19 @@ Once the first render works, [Configure rendering](configuration.md) explains wh
 
 ## Content and styling
 
-| Task                                               | Guide                                                    | Applies to |
-| -------------------------------------------------- | -------------------------------------------------------- | ---------- |
-| Choose which layer to configure                    | [Configure rendering](configuration.md)                  | All        |
-| Check which Markdown syntax renders                | [Markdown features](markdown-features.md)                | All        |
-| Render CJK and mixed-language text                 | [CJK typography](cjk-typography.md)                      | All        |
-| Transform the source before parsing                | [Content preprocessors](content-preprocessors.md)        | All        |
-| Configure URL and HTML policies                    | [URL sanitization](url-sanitization.md)                  | All        |
-| Replace rendered elements with your own components | [React custom components](custom-components.md)          | React      |
-| Swap the typography container                      | [React custom typography](custom-typography.md)          | React      |
-| Theme spacing, colors and fonts with CSS variables | [React CSS tokens](design-tokens.md)                     | React      |
-| Customize rendering and styles in Vue              | [Vue custom rendering and styling](vue-customization.md) | Vue        |
-| Try your own Markdown in the browser               | [Examples and playgrounds](../examples.md)               | All        |
+| Task                                               | Guide                                                    | Applies to          |
+| -------------------------------------------------- | -------------------------------------------------------- | ------------------- |
+| Add code, Mermaid, image preview and table export  | [Rich Markdown components](rich-components.md)           | React, Vue, Mantine |
+| Choose which layer to configure                    | [Configure rendering](configuration.md)                  | All                 |
+| Check which Markdown syntax renders                | [Markdown features](markdown-features.md)                | All                 |
+| Render CJK and mixed-language text                 | [CJK typography](cjk-typography.md)                      | All                 |
+| Transform the source before parsing                | [Content preprocessors](content-preprocessors.md)        | All                 |
+| Configure URL and HTML policies                    | [URL sanitization](url-sanitization.md)                  | All                 |
+| Replace rendered elements with your own components | [React custom components](custom-components.md)          | React               |
+| Swap the typography container                      | [React custom typography](custom-typography.md)          | React               |
+| Theme spacing, colors and fonts with CSS variables | [React CSS tokens](design-tokens.md)                     | React               |
+| Customize rendering and styles in Vue              | [Vue custom rendering and styling](vue-customization.md) | Vue                 |
+| Try your own Markdown in the browser               | [Examples and playgrounds](../examples.md)               | All                 |
 
 ## Integrations and performance
 

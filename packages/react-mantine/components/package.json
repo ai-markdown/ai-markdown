@@ -1,0 +1,8 @@
+{
+  "name": "@ai-markdown/react-mantine/components",
+  "private": true,
+  "main": "../dist/components.cjs",
+  "module": "../dist/components.js",
+  "types": "../dist/components.d.ts",
+  "sideEffects": false
+}

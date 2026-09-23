@@ -1,0 +1,4 @@
+{
+  "//": "CSS is exercised by packed resolution and browser bundle tests, not JS declaration resolution.",
+  "excludeEntrypoints": ["./components/styles.css"]
+}

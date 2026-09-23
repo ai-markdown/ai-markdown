@@ -1,0 +1,18 @@
+// Generated from the built public declaration. Review changes before updating.
+import * as react from 'react';
+import { ReactNode, ComponentPropsWithoutRef, ComponentType } from 'react';
+import { Element } from 'hast';
+type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
+    node?: Element;
+};
+interface ImagePreviewDialogProps {
+    open: boolean;
+    label: string;
+    onClose: () => void;
+    children: ReactNode;
+}
+declare function createMarkdownImage({ Dialog, }?: {
+    Dialog?: ComponentType<ImagePreviewDialogProps>;
+}): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
+declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
+export { type ImagePreviewDialogProps, MarkdownImage, type MarkdownImageProps, createMarkdownImage };

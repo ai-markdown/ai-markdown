@@ -1,0 +1,58 @@
+// Generated from the built public declaration. Review changes before updating.
+export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code.js';
+export { MarkdownImage } from './image.js';
+export { MarkdownTable } from './table.js';
+export { M as MarkdownComponentProps } from '../types-chunk.js';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+export { MarkdownCodeBlockOptions } from './code/plain.js';
+import 'vue';
+import 'hast';
+
+// Relative declaration: dist/components/code.d.ts
+import * as vue from 'vue';
+import { M as MarkdownComponentProps } from '../types-chunk.js';
+import { MarkdownCodeBlockOptions } from './code/plain.js';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+import 'hast';
+declare function preloadCodeAssets(): Promise<void>;
+declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): vue.DefineComponent<MarkdownComponentProps>;
+declare const MarkdownCodeBlock: vue.DefineComponent<MarkdownComponentProps>;
+export { MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock, preloadCodeAssets };
+
+// Relative declaration: dist/types-chunk.d.ts
+import { Element } from 'hast';
+interface MarkdownComponentProps {
+    node?: Element;
+    streaming?: boolean;
+    metadata?: unknown;
+}
+export type { MarkdownComponentProps as M };
+
+// Relative declaration: dist/components/code/plain.d.ts
+import { Component, VNodeChild, DefineComponent } from 'vue';
+import { M as MarkdownComponentProps } from '../../types-chunk.js';
+import { CodeBlockOptions } from '@ai-markdown/core/components';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+import 'hast';
+interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+    renderers?: Readonly<Record<string, Component | false>>;
+    colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
+    highlight?: (code: string, language: string) => VNodeChild;
+}
+declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
+declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
+export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, createMarkdownCodeBlock };
+
+// Relative declaration: dist/components/image.d.ts
+import { DefineComponent } from 'vue';
+import { M as MarkdownComponentProps } from '../types-chunk.js';
+import 'hast';
+declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
+export { MarkdownImage };
+
+// Relative declaration: dist/components/table.d.ts
+import { DefineComponent } from 'vue';
+import { M as MarkdownComponentProps } from '../types-chunk.js';
+import 'hast';
+declare const MarkdownTable: DefineComponent<MarkdownComponentProps>;
+export { MarkdownTable };

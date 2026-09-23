@@ -1,0 +1,23 @@
+// Generated from the built public declaration. Review changes before updating.
+import { Component, VNodeChild, DefineComponent } from 'vue';
+import { M as MarkdownComponentProps } from '../../types-chunk.js';
+import { CodeBlockOptions } from '@ai-markdown/core/components';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+import 'hast';
+interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+    renderers?: Readonly<Record<string, Component | false>>;
+    colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
+    highlight?: (code: string, language: string) => VNodeChild;
+}
+declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
+declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
+export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, createMarkdownCodeBlock };
+
+// Relative declaration: dist/types-chunk.d.ts
+import { Element } from 'hast';
+interface MarkdownComponentProps {
+    node?: Element;
+    streaming?: boolean;
+    metadata?: unknown;
+}
+export type { MarkdownComponentProps as M };

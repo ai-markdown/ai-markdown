@@ -576,6 +576,9 @@ importers:
 
   packages/react:
     dependencies:
+      '@ai-markdown/code-language-detector':
+        specifier: workspace:^
+        version: link:../code-language-detector
       '@ai-markdown/core':
         specifier: workspace:*
         version: link:../core
@@ -622,6 +625,9 @@ importers:
       lodash-es:
         specifier: ^4.18.0
         version: 4.18.1
+      mermaid:
+        specifier: ^11.17.2
+        version: 11.17.2
       react:
         specifier: ^19
         version: 19.2.8
@@ -691,6 +697,9 @@ importers:
       '@ai-markdown/code-language-detector':
         specifier: workspace:^
         version: link:../code-language-detector
+      '@ai-markdown/core':
+        specifier: workspace:*
+        version: link:../core
       mermaid:
         specifier: ^11.17.2
         version: 11.17.2
@@ -783,6 +792,9 @@ importers:
 
   packages/vue:
     dependencies:
+      '@ai-markdown/code-language-detector':
+        specifier: workspace:^
+        version: link:../code-language-detector
       '@ai-markdown/core':
         specifier: workspace:*
         version: link:../core
@@ -817,6 +829,9 @@ importers:
       '@vue/server-renderer':
         specifier: ^3.5.0
         version: 3.5.42
+      mermaid:
+        specifier: ^11.17.2
+        version: 11.17.2
       react:
         specifier: ^19
         version: 19.2.8

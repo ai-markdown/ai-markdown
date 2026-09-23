@@ -60,12 +60,28 @@
     "*": {
       "plugins": [
         "./dist/plugins/index.d.ts"
+      ],
+      "components": [
+        "./dist/components/index.d.ts"
+      ],
+      "components/code": [
+        "./dist/components/code.d.ts"
+      ],
+      "components/code/plain": [
+        "./dist/components/code/plain.d.ts"
+      ],
+      "components/image": [
+        "./dist/components/image.d.ts"
+      ],
+      "components/table": [
+        "./dist/components/table.d.ts"
       ]
     }
   },
   "files": [
     "dist",
-    "plugins"
+    "plugins",
+    "components"
   ],
   "exports": {
     ".": {
@@ -93,22 +109,67 @@
       "require": "./dist/plugins/index.cjs"
     },
     "./typography/*.css": "./dist/typography/*.css",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./components": {
+      "types": {
+        "import": "./dist/components/index.d.ts",
+        "require": "./dist/components/index.d.cts"
+      },
+      "import": "./dist/components/index.js",
+      "require": "./dist/components/index.cjs"
+    },
+    "./components/code": {
+      "types": {
+        "import": "./dist/components/code.d.ts",
+        "require": "./dist/components/code.d.cts"
+      },
+      "import": "./dist/components/code.js",
+      "require": "./dist/components/code.cjs"
+    },
+    "./components/code/plain": {
+      "types": {
+        "import": "./dist/components/code/plain.d.ts",
+        "require": "./dist/components/code/plain.d.cts"
+      },
+      "import": "./dist/components/code/plain.js",
+      "require": "./dist/components/code/plain.cjs"
+    },
+    "./components/image": {
+      "types": {
+        "import": "./dist/components/image.d.ts",
+        "require": "./dist/components/image.d.cts"
+      },
+      "import": "./dist/components/image.js",
+      "require": "./dist/components/image.cjs"
+    },
+    "./components/table": {
+      "types": {
+        "import": "./dist/components/table.d.ts",
+        "require": "./dist/components/table.d.cts"
+      },
+      "import": "./dist/components/table.js",
+      "require": "./dist/components/table.cjs"
+    },
+    "./components/styles.css": "./dist/components/styles.css"
   },
   "scripts": {
     "build:js": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-dist-clean.mjs && node scripts/assert-prod-diagnostic-inert.mjs",
     "build:css": "sass src/components/typography/variants/:dist/typography/ && postcss dist/typography/*.css --replace",
-    "build": "pnpm run build:js && pnpm run build:css",
+    "build": "pnpm run build:js && pnpm run build:css && node ../../scripts/copy-component-styles.mjs",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {
     "katex": "^0.16.0 || ^0.17.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "mermaid": "^11.17.2"
   },
   "peerDependenciesMeta": {
     "katex": {
+      "optional": true
+    },
+    "mermaid": {
       "optional": true
     }
   },
@@ -117,7 +178,8 @@
     "@types/hast": "^3.0.5",
     "hast-util-to-jsx-runtime": "^2.3.6",
     "unist-util-visit": "^5.1.0",
-    "@ai-markdown/core": "workspace:*"
+    "@ai-markdown/core": "workspace:*",
+    "@ai-markdown/code-language-detector": "workspace:^"
   },
   "devDependencies": {
     "@ai-markdown/rehype-raw": "7.0.3",
@@ -149,6 +211,7 @@
     "remark-toc": "^9.0.0",
     "unified": "^11.0.5",
     "vfile": "^6.0.3",
-    "@ai-markdown/storybook-kit": "workspace:*"
+    "@ai-markdown/storybook-kit": "workspace:*",
+    "mermaid": "^11.17.2"
   }
 }

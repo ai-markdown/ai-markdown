@@ -1,0 +1,64 @@
+// Generated from the built public declaration. Review changes before updating.
+export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code.js';
+export { ImagePreviewDialogProps, MarkdownImage, MarkdownImageProps, createMarkdownImage } from './image.js';
+export { MarkdownTable, MarkdownTableProps } from './table.js';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+export { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from './code/plain.js';
+import 'react';
+import 'hast';
+
+// Relative declaration: dist/components/code.d.ts
+import * as react from 'react';
+import { MarkdownCodeBlockProps, MarkdownCodeBlockOptions } from './code/plain.js';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+import 'hast';
+declare function preloadCodeAssets(): Promise<void>;
+declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+export { MarkdownCodeBlock, MarkdownCodeBlockOptions, MarkdownCodeBlockProps, createMarkdownCodeBlock, preloadCodeAssets };
+
+// Relative declaration: dist/components/code/plain.d.ts
+import * as react from 'react';
+import { ComponentProps, ComponentType, ReactNode } from 'react';
+import { Element } from 'hast';
+import { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+    renderers?: Readonly<Record<string, ComponentType<CodeRendererInput> | false>>;
+    highlight?: (code: string, language: string) => ReactNode;
+}
+type MarkdownCodeBlockProps = ComponentProps<'pre'> & {
+    node?: Element;
+};
+declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, createMarkdownCodeBlock };
+
+// Relative declaration: dist/components/image.d.ts
+import * as react from 'react';
+import { ReactNode, ComponentPropsWithoutRef, ComponentType } from 'react';
+import { Element } from 'hast';
+type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
+    node?: Element;
+};
+interface ImagePreviewDialogProps {
+    open: boolean;
+    label: string;
+    onClose: () => void;
+    children: ReactNode;
+}
+declare function createMarkdownImage({ Dialog, }?: {
+    Dialog?: ComponentType<ImagePreviewDialogProps>;
+}): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
+declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
+export { type ImagePreviewDialogProps, MarkdownImage, type MarkdownImageProps, createMarkdownImage };
+
+// Relative declaration: dist/components/table.d.ts
+import * as react from 'react';
+import { ComponentProps } from 'react';
+import { Element } from 'hast';
+type MarkdownTableProps = ComponentProps<'table'> & {
+    node?: Element;
+};
+declare function MarkdownTable({ node, children, ...props }: MarkdownTableProps): react.JSX.Element;
+export { MarkdownTable, type MarkdownTableProps };

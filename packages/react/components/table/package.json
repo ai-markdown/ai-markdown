@@ -1,0 +1,8 @@
+{
+  "name": "@ai-markdown/react/components/table",
+  "private": true,
+  "main": "../../dist/components/table.cjs",
+  "module": "../../dist/components/table.js",
+  "types": "../../dist/components/table.d.ts",
+  "sideEffects": false
+}

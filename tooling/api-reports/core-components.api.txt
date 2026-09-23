@@ -1,0 +1,104 @@
+// Generated from the built public declaration. Review changes before updating.
+import { Element } from 'hast';
+interface CodeSource {
+    code: string;
+    language: string;
+}
+declare function extractCode(node?: Element): CodeSource | null;
+declare function normalizeRenderers<T>(renderers: Readonly<Record<string, T>>): Readonly<Record<string, T>>;
+type TableProjection = {
+    rows: string[][];
+    reason?: undefined;
+} | {
+    rows?: undefined;
+    reason: string;
+};
+declare function projectTable(node?: Element): TableProjection;
+declare function serializeTable(rows: readonly (readonly string[])[], delimiter?: ',' | '\t'): string;
+interface CodeFrame {
+    code: string;
+    language: string;
+}
+declare function createCodeFrame(initial: CodeFrame, publish: (frame: CodeFrame) => void): {
+    update(next: CodeFrame, streaming: boolean, interval: number): void;
+    dispose: () => void;
+};
+declare function prettyPrintJson(text: string, expandNested?: boolean): string;
+declare function createJsonCompletenessScanner(): (text: string) => boolean;
+declare function jsonLooksComplete(text: string): boolean;
+declare function createRenderQueue(): {
+    enqueue(owner: object, run: () => Promise<void>): Promise<void>;
+    cancel(owner: object): void;
+};
+declare const mermaidRenderQueue: {
+    enqueue(owner: object, run: () => Promise<void>): Promise<void>;
+    cancel(owner: object): void;
+};
+type MermaidConfig = {
+    theme?: string;
+    securityLevel?: string;
+    darkMode?: boolean;
+    suppressErrorRendering?: boolean;
+    maxTextSize?: number;
+    themeVariables?: unknown;
+};
+type MermaidInitTarget = {
+    initialize(config: MermaidConfig): void;
+    mermaidAPI?: {
+        getSiteConfig?: () => MermaidConfig;
+        getConfig?: () => MermaidConfig;
+    };
+};
+declare const resetMermaidInitializationForTests: () => void;
+declare const MERMAID_DEFAULT_MAX_TEXT_SIZE = 50000;
+declare const getMermaidMaxTextSize: (mermaid: MermaidInitTarget) => number;
+declare const ensureMermaidInitialized: (mermaid: MermaidInitTarget, isDark: boolean) => void;
+interface DiagramEngine extends MermaidInitTarget {
+    parse(code: string, options: {
+        suppressErrors: true;
+    }): Promise<unknown>;
+    render(id: string, code: string): Promise<{
+        svg: string;
+        bindFunctions?(element: object): void;
+    }>;
+}
+type DiagramState = {
+    status: 'loading' | 'ready' | 'error';
+    svg: string;
+    error?: string;
+    bind?: (element: object) => void;
+};
+interface DiagramRequest {
+    code: string;
+    dark: boolean;
+    streaming: boolean;
+    active: boolean;
+    resetKey: string;
+    interval: number;
+}
+declare function createDiagramController(load: () => Promise<DiagramEngine>, publish: (state: DiagramState) => void): {
+    update(request: DiagramRequest): void;
+    dispose: () => void;
+};
+declare function lockImagePreviewScroll(target: {
+    style: {
+        overflow: string;
+    };
+}): () => void;
+interface CodeRendererInput {
+    code: string;
+    language: string;
+    streaming: boolean;
+    colorScheme: 'light' | 'dark';
+    active: boolean;
+    resetKey: string;
+}
+interface CodeBlockOptions {
+    defaultExpanded?: boolean;
+    autoDetectUnknownLanguage?: boolean;
+    formatJson?: boolean;
+    expandNestedJson?: boolean;
+    highlightIntervalMs?: number;
+    mermaidIntervalMs?: number;
+}
+export { type CodeBlockOptions, type CodeFrame, type CodeRendererInput, type CodeSource, type DiagramEngine, type DiagramRequest, type DiagramState, MERMAID_DEFAULT_MAX_TEXT_SIZE, type MermaidInitTarget, type TableProjection, createCodeFrame, createDiagramController, createJsonCompletenessScanner, createRenderQueue, ensureMermaidInitialized, extractCode, getMermaidMaxTextSize, jsonLooksComplete, lockImagePreviewScroll, mermaidRenderQueue, normalizeRenderers, prettyPrintJson, projectTable, resetMermaidInitializationForTests, serializeTable };

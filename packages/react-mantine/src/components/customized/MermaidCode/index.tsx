@@ -10,6 +10,7 @@ import { ActionIcon, CopyButton, Flex, Text, Tooltip } from '@mantine/core';
 import type mermaidModule from 'mermaid';
 import { CheckIcon, CodeIcon, DiagramIcon } from './icons';
 import { useAIMarkdownState, useAIMarkdownTheme } from '@ai-markdown/react';
+import type { MantineCodeBlockOptions } from '../../../defs';
 import { useMantineCodeBlockOptions } from '../../../hooks/useMantineCodeBlockOptions';
 import './styles.scss';
 
@@ -201,10 +202,10 @@ const handleViewSVGInNewWindow = (svgElement: SVGElement | null | undefined, isD
  *
  * @param props.code - Raw mermaid diagram source code to render.
  */
-const MantineAIMMermaidCode = memo((props: { code: string }) => {
+const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<MantineCodeBlockOptions> }) => {
   const { colorScheme, fontSize } = useAIMarkdownTheme();
   const { streaming } = useAIMarkdownState();
-  const { defaultExpanded, mermaidIntervalMs } = useMantineCodeBlockOptions();
+  const { defaultExpanded, mermaidIntervalMs } = useMantineCodeBlockOptions(props.options);
   const isDark = colorScheme === 'dark';
   // The throttled source for the render effect (see "Streaming contract").
   // Same trailing throttle as ordinary code display: appends within an

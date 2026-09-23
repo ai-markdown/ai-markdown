@@ -1,0 +1,15 @@
+// Generated from the built public declaration. Review changes before updating.
+import { DefineComponent } from 'vue';
+import { M as MarkdownComponentProps } from '../types-chunk.js';
+import 'hast';
+declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
+export { MarkdownImage };
+
+// Relative declaration: dist/types-chunk.d.ts
+import { Element } from 'hast';
+interface MarkdownComponentProps {
+    node?: Element;
+    streaming?: boolean;
+    metadata?: unknown;
+}
+export type { MarkdownComponentProps as M };

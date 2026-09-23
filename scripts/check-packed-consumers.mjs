@@ -130,6 +130,9 @@ assert(html.includes('https://example.com'));
 const { MantineProvider } = await import('@mantine/core');
 const { default: MantineMarkdown } = await import('@ai-markdown/react-mantine');
 assert(renderToString(React.createElement(MantineProvider, {}, React.createElement(MantineMarkdown, { content: '**Mantine packed**' }))).includes('<strong>Mantine packed</strong>'));
+// Importability alone misses CJS default interop failures inside the wrapper.
+const CjsReact = require('react');
+assert(require('react-dom/server').renderToString(CjsReact.createElement(require('@mantine/core').MantineProvider, {}, CjsReact.createElement(require('@ai-markdown/react-mantine').default, { content: '**Mantine CJS packed**' }))).includes('<strong>Mantine CJS packed</strong>'));
 // Auto-detection resolves the packed detector dependency during server rendering. A detector package tag verifies
 // against the train already on npm, which may predate react-mantine's use of the detector.
 if (require('@ai-markdown/react-mantine/package.json').dependencies?.['@ai-markdown/code-language-detector']) assert(renderToString(React.createElement(MantineProvider, {}, React.createElement(MantineMarkdown, { content: '\`\`\`\\nfn main() {\\n    let mut total = 0;\\n    println!("{}", total);\\n}\\n\`\`\`', codeBlock: { autoDetectUnknownLanguage: true } }))).includes('>rust<'));
@@ -145,7 +148,30 @@ assert.equal(typeof require('@ai-markdown/core').createPipelineSession, 'functio
 const detector = require('@ai-markdown/code-language-detector');
 assert.equal(detector.detectLanguage('fn main() {\\n    let mut total = 0;\\n    println!("{}", total);\\n}').language, detector.CodeLanguage.Rust);
 `;
-writeFileSync(join(out, 'probe.mjs'), probe);
+const hasComponents = Boolean(manifestFor('react').exports['./components']);
+const componentsProbe = `
+for (const suffix of ['components', 'components/code', 'components/code/plain', 'components/image', 'components/table']) {
+  assert(await import('@ai-markdown/react/' + suffix)); assert(require('@ai-markdown/react/' + suffix));
+  assert(await import('@ai-markdown/vue/' + suffix)); assert(require('@ai-markdown/vue/' + suffix));
+}
+for (const format of ['esm', 'cjs']) {
+  const load = name => format === 'esm' ? import(name) : Promise.resolve(require(name));
+  const adapter = await load('@ai-markdown/react');
+  const rich = await load('@ai-markdown/react/components');
+  const fence = String.fromCharCode(96).repeat(3);
+  const markdown = [fence + 'mermaid', 'graph TD; A-->B', fence, '', 'text ![alt](https://example.com/image.png)', '', '| A | B |', '| - | - |', '| =SUM(A1) | -1 |'].join('\\n');
+  const html = renderToString(React.createElement(adapter.default, { content: markdown, streaming: true, colorScheme: 'dark', customComponents: { pre: rich.MarkdownCodeBlock, img: rich.MarkdownImage, table: rich.MarkdownTable } }));
+  assert(html.includes('data-color-scheme="dark"')); assert(html.includes('graph TD;')); assert(html.includes('Copy table')); assert(!html.includes('<dialog')); assert(!html.includes('Preview image'));
+  const v = await load('@ai-markdown/vue'); const vr = await load('@ai-markdown/vue/components');
+  const vh = await vueServer.renderToString(Vue.createSSRApp({ render: () => Vue.h(v.AIMarkdown, { content: markdown, components: { pre: vr.MarkdownCodeBlock, img: vr.MarkdownImage, table: vr.MarkdownTable } }) }));
+  assert(vh.includes('graph TD;')); assert(vh.includes('Copy table')); assert(!vh.includes('<dialog'));
+  const m = await load('@ai-markdown/react-mantine/components');
+  const mantine = await load('@mantine/core');
+  assert(renderToString(React.createElement(mantine.MantineProvider, {}, React.createElement(adapter.default, { content: markdown, customComponents: { pre: m.MarkdownCodeBlock, img: m.MarkdownImage, table: m.MarkdownTable } }))).includes('Copy table'));
+}
+for (const name of ['@ai-markdown/react/components/styles.css', '@ai-markdown/vue/components/styles.css']) assert(require.resolve(name).endsWith('.css'));
+`;
+writeFileSync(join(out, 'probe.mjs'), probe + (hasComponents ? componentsProbe : ''));
 for (const conditions of [[], ['--conditions=development']])
   execFileSync(process.execPath, [...conditions, 'probe.mjs'], { cwd: out, stdio: 'pipe', encoding: 'utf8' });
 const types = `
@@ -174,8 +200,18 @@ registry._subscribers;
 // @ts-expect-error private coordinator implementation is not an adapter contract
 createSmoothCoordinator()._refcounts;
 `;
+const componentsTypes = `
+import { MarkdownCodeBlock as Code, MarkdownImage as Image, MarkdownTable as Table, createMarkdownCodeBlock, type CodeRendererInput } from '@ai-markdown/react/components';
+createElement(AIMarkdown, { content: '', customComponents: { pre: Code, img: Image, table: Table } });
+const CustomCode = createMarkdownCodeBlock({ renderers: { mermaid: false, custom: (props: CodeRendererInput) => createElement('span', {}, props.code) } });
+createElement(AIMarkdown, { content: '', customComponents: { pre: CustomCode } });
+import { MarkdownCodeBlock as VueCode, MarkdownImage as VueImage, MarkdownTable as VueTable } from '@ai-markdown/vue/components';
+h(VueMarkdown, { content: '', components: { pre: VueCode, img: VueImage, table: VueTable } });
+import { MarkdownCodeBlock as MantineCode } from '@ai-markdown/react-mantine/components';
+createElement(MantineAIMarkdown, { content: '', customComponents: { pre: MantineCode } });
+`;
 for (const ext of ['mts', 'cts']) {
-  writeFileSync(join(out, `consumer.${ext}`), types);
+  writeFileSync(join(out, `consumer.${ext}`), types + (hasComponents ? componentsTypes : ''));
   execFileSync(
     process.execPath,
     [
@@ -232,3 +268,17 @@ for (const dir of ['engine', 'core']) {
   }
 }
 console.log(`Packed ESM/CJS, development, SSR, CSS, plugin, TypeScript and Vue 3.5.0 consumers passed: ${out}`);
+
+if (process.argv.includes('--browser')) {
+  assert(hasComponents, 'Component browser verification requires component exports');
+  execFileSync(process.execPath, [join(root, 'scripts/test-rich-components.mjs'), out], {
+    cwd: root,
+    stdio: 'inherit',
+  });
+}
+
+if (hasComponents)
+  execFileSync(process.execPath, [join(root, 'scripts/check-component-bundles.mjs'), out], {
+    cwd: root,
+    stdio: 'inherit',
+  });

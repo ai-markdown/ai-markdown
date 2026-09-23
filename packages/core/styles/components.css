@@ -1,0 +1,120 @@
+/* Optional neutral skin. All controls remain semantic without this file. */
+.aimd-code,
+.aimd-table {
+  --aimd-border: #d5d9e0;
+  --aimd-surface: #f6f8fa;
+  --aimd-text: #202630;
+  border: 1px solid var(--aimd-border);
+  border-radius: 0.5rem;
+  margin-block: 1rem;
+  color: var(--aimd-text);
+  overflow: hidden;
+}
+.aimd-code[data-color-scheme='dark'],
+[data-color-scheme='dark'] .aimd-table {
+  --aimd-border: #424954;
+  --aimd-surface: #222831;
+  --aimd-text: #edf0f5;
+}
+.aimd-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.65rem;
+  background: var(--aimd-surface);
+  font:
+    500 0.8rem/1.5 system-ui,
+    sans-serif;
+}
+.aimd-toolbar > span:first-child {
+  margin-inline-end: auto;
+}
+.aimd-toolbar button,
+.aimd-diagram button,
+.aimd-image-dialog button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: 0.25rem;
+  padding: 0.2rem 0.5rem;
+}
+.aimd-toolbar button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.aimd-toolbar button:focus-visible,
+.aimd-image-trigger:focus-visible,
+.aimd-table-scroll:focus-visible {
+  outline: 2px solid #4a85e8;
+  outline-offset: 2px;
+}
+.aimd-code .aimd-code-content pre {
+  margin: 0;
+  padding: 1rem;
+  overflow: auto;
+  border: 0;
+}
+.aimd-code-content[data-collapsed='true'] {
+  max-height: 20rem;
+  overflow: auto;
+}
+.aimd-diagram {
+  padding: 1rem;
+}
+.aimd-diagram-viewport {
+  overflow: auto;
+}
+.aimd-diagram-viewport svg {
+  display: block;
+  max-width: 100%;
+  margin-inline: auto;
+}
+.aimd-table-scroll {
+  overflow-x: auto;
+}
+.aimd-table-scroll table {
+  width: 100%;
+  margin: 0;
+  border-collapse: collapse;
+}
+.aimd-table-scroll th,
+.aimd-table-scroll td {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--aimd-border);
+}
+.aimd-image-trigger {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: zoom-in;
+  vertical-align: middle;
+}
+.aimd-image-trigger img {
+  max-width: 100%;
+}
+.aimd-image-dialog {
+  max-width: 95vw;
+  max-height: 95vh;
+  padding: 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+}
+.aimd-image-dialog::backdrop {
+  background: #000b;
+}
+.aimd-image-dialog > button {
+  display: block;
+  margin-inline-start: auto;
+  margin-block-end: 0.5rem;
+}
+.aimd-image-dialog img {
+  display: block;
+  max-width: 85vw;
+  max-height: 80vh;
+  object-fit: contain;
+}
