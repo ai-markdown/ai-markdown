@@ -142,6 +142,11 @@ try {
     assert.equal(await page.locator('#storybook-root .aimd-code').count(), 2);
     assert.equal(await page.locator('#storybook-root .aimd-table-scroll table').count(), 1);
     assert.equal(await page.locator('#storybook-root .aimd-image-trigger').count(), 1);
+    // A mounted image component can still hide a broken deployment URL.
+    await page.waitForFunction(() => {
+      const image = document.querySelector('#storybook-root .aimd-image-trigger img');
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    });
   }
   // Plugin comparisons must read live Controls, not capture their initial source.
   const pluginStory = 'basics-engine-plugins--smartypants';
