@@ -98,6 +98,8 @@ const check = (actual, expected, message) => {
 };
 try {
   await page.goto(url);
+  // The default skin is replaceable through CSS in every adapter.
+  await page.addStyleTag({ content: '.aimd-image-preview { z-index: 1500; }' });
   for (const framework of ['react', 'vue']) {
     console.log(`Checking ${framework} rich components`);
     const root = page.locator(`#${framework}`);
@@ -108,6 +110,11 @@ try {
     await page.keyboard.press('Enter');
     await page.locator('.aimd-image-preview[aria-modal="true"]').waitFor();
     check(await page.locator('p dialog').count(), 0, 'dialog is portalled outside paragraphs');
+    check(
+      await page.locator('.aimd-image-preview').evaluate((node) => getComputedStyle(node).zIndex),
+      '1500',
+      'business styles can override the preview layer'
+    );
     check(
       await page.evaluate(() => getComputedStyle(document.body).overflowY),
       'hidden',

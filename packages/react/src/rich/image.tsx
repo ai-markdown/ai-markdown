@@ -265,7 +265,6 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
               open: Boolean(item),
               current: index >= 0 ? index : previewIndex,
               alt: items[index >= 0 ? index : previewIndex]?.alt || 'Image preview',
-              zIndex: 1100,
               motionName: 'aimd-image-fade',
               onOpenChange: (open) => {
                 if (!open) setSelected(null);
