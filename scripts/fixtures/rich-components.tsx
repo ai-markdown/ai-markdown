@@ -3,6 +3,7 @@ import { createRoot, hydrateRoot } from 'react-dom/client';
 import { createSSRApp, defineComponent, h, ref } from 'vue';
 import AIMarkdown from '@ai-markdown/react';
 import { MantineProvider } from '@mantine/core';
+import MantineAIMarkdown from '@ai-markdown/react-mantine';
 import { MarkdownImage as MantineImage } from '@ai-markdown/react-mantine/components';
 import '@mantine/core/styles.css';
 import { AIMarkdown as VueMarkdown } from '@ai-markdown/vue';
@@ -88,17 +89,20 @@ function ReactFixture() {
   const [content, setContent] = useState(sample),
     [streaming, setStreaming] = useState(false);
   const [mode, setMode] = useState('default');
+  const [colorScheme, setColorScheme] = useState<'light' | 'dark'>('light');
   Object.assign(window, {
     updateReact: (next: string, stream = false) => {
       setContent(next);
       setStreaming(stream);
     },
     modeReact: setMode,
+    themeReact: setColorScheme,
   });
   return (
     <StrictMode>
       <AIMarkdown
         content={content}
+        colorScheme={colorScheme}
         streaming={streaming}
         documentId="react-rich"
         customComponents={{
@@ -140,6 +144,6 @@ createSSRApp({
 
 createRoot(document.querySelector('#mantine')!).render(
   <MantineProvider>
-    <AIMarkdown content="Inline ![mantine](/image.svg) image." customComponents={{ img: MantineImage }} />
+    <MantineAIMarkdown content="Inline ![mantine](/image.svg) image." customComponents={{ img: MantineImage }} />
   </MantineProvider>
 );

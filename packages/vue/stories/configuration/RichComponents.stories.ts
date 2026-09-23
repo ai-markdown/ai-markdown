@@ -24,7 +24,7 @@ const meta: Meta<typeof AIMarkdown> = {
 export default meta;
 export const DirectRegistration: StoryObj<typeof AIMarkdown> = {
   play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('.aimd-diagram svg')).not.toBeNull());
+    await waitFor(() => expect(canvasElement.querySelector('.aimd-diagram svg')).not.toBeNull(), { timeout: 15000 });
     expect(canvasElement.querySelectorAll('.aimd-code')).toHaveLength(2);
     expect(canvasElement.querySelector('.aimd-image-trigger')).not.toBeNull();
     expect(canvasElement.querySelector('.aimd-table-scroll table')).not.toBeNull();

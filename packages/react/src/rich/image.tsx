@@ -9,11 +9,16 @@ import {
   useCallback,
   useRef,
   useState,
+  useSyncExternalStore,
   type ComponentPropsWithoutRef,
   type ComponentType,
   type ReactNode,
 } from 'react';
 import RcImageImport from '@rc-component/image';
+import { useAIMarkdownTheme } from '@ai-markdown/react';
+const subscribeClient = () => () => {};
+const clientSnapshot = () => true;
+const serverSnapshot = () => false;
 // Native ESM consumers receive the CommonJS namespace; bundlers unwrap it.
 const RcImage =
   'PreviewGroup' in RcImageImport
@@ -124,6 +129,8 @@ function actionIcon(name: ImageActionIconName, icons?: MarkdownImageOptions['ico
 /** Configure once, then register the result directly as customComponents.img. */
 export function createMarkdownImage({ icons, group, preview: allowPreview = true }: MarkdownImageOptions = {}) {
   return function MarkdownImage({ node: _node, ...props }: MarkdownImageProps) {
+    const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
+    const { colorScheme } = useAIMarkdownTheme();
     const image = useRef<HTMLImageElement>(null),
       trigger = useRef<HTMLButtonElement>(null);
     const [enabled, setEnabled] = useState(false),
@@ -199,7 +206,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
       <img
         {...props}
         ref={image}
-        style={{ ...props.style, ...(status !== 'ready' ? { opacity: 0 } : {}) }}
+        style={{ ...props.style, ...(mounted && status !== 'ready' ? { opacity: 0 } : {}) }}
         onLoad={(event) => {
           setStatus('ready');
           setLoadedSource(event.currentTarget.currentSrc);
@@ -213,7 +220,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
         }}
       />
     );
-    const feedback = status !== 'ready' && (
+    const feedback = mounted && status !== 'ready' && (
       <span className="aimd-image-feedback" role={status === 'error' ? 'alert' : 'status'}>
         <ImageIcon name={status === 'error' ? 'error' : 'placeholder'} icons={icons} />
         <span>
@@ -235,7 +242,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
     );
     return (
       <>
-        <span className="aimd-image" data-status={status}>
+        <span className="aimd-image" data-color-scheme={colorScheme} data-status={mounted ? status : undefined}>
           {enabled ? (
             <button
               className="aimd-image-trigger"

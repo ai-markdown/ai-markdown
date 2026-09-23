@@ -97,6 +97,23 @@ const check = (actual, expected, message) => {
   checks++;
 };
 try {
+  const noScript = await browser.newContext({ javaScriptEnabled: false });
+  const staticPage = await noScript.newPage();
+  await staticPage.goto(url);
+  for (const framework of ['react', 'vue']) {
+    const firstImage = staticPage.locator(`#${framework} .aimd-image img`).first();
+    check(
+      await firstImage.evaluate((img) => img.complete && img.naturalWidth > 0 && getComputedStyle(img).opacity === '1'),
+      true,
+      'SSR images remain visible without hydration'
+    );
+    check(
+      await staticPage.locator(`#${framework} .aimd-image-feedback`).count(),
+      0,
+      'SSR does not claim a loaded image is still loading'
+    );
+  }
+  await noScript.close();
   await page.goto(url);
   // The default skin is replaceable through CSS in every adapter.
   await page.addStyleTag({ content: '.aimd-image-preview { z-index: 1500; }' });
@@ -123,6 +140,16 @@ try {
     await page.locator('.aimd-image-preview-img').waitFor({ state: 'visible' });
     check(await page.getByRole('button', { name: 'Zoom out', exact: true }).isDisabled(), true, 'minimum zoom is 1x');
     check(await page.locator('.aimd-image-preview-actions button').count(), 6, 'reference toolbar has six actions');
+    check(
+      await page.locator('.aimd-image-preview-close svg').evaluate((node) => node.getBoundingClientRect().width),
+      18,
+      'preview icons match the reference size'
+    );
+    check(
+      await trigger.locator('.aimd-image-cover svg').evaluate((node) => node.getBoundingClientRect().width),
+      24,
+      'thumbnail icon keeps its larger size'
+    );
     await page.keyboard.press('Escape');
     await page.waitForFunction(() => !document.querySelector('.aimd-image-preview[aria-modal="true"]'));
     check(
@@ -131,11 +158,39 @@ try {
       'closing restores scrolling'
     );
     check(await trigger.evaluate((node) => node === document.activeElement), true, 'Escape restores focus');
+    check(
+      await trigger.evaluate((node) => getComputedStyle(node.closest('.aimd-image')).outlineStyle),
+      'solid',
+      'keyboard dismissal retains the thumbnail focus indicator'
+    );
     await trigger.evaluate((node) => node.parentElement.setAttribute('role', 'link'));
     await page.waitForFunction((fw) => !document.querySelector(`#${fw} .aimd-image-trigger`), framework);
     checks++;
     await root.locator('[role=link]').evaluate((node) => node.removeAttribute('role'));
     await trigger.waitFor();
+    const setTheme = async (dark) =>
+      page.evaluate(
+        ({ fw, dark }) => {
+          if (fw === 'react') window.themeReact(dark ? 'dark' : 'light');
+          else document.querySelector('#vue').setAttribute('data-color-scheme', dark ? 'dark' : 'light');
+        },
+        { fw: framework, dark }
+      );
+    await setTheme(true);
+    await page.waitForFunction(
+      (fw) => getComputedStyle(document.querySelector(`#${fw} .aimd-table`)).color === 'rgb(237, 240, 245)',
+      framework
+    );
+    check(
+      await root.locator('.aimd-table').evaluate((node) => getComputedStyle(node).backgroundColor),
+      'rgb(34, 40, 49)',
+      'dark table has a contrasting surface'
+    );
+    await setTheme(false);
+    await page.waitForFunction(
+      (fw) => getComputedStyle(document.querySelector(`#${fw} .aimd-table`)).color === 'rgb(32, 38, 48)',
+      framework
+    );
     await root.getByRole('button', { name: 'Copy table', exact: true }).click();
     const copied = await page.evaluate(() => navigator.clipboard.readText());
     check(
@@ -195,6 +250,15 @@ try {
     await root.locator('[data-custom-icon="gallery"]').first().waitFor({ state: 'attached' });
     await root.locator('[data-custom-icon="error"]').waitFor();
     await root.locator('[data-custom-icon="loading"]').waitFor();
+    await setTheme(true);
+    await page.waitForFunction(
+      (fw) =>
+        getComputedStyle(document.querySelector(`#${fw} .aimd-image[data-status=error]`)).backgroundColor ===
+        'rgb(34, 40, 49)',
+      framework
+    );
+    checks++;
+    await setTheme(false);
     check(
       await root.locator('.aimd-image[data-status="error"] button').isDisabled(),
       true,
@@ -334,6 +398,11 @@ try {
     );
     await page.getByRole('button', { name: 'Close preview', exact: true }).click();
     await page.locator('.aimd-image-preview').waitFor({ state: 'detached' });
+    check(
+      await single.evaluate((node) => getComputedStyle(node.closest('.aimd-image')).outlineStyle),
+      'none',
+      'pointer dismissal does not leave a keyboard focus indicator'
+    );
     await single.click();
     await page.waitForFunction(
       () =>

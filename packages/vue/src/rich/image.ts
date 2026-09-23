@@ -70,6 +70,7 @@ export function createMarkdownImage({
     setup(_, { attrs }) {
       const image = ref<HTMLImageElement>(),
         trigger = ref<HTMLButtonElement>();
+      const mounted = ref(false);
       const enabled = ref(false),
         selected = shallowRef<object | null>(null),
         items = shallowRef<readonly ImageGalleryItem[]>([]),
@@ -100,6 +101,7 @@ export function createMarkdownImage({
           status.value = element.naturalWidth > 0 ? 'ready' : 'error';
       };
       onMounted(() => {
+        mounted.value = true;
         observe();
         syncCached();
       });
@@ -160,6 +162,7 @@ export function createMarkdownImage({
         const item = current(),
           index = items.value.findIndex((entry) => entry.id === selected.value);
         const feedback = (state: ImageLoadStatus, alt = '') =>
+          mounted.value &&
           state !== 'ready' &&
           h('span', { class: 'aimd-image-feedback', role: state === 'error' ? 'alert' : 'status' }, [
             icon(state === 'error' ? 'error' : 'placeholder', icons),
@@ -168,7 +171,7 @@ export function createMarkdownImage({
         const img = h('img', {
           ...attrs,
           ref: image,
-          style: [attrs.style, status.value !== 'ready' ? { opacity: 0 } : undefined],
+          style: [attrs.style, mounted.value && status.value !== 'ready' ? { opacity: 0 } : undefined],
           onLoad: [
             attrs.onLoad,
             (event: Event) => {
@@ -196,7 +199,7 @@ export function createMarkdownImage({
         return [
           h(
             'span',
-            { class: 'aimd-image', 'data-status': status.value },
+            { class: 'aimd-image', 'data-status': mounted.value ? status.value : undefined },
             enabled.value
               ? [
                   h(

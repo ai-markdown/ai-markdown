@@ -123,13 +123,13 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 `@ai-markdown/react-mantine/components` 提供同名的三个注册组件和代码块工厂。普通代码和内置 Mermaid 保留原来的高亮 provider、JSON 默认值及图表交互；显式语言扩展使用中性源码/复制外框。图片与 React 使用相同的 rc-image 内核和预览样式，表格使用共享 React 组件；除原有 Mantine 样式外，可导入 `@ai-markdown/react/components/styles.css`。
 
-默认 CSS 是可选的，以 `aimd-*` 类限定范围。代码块和表格暴露 `--aimd-border`、`--aimd-surface`、`--aimd-text`；代码块主题跟随 React 上下文或 Vue 工厂配置，表格支持上层 `[data-color-scheme="dark"]` 和 Mantine 的暗色属性。应用可以直接覆盖类和变量，不需要为改样式再包组件。
+默认 CSS 是可选的，以 `aimd-*` 类限定范围。代码块、表格和图片反馈区域暴露 `--aimd-border`、`--aimd-surface`、`--aimd-text`。React 组件跟随 Markdown 主题，也会使用 Mantine 解析后的主题；Vue 代码块使用工厂主题配置，表格和图片反馈区域继承上层 `[data-color-scheme="dark"]` 或 `[data-mantine-color-scheme="dark"]`。应用可以直接覆盖类和变量，不需要为改样式再包组件。
 
 `pre` 注册项负责普通围栏代码；单独的 `code` 注册项仍用于行内代码和回退的非标准 pre 结构，不会自动组合进增强代码块。带额外节点属性或非标准子结构的 pre 保留原来的渲染结果。
 
 ## 图片图标与分组预览
 
-缩略图加载时显示 `image` 占位图标，失败时显示 `image-off` 和图片说明。可预览的图片在悬浮或键盘聚焦时显示入口：单图使用 `image-play`，多图使用 `gallery-thumbnails`。
+服务端渲染的图片在 JavaScript 加载前保持可见。水合后，缩略图加载时显示 `image` 占位图标，失败时显示 `image-off` 和图片说明。可预览的图片在悬浮或键盘聚焦时显示入口：单图使用 `image-play`，多图使用 `gallery-thumbnails`。
 
 通过工厂配置语义图标，返回的组件可以直接注册，无需再次包装：
 
@@ -153,6 +153,6 @@ React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/component
 
 `group: false` 可关闭分组；`group: '[data-photo-album]'` 可指定业务容器作为分组边界。自定义排版根节点可添加 `data-aimd-image-scope` 来启用自动分组；找不到分组容器时按单图处理。`preview: false` 仅关闭预览，保留加载/错误反馈。
 
-可选默认样式提供 `.aimd-image`、`.aimd-image-cover`、`.aimd-image-feedback`、`.aimd-image-icon`，缩略图状态由 `data-status="loading|ready|error"` 标记，可直接覆盖样式。
+可选默认样式提供 `.aimd-image`、`.aimd-image-cover`、`.aimd-image-feedback`、`.aimd-image-icon`，水合后的缩略图状态由 `data-status="loading|ready|error"` 标记，可直接覆盖样式。
 
 工具栏也支持通过 `icons` 配置图标或组件：`close`、`prev`、`next`、`flipX`、`flipY`、`rotateLeft`、`rotateRight`、`zoomIn`、`zoomOut`。导入组件样式即可使用全屏预览布局；自行提供样式时需覆盖 `.aimd-image-preview-*`。

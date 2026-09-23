@@ -1,9 +1,15 @@
 /* Optional neutral skin. All controls remain semantic without this file. */
 .aimd-code,
-.aimd-table {
+.aimd-table,
+.aimd-image,
+.aimd-table[data-color-scheme='light'],
+.aimd-image[data-color-scheme='light'] {
   --aimd-border: #d5d9e0;
   --aimd-surface: #f6f8fa;
   --aimd-text: #202630;
+}
+.aimd-code,
+.aimd-table {
   border: 1px solid var(--aimd-border);
   border-radius: 0.5rem;
   margin-block: 1rem;
@@ -11,7 +17,9 @@
   overflow: hidden;
 }
 .aimd-code[data-color-scheme='dark'],
-[data-color-scheme='dark'] .aimd-table {
+.aimd-table[data-color-scheme='dark'],
+.aimd-image[data-color-scheme='dark'],
+:where([data-color-scheme='dark'], [data-mantine-color-scheme='dark']) :is(.aimd-table, .aimd-image) {
   --aimd-border: #424954;
   --aimd-surface: #222831;
   --aimd-text: #edf0f5;
@@ -70,6 +78,9 @@
   display: block;
   max-width: 100%;
   margin-inline: auto;
+}
+.aimd-table {
+  background: var(--aimd-surface);
 }
 .aimd-table-scroll {
   overflow-x: auto;
@@ -170,7 +181,7 @@
 .aimd-image-trigger:focus-visible .aimd-image-cover {
   opacity: 1;
 }
-.aimd-image:focus-within {
+.aimd-image:has(.aimd-image-trigger:focus-visible) {
   outline: 2px solid #4a85e8;
   outline-offset: 2px;
 }
@@ -379,6 +390,11 @@ dialog.aimd-image-preview::backdrop {
 }
 .aimd-image-preview-moving .aimd-image-preview-img {
   cursor: grabbing;
+}
+/* The supplied preview toolbar uses 18px icons; thumbnail covers remain 24px. */
+.aimd-image-preview .aimd-image-icon > svg {
+  width: 18px;
+  height: 18px;
 }
 .aimd-image-preview button:focus-visible {
   outline: 2px solid #fff;
