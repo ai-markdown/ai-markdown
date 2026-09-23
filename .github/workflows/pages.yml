@@ -17,6 +17,8 @@ concurrency:
 
 jobs:
   build:
+    # Only the organization site publishes content; PRs still validate builds.
+    if: github.repository == 'ai-markdown/ai-markdown.github.io' || github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -57,7 +59,7 @@ jobs:
           path: _site
 
   deploy:
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    if: github.repository == 'ai-markdown/ai-markdown.github.io' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     needs: build
     runs-on: ubuntu-latest
     permissions:
@@ -69,4 +71,30 @@ jobs:
     steps:
       - name: Deploy combined site
         id: deployment
+        uses: actions/deploy-pages@v5
+
+  project-redirect:
+    if: github.repository == 'ai-markdown/ai-markdown' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - uses: actions/configure-pages@v5
+      - name: Verify compatibility redirects
+        run: node --test scripts/build-pages-redirect.test.mjs
+      - name: Redirect legacy project URLs to the canonical website
+        run: node scripts/build-pages-redirect.mjs
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+      - id: deployment
         uses: actions/deploy-pages@v5
