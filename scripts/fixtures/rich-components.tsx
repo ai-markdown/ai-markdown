@@ -11,12 +11,14 @@ import {
   MarkdownImage,
   MarkdownTable,
   createMarkdownCodeBlock,
+  createMarkdownImage,
 } from '@ai-markdown/react/components';
 import {
   MarkdownCodeBlock as VueCode,
   MarkdownImage as VueImage,
   MarkdownTable as VueTable,
   createMarkdownCodeBlock as createVueCode,
+  createMarkdownImage as createVueImage,
 } from '@ai-markdown/vue/components';
 import '@ai-markdown/react/components/styles.css';
 const sample: string = window.initialSource;
@@ -44,6 +46,22 @@ const vCustom = createVueCode({
 });
 const disabled = createMarkdownCodeBlock({ renderers: { mermaid: false } });
 const vDisabled = createVueCode({ renderers: { mermaid: false } });
+const customImage = createMarkdownImage({
+  icons: {
+    placeholder: <span data-custom-icon="loading">Pending</span>,
+    error: () => <span data-custom-icon="error">Unavailable</span>,
+    preview: () => <span data-custom-icon="preview">View</span>,
+    gallery: <span data-custom-icon="gallery">Album</span>,
+  },
+});
+const customVueImage = createVueImage({
+  icons: {
+    placeholder: h('span', { 'data-custom-icon': 'loading' }, 'Pending'),
+    error: () => h('span', { 'data-custom-icon': 'error' }, 'Unavailable'),
+    preview: () => h('span', { 'data-custom-icon': 'preview' }, 'View'),
+    gallery: h('span', { 'data-custom-icon': 'gallery' }, 'Album'),
+  },
+});
 const rComponents = {
   pre: MarkdownCodeBlock,
   img: MarkdownImage,
@@ -86,6 +104,7 @@ function ReactFixture() {
         customComponents={{
           ...rComponents,
           pre: mode === 'custom' ? custom : mode === 'disabled' ? disabled : MarkdownCodeBlock,
+          img: mode === 'icons' ? customImage : MarkdownImage,
         }}
       />
     </StrictMode>
@@ -114,6 +133,7 @@ createSSRApp({
       components: {
         ...vComponents,
         pre: vMode.value === 'custom' ? vCustom : vMode.value === 'disabled' ? vDisabled : VueCode,
+        img: vMode.value === 'icons' ? customVueImage : VueImage,
       },
     }),
 }).mount('#vue');

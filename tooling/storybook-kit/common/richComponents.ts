@@ -18,3 +18,14 @@ export const RICH_COMPONENTS_EXAMPLE = [
   '| Image preview | `img` |',
   '| Table export | `table` |',
 ].join('\n');
+
+export const IMAGE_GALLERY_EXAMPLE = [
+  '## Image gallery',
+  'Hover or focus an image, then open the preview. Use the arrow keys to browse.',
+  '',
+  '![Gallery photo one](https://picsum.photos/seed/ai-markdown-mountain/480/320)',
+  '',
+  '![Gallery photo two](https://picsum.photos/seed/ai-markdown-coast/480/320)',
+  '',
+  '![Gallery photo three](https://picsum.photos/seed/ai-markdown-forest/480/320)',
+].join('\n');

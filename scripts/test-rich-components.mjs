@@ -74,10 +74,10 @@ const server = createServer((request, response) => {
     ],
   };
   const route = routes[request.url];
-  response.setHeader('Content-Type', route?.[0] ?? 'text/html');
+  response.setHeader('Content-Type', `${route?.[0] ?? 'text/html'}; charset=utf-8`);
   response.end(
     route?.[1] ??
-      `<!doctype html><html><head><link rel="stylesheet" href="/app.css"></head><body><h1>Rich Markdown components</h1><h2>React</h2><div id="react">${ssr.react}</div><h2>Vue</h2><div id="vue">${ssr.vue}</div><h2>Mantine</h2><div id="mantine"></div><script>window.initialSource=${JSON.stringify(sample)}</script><script type="module" src="/app.js"></script></body></html>`
+      `<!doctype html><html><head><meta charset="utf-8"><link rel="stylesheet" href="/app.css"></head><body><h1>Rich Markdown components</h1><h2>React</h2><div id="react">${ssr.react}</div><h2>Vue</h2><div id="vue">${ssr.vue}</div><h2>Mantine</h2><div id="mantine"></div><script>window.initialSource=${JSON.stringify(sample)}</script><script type="module" src="/app.js"></script></body></html>`
   );
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -98,6 +98,7 @@ const check = (actual, expected, message) => {
 try {
   await page.goto(url);
   for (const framework of ['react', 'vue']) {
+    console.log(`Checking ${framework} rich components`);
     const root = page.locator(`#${framework}`);
     await root.locator('.aimd-diagram svg').waitFor();
     check(await root.locator('a .aimd-image-trigger').count(), 0, 'linked images stay links');
@@ -173,6 +174,69 @@ try {
     await update('Inline ![changed](/image.svg?v=2) image.');
     await page.waitForFunction(() => !document.querySelector('dialog[open]'));
     checks++;
+    // Ready/loading/error surfaces and gallery navigation use installed adapters.
+    await page.route('**/pending.svg', () => {});
+    await page.route('**/broken.svg', (route) => route.fulfill({ contentType: 'image/svg+xml', body: 'not an image' }));
+    await page.evaluate((fw) => window[fw === 'react' ? 'modeReact' : 'modeVue']('icons'), framework);
+    await update('![first](/image.svg)\n\n![second](/image.svg)\n\n![pending](/pending.svg)\n\n![broken](/broken.svg)');
+    await root.locator('[data-custom-icon="gallery"]').first().waitFor({ state: 'attached' });
+    await root.locator('[data-custom-icon="error"]').waitFor();
+    await root.locator('[data-custom-icon="loading"]').waitFor();
+    check(
+      await root.locator('.aimd-image[data-status="error"] button').isDisabled(),
+      true,
+      'broken images cannot open preview'
+    );
+    check(
+      await root.locator('.aimd-image[data-status="loading"] button').isDisabled(),
+      true,
+      'loading images cannot open preview'
+    );
+    await root.getByRole('button', { name: 'Preview image: first', exact: true }).click();
+    await page.locator('dialog[open]').waitFor();
+    check(
+      await page.locator('dialog[open] [role="status"]').first().textContent(),
+      '1 / 2',
+      'gallery excludes pending, failed and other Markdown roots'
+    );
+    await page.getByRole('button', { name: 'Next image', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('dialog[open]')?.getAttribute('aria-label') === 'second');
+    await page.waitForFunction(() => {
+      const img = document.querySelector('dialog[open] img');
+      return img?.complete && img.naturalWidth > 0 && img.style.visibility === 'visible';
+    });
+    check(
+      await page.getByRole('button', { name: 'Next image', exact: true }).isDisabled(),
+      true,
+      'gallery stops at the last image'
+    );
+    await page.keyboard.press('ArrowLeft');
+    await page.waitForFunction(() => document.querySelector('dialog[open]')?.getAttribute('aria-label') === 'first');
+    await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
+    await page.getByRole('button', { name: 'Rotate image', exact: true }).click();
+    check(
+      await page.locator('dialog[open] img').evaluate((img) => img.style.transform),
+      'rotate(90deg) scale(1.25)',
+      'preview zoom and rotation'
+    );
+    await page.keyboard.press('Escape');
+    await page.waitForFunction(() => !document.querySelector('dialog[open]'));
+    check(
+      await root
+        .getByRole('button', { name: 'Preview image: first', exact: true })
+        .evaluate((node) => node === document.activeElement),
+      true,
+      'gallery restores the opening trigger'
+    );
+    await update('![first](/image.svg)');
+    await root.locator('[data-custom-icon="preview"]').waitFor({ state: 'attached' });
+    check(
+      await root.locator('[data-custom-icon="gallery"]').count(),
+      0,
+      'removing images restores the single-image icon'
+    );
+    await page.unroute('**/pending.svg');
+    await page.unroute('**/broken.svg');
   }
   const mantineTrigger = page.locator('#mantine').getByRole('button', { name: 'Preview image: mantine' });
   await mantineTrigger.click();

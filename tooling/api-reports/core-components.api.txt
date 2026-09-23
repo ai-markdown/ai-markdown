@@ -85,6 +85,23 @@ declare function lockImagePreviewScroll(target: {
         overflow: string;
     };
 }): () => void;
+type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery';
+type ImageLoadStatus = 'loading' | 'ready' | 'error';
+declare const imageIconPaths: Record<ImageIconName, readonly string[]>;
+declare const imageGroupSelector = "[data-aimd-image-scope], .aim-typography-root, .aimd-vue, .mantine-Typography-root";
+interface ImageGalleryItem {
+    id: object;
+    src: string;
+    alt: string;
+    precedes: (other: object) => boolean;
+}
+interface ImageGallery {
+    items: () => readonly ImageGalleryItem[];
+    subscribe: (listener: () => void) => () => void;
+    set: (item: ImageGalleryItem) => void;
+    remove: (id: object) => void;
+}
+declare function getImageGallery(scope: object): ImageGallery;
 interface CodeRendererInput {
     code: string;
     language: string;
@@ -101,4 +118,4 @@ interface CodeBlockOptions {
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
 }
-export { type CodeBlockOptions, type CodeFrame, type CodeRendererInput, type CodeSource, type DiagramEngine, type DiagramRequest, type DiagramState, MERMAID_DEFAULT_MAX_TEXT_SIZE, type MermaidInitTarget, type TableProjection, createCodeFrame, createDiagramController, createJsonCompletenessScanner, createRenderQueue, ensureMermaidInitialized, extractCode, getMermaidMaxTextSize, jsonLooksComplete, lockImagePreviewScroll, mermaidRenderQueue, normalizeRenderers, prettyPrintJson, projectTable, resetMermaidInitializationForTests, serializeTable };
+export { type CodeBlockOptions, type CodeFrame, type CodeRendererInput, type CodeSource, type DiagramEngine, type DiagramRequest, type DiagramState, type ImageGallery, type ImageGalleryItem, type ImageIconName, type ImageLoadStatus, MERMAID_DEFAULT_MAX_TEXT_SIZE, type MermaidInitTarget, type TableProjection, createCodeFrame, createDiagramController, createJsonCompletenessScanner, createRenderQueue, ensureMermaidInitialized, extractCode, getImageGallery, getMermaidMaxTextSize, imageGroupSelector, imageIconPaths, jsonLooksComplete, lockImagePreviewScroll, mermaidRenderQueue, normalizeRenderers, prettyPrintJson, projectTable, resetMermaidInitializationForTests, serializeTable };

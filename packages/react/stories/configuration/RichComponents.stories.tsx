@@ -1,9 +1,9 @@
 import AIMarkdown from '@ai-markdown/react';
-import { MarkdownCodeBlock, MarkdownImage, MarkdownTable } from '@ai-markdown/react/components';
+import { MarkdownCodeBlock, MarkdownImage, MarkdownTable, createMarkdownImage } from '@ai-markdown/react/components';
 import '@ai-markdown/react/components/styles.css';
 import { WithScheme } from '@ai-markdown/storybook-kit/react/colorScheme';
 import { expect, waitFor } from 'storybook/test';
-import { RICH_COMPONENTS_EXAMPLE } from '@ai-markdown/storybook-kit/common/richComponents';
+import { RICH_COMPONENTS_EXAMPLE, IMAGE_GALLERY_EXAMPLE } from '@ai-markdown/storybook-kit/common/richComponents';
 import { baseReactMeta, type ReactMeta, type ReactStory } from '../_shared/meta';
 const components = { pre: MarkdownCodeBlock, img: MarkdownImage, table: MarkdownTable };
 const meta: ReactMeta = {
@@ -29,5 +29,29 @@ export const DirectRegistration: ReactStory = {
     expect(canvasElement.querySelectorAll('.aimd-code')).toHaveLength(2);
     expect(canvasElement.querySelector('.aimd-image-trigger')).not.toBeNull();
     expect(canvasElement.querySelector('.aimd-table-scroll table')).not.toBeNull();
+  },
+};
+
+export const ImageGallery: ReactStory = {
+  args: { content: IMAGE_GALLERY_EXAMPLE },
+};
+const BusinessImage = createMarkdownImage({
+  icons: {
+    placeholder: <span>◌</span>,
+    error: () => <span>!</span>,
+    preview: () => <span>View photo</span>,
+    gallery: <span>Open album</span>,
+  },
+});
+export const CustomImageIcons: ReactStory = {
+  args: { content: IMAGE_GALLERY_EXAMPLE, customComponents: { ...components, img: BusinessImage } },
+};
+
+export const ImageLoadError: ReactStory = {
+  args: { content: '![Unavailable photo](https://picsum.photos/id/does-not-exist/480/320)' },
+  parameters: {
+    docs: {
+      description: { story: 'An intentionally unavailable image demonstrates the error icon and accessible fallback.' },
+    },
   },
 };

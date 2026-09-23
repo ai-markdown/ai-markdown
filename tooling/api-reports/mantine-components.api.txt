@@ -4,14 +4,17 @@ import { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from '@ai-markdown/r
 export { CodeRendererInput, MarkdownCodeBlockProps } from '@ai-markdown/react/components/code/plain';
 import { a as MantineCodeBlockOptions } from './defs-chunk.js';
 import * as _ai_markdown_react_components_image from '@ai-markdown/react/components/image';
+import { MarkdownImageOptions } from '@ai-markdown/react/components/image';
+export { ImageIconName, ImageIconProps, MarkdownImageIcon, MarkdownImageOptions } from '@ai-markdown/react/components/image';
 export { MarkdownTable } from '@ai-markdown/react/components/table';
 import '@ai-markdown/react';
 interface MantineMarkdownCodeBlockOptions extends Omit<MarkdownCodeBlockOptions, 'highlight'>, Partial<MantineCodeBlockOptions> {
 }
 declare function createMarkdownCodeBlock(options?: MantineMarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
 declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+declare function createMarkdownImage(options?: MarkdownImageOptions): ({ node: _node, ...props }: _ai_markdown_react_components_image.MarkdownImageProps) => react.JSX.Element;
 declare const MarkdownImage: ({ node: _node, ...props }: _ai_markdown_react_components_image.MarkdownImageProps) => react.JSX.Element;
-export { type MantineMarkdownCodeBlockOptions, MarkdownCodeBlock, MarkdownImage, createMarkdownCodeBlock };
+export { type MantineMarkdownCodeBlockOptions, MarkdownCodeBlock, MarkdownImage, createMarkdownCodeBlock, createMarkdownImage };
 
 // Relative declaration: dist/defs-chunk.d.ts
 import { AIMarkdownMetadata } from '@ai-markdown/react';

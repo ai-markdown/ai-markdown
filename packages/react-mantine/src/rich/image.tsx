@@ -1,6 +1,10 @@
 'use client';
 import { Modal } from '@mantine/core';
-import { createMarkdownImage, type ImagePreviewDialogProps } from '@ai-markdown/react/components/image';
+import {
+  createMarkdownImage as createReactImage,
+  type MarkdownImageOptions,
+  type ImagePreviewDialogProps,
+} from '@ai-markdown/react/components/image';
 function MantineImageDialog({ open, label, onClose, children }: ImagePreviewDialogProps) {
   return (
     <Modal opened={open} onClose={onClose} title={label} withCloseButton={false} size="auto">
@@ -8,4 +12,13 @@ function MantineImageDialog({ open, label, onClose, children }: ImagePreviewDial
     </Modal>
   );
 }
-export const MarkdownImage = createMarkdownImage({ Dialog: MantineImageDialog });
+export type {
+  MarkdownImageOptions,
+  MarkdownImageIcon,
+  ImageIconProps,
+  ImageIconName,
+} from '@ai-markdown/react/components/image';
+export function createMarkdownImage(options: MarkdownImageOptions = {}) {
+  return createReactImage({ ...options, Dialog: options.Dialog ?? MantineImageDialog });
+}
+export const MarkdownImage = createMarkdownImage();

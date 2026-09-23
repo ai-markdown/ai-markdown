@@ -2,6 +2,8 @@
 import * as react from 'react';
 import { ReactNode, ComponentPropsWithoutRef, ComponentType } from 'react';
 import { Element } from 'hast';
+import { ImageIconName } from '@ai-markdown/core/components';
+export { ImageIconName } from '@ai-markdown/core/components';
 type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
     node?: Element;
 };
@@ -11,8 +13,17 @@ interface ImagePreviewDialogProps {
     onClose: () => void;
     children: ReactNode;
 }
-declare function createMarkdownImage({ Dialog, }?: {
+interface ImageIconProps {
+    className?: string;
+    'aria-hidden'?: boolean;
+}
+type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
+interface MarkdownImageOptions {
+    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
+    group?: string | false;
+    preview?: boolean;
     Dialog?: ComponentType<ImagePreviewDialogProps>;
-}): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
+}
+declare function createMarkdownImage({ Dialog, icons, group, preview: allowPreview, }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
 declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
-export { type ImagePreviewDialogProps, MarkdownImage, type MarkdownImageProps, createMarkdownImage };
+export { type ImageIconProps, type ImagePreviewDialogProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, createMarkdownImage };

@@ -1,9 +1,9 @@
 // Generated from the built public declaration. Review changes before updating.
 export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code.js';
-export { MarkdownImage } from './image.js';
+export { MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, createMarkdownImage } from './image.js';
 export { MarkdownTable } from './table.js';
 export { M as MarkdownComponentProps } from '../types-chunk.js';
-export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+export { CodeBlockOptions, CodeRendererInput, ImageIconName } from '@ai-markdown/core/components';
 export { MarkdownCodeBlockOptions } from './code/plain.js';
 import 'vue';
 import 'hast';
@@ -44,11 +44,20 @@ declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
 export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, createMarkdownCodeBlock };
 
 // Relative declaration: dist/components/image.d.ts
-import { DefineComponent } from 'vue';
+import { DefineComponent, VNodeChild, Component } from 'vue';
 import { M as MarkdownComponentProps } from '../types-chunk.js';
+import { ImageIconName } from '@ai-markdown/core/components';
+export { ImageIconName } from '@ai-markdown/core/components';
 import 'hast';
+type MarkdownImageIcon = VNodeChild | Component;
+interface MarkdownImageOptions {
+    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
+    group?: string | false;
+    preview?: boolean;
+}
+declare function createMarkdownImage({ icons, group, preview: allowPreview, }?: MarkdownImageOptions): DefineComponent<MarkdownComponentProps>;
 declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
-export { MarkdownImage };
+export { MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, createMarkdownImage };
 
 // Relative declaration: dist/components/table.d.ts
 import { DefineComponent } from 'vue';

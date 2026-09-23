@@ -93,9 +93,37 @@ The same paths exist under `@ai-markdown/vue`. Plain code supports custom render
 
 ## Image preview
 
-An ordinary image becomes a keyboard-operable preview trigger after hydration. Enter opens a native modal dialog; Escape or Close dismisses it and restores focus. The dialog is portalled to the document body so inline images never create invalid paragraph markup. The preview offers fit/original size, separate loading/error feedback, and scroll locking. Images inside links/buttons or matching interactive roles keep their original behavior, including dynamically changed roles.
+An ordinary image becomes a keyboard-operable preview trigger after hydration. Enter opens a native modal dialog; Escape or Close dismisses it and restores focus. The dialog is portalled to the document body so inline images never create invalid paragraph markup. The preview offers fit/original size, zoom, rotation, separate loading/error feedback, and scroll locking. Images inside links/buttons or matching interactive roles keep their original behavior, including dynamically changed roles.
 
 The preview uses the browser's selected `currentSrc` (or sanitized `src`), preserving responsive images. Changing `src`/`srcSet` closes the preview. Attributes and image events stay on the actual image. There is no separate high-resolution URL resolver or second URL-policy pass.
+
+### Image icons and galleries
+
+The thumbnail shows a placeholder while loading and an error surface if loading fails. Its `alt` text remains available. Ready images show a preview icon on hover or keyboard focus: Lucide `image-play` for one image and `gallery-thumbnails` for a gallery. Loading and error states use `image` and `image-off` respectively.
+
+Configure semantic icons once, then register the returned component directly:
+
+```tsx
+import { createMarkdownImage } from '@ai-markdown/react/components/image';
+
+const AppImage = createMarkdownImage({
+  icons: {
+    placeholder: <span>Loading</span>, // React node
+    error: AssetUnavailableIcon, // React component
+    preview: ViewPhotoIcon,
+    gallery: OpenAlbumIcon,
+  },
+});
+// customComponents={{ img: AppImage }}
+```
+
+Vue exposes `createMarkdownImage` from `@ai-markdown/vue/components/image`. The same keys accept Vue components or VNodes such as `h(AssetUnavailableIcon)`. Mantine exports its factory from `@ai-markdown/react-mantine/components`, retaining Mantine Modal. Omitted keys retain their defaults; `null` hides an icon. Icons are decorative; preview buttons retain their accessible labels. Custom icons should not contain interactive controls.
+
+By default, loaded previewable images within the nearest Markdown typography root form a gallery in DOM order. Linked images, failed images and pending images are excluded. The dialog provides Previous/Next buttons and left/right arrow keys, and closes if its selected image disappears. Escape restores focus to the image that opened the gallery. Separate Markdown roots stay isolated.
+
+Use `group: false` for independent previews, or `group: '[data-photo-album]'` to choose a business-owned ancestor as the group boundary. A custom typography root can carry `data-aimd-image-scope` to opt into automatic grouping. Without a matching root, the image previews independently. `preview: false` retains loading/error feedback without adding a preview button.
+
+The optional stylesheet exposes `.aimd-image`, `.aimd-image-cover`, `.aimd-image-feedback` and `.aimd-image-icon`. Thumbnail state is available as `data-status="loading|ready|error"`. Business styles can override these selectors without wrapping the Markdown component.
 
 ## Table export
 
@@ -107,7 +135,7 @@ Only rectangular tables without merged cells are exported. Unsupported structure
 
 ## Mantine and styling
 
-`@ai-markdown/react-mantine/components` exports the same three registration components and its `createMarkdownCodeBlock` factory. Its ordinary code and built-in Mermaid retain Mantine's existing highlighter provider, JSON defaults and diagram interactions. Explicit language extensions use the neutral source/copy shell. The image preview uses Mantine Modal with shared image behavior; the table uses the shared React component; import `@ai-markdown/react/components/styles.css` for their neutral skin alongside the usual Mantine styles.
+`@ai-markdown/react-mantine/components` exports the same three registration components and its `createMarkdownCodeBlock` / `createMarkdownImage` factories. Its ordinary code and built-in Mermaid retain Mantine's existing highlighter provider, JSON defaults and diagram interactions. Explicit language extensions use the neutral source/copy shell. The image preview uses Mantine Modal with shared image behavior; the table uses the shared React component; import `@ai-markdown/react/components/styles.css` for their neutral skin alongside the usual Mantine styles.
 
 The neutral CSS is optional and scoped to `aimd-*` classes. Code/table surfaces expose `--aimd-border`, `--aimd-surface`, and `--aimd-text`; dark code follows React's theme or Vue's factory option, and tables can inherit a `[data-color-scheme="dark"]` ancestor. HTML controls remain usable without this CSS. Override the classes and variables in application styles rather than wrapping the components solely to restyle them.
 

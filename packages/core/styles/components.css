@@ -118,3 +118,101 @@
   max-height: 80vh;
   object-fit: contain;
 }
+
+.aimd-image {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: middle;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  line-height: 0;
+}
+.aimd-image[data-status='loading'],
+.aimd-image[data-status='error'] {
+  min-width: min(12rem, 100%);
+  min-height: 8rem;
+  background: var(--aimd-surface, #f1f3f5);
+  color: var(--aimd-text, #49515c);
+}
+.aimd-image img {
+  display: block;
+  max-width: 100%;
+}
+.aimd-image-trigger {
+  display: block;
+  width: 100%;
+}
+.aimd-image-trigger:disabled {
+  color: inherit;
+  opacity: 1;
+  cursor: default;
+}
+.aimd-image-feedback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  padding: 1rem;
+  font:
+    0.875rem/1.5 system-ui,
+    sans-serif;
+}
+.aimd-image > .aimd-image-feedback,
+.aimd-image-trigger > .aimd-image-feedback {
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  text-align: center;
+}
+.aimd-image-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.aimd-image-icon > svg {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.aimd-image-cover {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0006;
+  color: white;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms;
+}
+.aimd-image-trigger:hover .aimd-image-cover,
+.aimd-image-trigger:focus-visible .aimd-image-cover {
+  opacity: 1;
+}
+.aimd-image:focus-within {
+  outline: 2px solid #4a85e8;
+  outline-offset: 2px;
+}
+@media (hover: none) {
+  .aimd-image-cover {
+    inset: auto 0.5rem 0.5rem auto;
+    padding: 0.4rem;
+    border-radius: 0.35rem;
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aimd-image-cover {
+    transition: none;
+  }
+}
+
+.aimd-image-viewport img {
+  margin-inline: auto;
+}
+.aimd-image-preview:focus {
+  outline: none;
+}
