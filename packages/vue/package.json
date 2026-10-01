@@ -88,12 +88,12 @@
     "@ai-markdown/code-language-detector": "workspace:^"
   },
   "devDependencies": {
-    "vue": "^3.5.0",
-    "@vue/server-renderer": "^3.5.0",
+    "vue": "^3.5.43",
+    "@vue/server-renderer": "^3.5.43",
     "@ai-markdown/react": "workspace:*",
     "react": "^19",
     "react-dom": "^19",
-    "@types/node": "^25.9.6",
+    "@types/node": "^25.9.8",
     "@ai-markdown/storybook-kit": "workspace:*",
     "@storybook/vue3-vite": "10.6.0",
     "mermaid": "^11.17.2"
@@ -111,7 +111,7 @@
     "url": "https://github.com/ai-markdown/ai-markdown/issues"
   },
   "peerDependencies": {
-    "vue": "^3.5.0",
+    "vue": "^3.5.43",
     "katex": "^0.16 || ^0.17",
     "mermaid": "^11.17.2"
   },
