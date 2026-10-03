@@ -125,4 +125,4 @@ Stories stay in `packages/react/stories`, `packages/react-mantine/stories` and `
 
 React's former `Core/...` sidebar names now describe capabilities directly; the composition entry supplies the React group. Mantine moved under `Integrations/Mantine`. Old story URLs containing `core-` or `mantine-` must be updated; isolated iframe references in this repository use the new IDs. Story IDs are derived from titles and export names, so renaming either requires checking embedded links and browser regressions.
 
-Installation, public API, architecture and migration guidance belong in the documentation and package READMEs. Storybook supplies interactive examples and short explanations with links to those guides. Shared documentation links are centralized in the private kit so they can later target the dedicated documentation site.
+Installation, public API, architecture and migration guidance belong in the documentation and package READMEs. Storybook supplies interactive examples and short explanations with links to those guides. Shared documentation links are centralized in the private kit and target the public documentation site.

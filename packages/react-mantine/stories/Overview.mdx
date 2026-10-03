@@ -7,10 +7,10 @@ import { DOCS_LINKS } from '@ai-markdown/storybook-kit/common/docsLinks';
 
 The React adapter, plus the renderers that need a UI library to build on.
 
-`<MantineAIMarkdown>` wraps `<AIMarkdown>` and passes everything through. Same props, same
-parsing engine, same streaming behaviour — the React catalog of this Storybook applies here without
-qualification. What the wrapper adds is a set of default component overrides that only make sense
-once you have a component library to draw them from, plus one extra prop to configure them.
+`<MantineAIMarkdown>` wraps `<AIMarkdown>` and shares its parsing, streaming and
+document-coordination contracts. It supplies Mantine typography and element
+renderers, derives an omitted color scheme from the provider, and adds the
+`codeBlock` configuration group.
 
 These stories cover the differences and nothing else. For everything the two packages share, read
 the React catalog.
@@ -22,18 +22,20 @@ the React catalog.
 | Code blocks             | `<pre><code class="language-ts">`, unstyled. Colouring is left to your stylesheet or your own `pre` component. | Syntax highlighting through `@mantine/code-highlight` and `highlight.js`, with a language tab, a copy button, and a collapse control.                                           |
 | Long code blocks        | Rendered in full; capping the height is your CSS.                                                              | Optionally collapsed at 320px with an expand button (`codeBlock.defaultExpanded`).                                                                                              |
 | Fences with no language | Rendered as plain preformatted text.                                                                           | Named by `@ai-markdown/code-language-detector` by default; plain text when the detector abstains or `codeBlock.autoDetectUnknownLanguage` is `false`.                           |
-| `json` fences           | Shown exactly as written, minified payloads included.                                                          | Deep-parsed and pretty-printed, including fields whose value is itself a JSON string.                                                                                           |
+| `json` fences           | Shown exactly as written, minified payloads included.                                                          | Formatted for display while preserving numeric tokens, key order and duplicate keys; nested JSON strings can be expanded. Copy retains the source text.                         |
 | `mermaid` fences        | Rendered as a code block — mermaid is a large dependency and stays out of the base renderer.                   | Rendered as an interactive SVG diagram, with a source toggle, a copy button, and open-in-new-tab.                                                                               |
-| Color scheme            | Required: pass `colorScheme="light" \| "dark"`.                                                                | Optional. Absent, it resolves from `useComputedColorScheme()`, so the markdown follows the surrounding `MantineProvider`.                                                       |
+| Color scheme            | Defaults to `"light"`; pass `colorScheme` to select another scheme.                                            | Optional. Absent, it resolves from `useComputedColorScheme()`, so the markdown follows the surrounding `MantineProvider`.                                                       |
 | Typography              | The library's own typography root, carrying the `--aim-*` design tokens.                                       | Mantine's `<Typography>` instead. It inherits Mantine's font stack, colours, and element spacing — and, because it replaces the root, React's token surface is not in the tree. |
 | Configuration surface   | The React prop set.                                                                                            | The same, plus the `codeBlock` behavior group.                                                                                                                                  |
 
-The `variant` prop is the one thing that goes away: the wrapper substitutes its own Typography, so
-React's typography variants have nothing to select.
+The inherited `variant` prop has no effect on the default Mantine typography.
+A custom `Typography` component can choose to interpret it.
 
 ## Setting it up
 
-Three providers, once, at the top of your app. This is verbatim what these stories do.
+Use two providers: `MantineProvider` for presentation and
+`CodeHighlightAdapterProvider` for highlighting. Install the peers in the
+[Mantine quick start](https://ai-markdown.github.io/docs/guides/react-mantine-quick-start/).
 
 ```tsx
 import { MantineProvider, createTheme } from '@mantine/core';
@@ -43,6 +45,7 @@ import MantineAIMarkdown from '@ai-markdown/react-mantine';
 
 import '@mantine/core/styles.css';
 import '@mantine/code-highlight/styles.css';
+import '@ai-markdown/react-mantine/styles.css';
 import 'katex/dist/katex.min.css';
 
 // Build the adapter once at module scope — a new one per render would discard
@@ -61,7 +64,7 @@ export function App({ answer }: { answer: string }) {
 }
 ```
 
-Three things about that snippet are load-bearing:
+Setup details:
 
 - **The highlight adapter is not optional.** `@mantine/code-highlight` ships no highlighter of its
   own; without an adapter provider above it, code blocks render but stay uncoloured.
@@ -69,7 +72,8 @@ Three things about that snippet are load-bearing:
   KaTeX's stylesheet is only needed if your content contains math, but math is on by default, so
   in practice you want it.
 - **`highlight.js` is a peer-level choice.** The adapter interface accepts other highlighters;
-  `highlight.js` is simply what these stories use, and what the auto-detection option calls into.
+  `highlight.js` is what these stories use. Language detection is handled separately
+  by `@ai-markdown/code-language-detector`, which is installed with the integration.
 
 A dark theme needs no extra wiring. Set `forceColorScheme` — or let Mantine's own color-scheme
 manager do it — and the markdown follows, as the Color Scheme story demonstrates with two pinned

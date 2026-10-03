@@ -42,6 +42,13 @@ export const CorpusCommit: StoryObj = {
               ? 'Not measured'
               : `${elapsed.value.toFixed(2)} ms · ${SHOWCASE.length} source characters · assignment → nextTick`
           ),
+          elapsed.value === null
+            ? h(
+                'p',
+                { style: { opacity: 0.75, fontSize: '14px' } },
+                'Run the measurement to render the shared corpus and inspect its DOM commit time.'
+              )
+            : null,
           h(AIMarkdown, { content: source.value }),
         ]);
     },

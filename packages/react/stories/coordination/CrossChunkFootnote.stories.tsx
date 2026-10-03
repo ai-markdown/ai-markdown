@@ -20,8 +20,8 @@ const meta: Meta<typeof AIMarkdownDocuments> = {
         component: [
           'A long answer often arrives as several messages, each rendered by its own',
           '`<AIMarkdown>`. Left alone those are separate documents: chunk 3 cannot see the',
-          'footnote chunk 5 defines, and two chunks that both write `[^1]` would fight over',
-          'the same anchor ids.',
+          'footnote chunk 5 defines. Automatic document IDs isolate their anchors; they',
+          'do not share numbering or definitions.',
           '',
           'Wrap them in `<AIMarkdownDocuments>` and give every chunk the **same**',
           '`documentId`, and they behave as one document again:',

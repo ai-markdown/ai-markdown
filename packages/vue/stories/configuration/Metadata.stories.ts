@@ -1,3 +1,4 @@
+import { ComparisonPanel } from '@ai-markdown/storybook-kit/vue/layouts';
 import { LINKS } from '@ai-markdown/storybook-kit/common/corpus';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
@@ -62,27 +63,38 @@ export const ReactiveContext: Story = {
             },
             updated.value ? 'Reset context' : 'Update context'
           ),
-          h('h3', 'Component mapping'),
-          h(AIMarkdown, { content: LINKS, metadata, streaming, components: { a: ContextLink } }),
-          h('h3', 'Scoped slot'),
-          h(
-            AIMarkdown,
-            { content: LINKS, metadata, streaming },
-            {
-              a: (context: MarkdownElementContext) =>
-                h(
-                  'a',
-                  {
-                    ...context.properties,
-                    'data-context-owner': 'slot',
-                    'data-node-tag': context.node.tagName,
-                    'data-streaming': String(context.streaming),
-                    title: String(context.metadata),
-                  },
-                  context.children
-                ),
-            }
-          ),
+          h('div', { class: 'aim-comparison' }, [
+            h(
+              ComparisonPanel,
+              { label: 'Component mapping' },
+              { default: () => h(AIMarkdown, { content: LINKS, metadata, streaming, components: { a: ContextLink } }) }
+            ),
+            h(
+              ComparisonPanel,
+              { label: 'Scoped slot' },
+              {
+                default: () =>
+                  h(
+                    AIMarkdown,
+                    { content: LINKS, metadata, streaming },
+                    {
+                      a: (context: MarkdownElementContext) =>
+                        h(
+                          'a',
+                          {
+                            ...context.properties,
+                            'data-context-owner': 'slot',
+                            'data-node-tag': context.node.tagName,
+                            'data-streaming': String(context.streaming),
+                            title: String(context.metadata),
+                          },
+                          context.children
+                        ),
+                    }
+                  ),
+              }
+            ),
+          ]),
         ]);
       };
     },

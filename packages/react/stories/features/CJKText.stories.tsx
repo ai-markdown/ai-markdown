@@ -1,9 +1,9 @@
+import { docsLink } from '@ai-markdown/storybook-kit/common/docsLinks';
 import 'katex/dist/katex.min.css';
 import '../../src/components/typography/variants/all.scss';
 import AIMarkdown from '../../src/index';
 import { expect, waitFor } from 'storybook/test';
 import { baseReactMeta, type ReactMeta, type ReactStory } from '../_shared/meta';
-import { docsLink } from '@ai-markdown/storybook-kit/common/docsLinks';
 import { CJK_EMPHASIS_REGRESSION, CJK_MIXED_DOC, RTL_DOC } from '@ai-markdown/storybook-kit/common/fixtures';
 
 /**
@@ -21,17 +21,11 @@ const meta: ReactMeta = {
     docs: {
       description: {
         component: [
-          'CommonMark decides whether `**` opens or closes emphasis by looking at the',
-          'characters on either side — and it classifies CJK punctuation as ordinary',
-          'text, not as punctuation. A model writing `**“会引起”**渲染错误` therefore',
-          'produces a closing `**` that the spec says is not a closing delimiter, and',
-          'the asterisks render literally.',
+          "CommonMark's emphasis rules depend on the punctuation and whitespace beside each delimiter. In mixed CJK text, a form such as `**\u201c\u4f1a\u5f15\u8d77\u201d**\u6e32\u67d3\u9519\u8bef` can leave the asterisks literal even when the author intended emphasis.",
           '',
-          'The engine corrects this class of failure. It also ships a second, optional',
-          'rule for the same body of text: the `pangu` engine plugin inserts the',
-          'missing space where a Latin word abuts a Han character or a kana. See',
-          `${docsLink('cjk-typography', 'CJK typography')} for the full rule set and the`,
-          'scripts each rule covers.',
+          "The engine's CJK parsing extensions recognize supported emphasis and strikethrough forms around that punctuation. Separately, the optional `pangu` plugin adds spacing at supported mixed-script boundaries; it is enabled by default.",
+          '',
+          `See ${docsLink('cjk-typography', 'CJK typography')} for delimiter rules, spacing and source line-break behavior.`,
         ].join('\n'),
       },
     },

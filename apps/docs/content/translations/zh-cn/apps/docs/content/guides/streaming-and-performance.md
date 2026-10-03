@@ -55,7 +55,7 @@ function CodeWithCopy({ children, onCopy }: { children?: React.ReactNode; onCopy
 
 <span id="blocklevel-memoization"></span>
 
-## 块级缓存缓存（Block-level memoization）
+## 块级缓存（Block-level memoization）
 
 当 `blockMemo` 为 `true`（默认值）时，渲染流水线执行以下步骤：
 
@@ -67,7 +67,7 @@ function CodeWithCopy({ children, onCopy }: { children?: React.ReactNode; onCopy
    - `ctx` 上下文特征摘要（针对依赖跨块语法的块，如脚注引用与链接定义）
    - `startOffset` 与 `startLine`（源码起始偏移量与行号，防止处于不同位置的相同内容发生错误缓存）
 
-缓存命中时会直接返回已存在的 `ReactNode`，完全跳过从 hast 到 JSX 的转换计算。未变动元素的引用一致性大幅减轻了 React 的 DOM Reconciliation 比对工作，而子组件依然可以通过本地 state、订阅的 Context 或外部 Store 正常更新。其最终渲染输出与关闭该优化时的路径保持**逐字节严格等价**。
+缓存命中时会直接返回已存在的 `ReactNode`，完全跳过从 hast 到 JSX 的转换计算。未变动元素的引用一致性大幅减轻了 React 的 DOM Reconciliation 比对工作，而子组件依然可以通过本地 state、订阅的 Context 或外部 Store 正常更新。独立渲染时，输出应与关闭该优化的路径等价。在 `AIMarkdownDocuments` 内，跨片段解析要求 `blockMemo` 保持开启；关闭它会让该片段按独立文档渲染。
 
 <span id="what-invalidates-a-block"></span>
 

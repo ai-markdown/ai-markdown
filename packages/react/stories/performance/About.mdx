@@ -5,81 +5,62 @@ import { DOCS_LINKS } from '@ai-markdown/storybook-kit/common/docsLinks';
 
 # Performance Lab
 
-Instruments, not demos. Every number in the <a href={DOCS_LINKS.benchmark}>benchmark guide</a> is
-reproducible from the stories in this section, on your machine, with your content.
+Use these instruments to compare rendering paths on your own workload. The
+
+<a href={DOCS_LINKS.benchmark}>benchmark guide</a> records a July 2026 study on 1.x development builds; its numbers are
+historical measurements, not expected results for the current version or a different machine.
 
 ## What is being measured
 
-Two engine strategies, each of which claims to make streaming cheaper without changing what is
-rendered:
+- **Block memoization** (`blockMemo`) lets React reuse unchanged rendered block
+  plans and skip their HAST-to-JSX conversion. Child state and context updates
+  still work. Standalone output should remain equivalent; coordinated references
+  require this path to stay enabled.
+- **Incremental parsing** (`incrementalParse`) retains a verified prefix and
+  parses the remaining tail when the source and configuration permit it. An
+  append alone does not guarantee reuse. React requires `blockMemo` for this path.
 
-- **Block-level memoization** (`blockMemo`) — each markdown block is keyed by its source bytes, so
-  an unchanged block skips both the hast-to-JSX conversion and React reconciliation on the next
-  frame.
-- **Incremental parsing** (`incrementalParse`) — when a frame is a byte-append of the previous
-  one, the parser re-parses the tail rather than the document.
+Same-page comparison stories check the two rendered outputs as frames arrive,
+normalizing generated document prefixes. A clean run establishes agreement for
+that run's inputs and configuration. It does not prove equivalence for every
+possible document. Cross-chunk comparisons keep block memoization enabled on both
+sides and vary incremental parsing.
 
-Both are **output-invariant**: the rendered DOM is byte-identical whether they are on or off. That
-claim is not taken on trust here. The same-page comparison stories run a per-frame DOM-equality
-verifier across both paths and report any divergence as a failure, so a run that shows a speed-up
-and no divergence is evidence for both halves at once.
+## Run a comparison
 
-## How a comparison story works
+Choose a scenario and payload, then use the story's run or restart control.
+Where available, `content` accepts your own Markdown. Readouts include React
+commit counts and durations, selected pipeline timings, frame gaps and long tasks.
+The available measurements differ by instrument.
 
-Each story renders the same content, through the same streaming scenario, down two render paths at
-once, and reports per-side:
+Compare several runs with the same settings. Background tabs, extensions, thermal
+state and other work can change results. Small payloads or one unfinished block
+may offer little reusable work. Same-page comparisons share a main thread, so
+frame-rate and long-task measurements cannot be attributed independently to each
+side. Development-mode React timings are not production latency estimates.
 
-- commit counts and total commit time, from a React Profiler wrapped around each side;
-- per-stage engine timings — preprocess, parse, convert — where the path emits them;
-- frame health: fps, slow frames, and long tasks;
-- DOM equality between the sides, per frame.
+## Isolated comparisons
 
-The scenario picker chooses the arrival pattern (steady tokens, random bursts, whole paragraphs),
-because the two strategies are sensitive to different shapes. Incremental parsing pays off on
-clean appends; block memoization pays off when many blocks are already settled. A payload that is
-one long paragraph will show close to nothing, and that is a real result rather than a broken
-measurement.
+`BlockMemoCompareIsolated`, `IncrementalParseCompareIsolated` and
+`BoostCompareIsolated` load the sides from `localhost` and `127.0.0.1`. Both origins
+must serve the same catalog. These stories require a local dev server or static
+build reachable through both hostnames; other deployments show a readiness message.
 
-The `content` control is live. Paste your own worst-case answer into it — the numbers that matter
-are the ones your content produces.
+The separate sites allow Chromium's site isolation to separate renderer work;
+process assignment still depends on the browser and its configuration. Record that
+environment when interpreting per-side measurements. These stories are excluded
+from the automated story suite because they require the paired-origin setup.
 
-## Reading the numbers honestly
+The isolated stories report timings without the same-page DOM comparison. Use the
+same-page comparisons to check output agreement as well.
 
-- **A single run is noise.** Restart a comparison several times. Background tabs, extensions, and
-  thermal state move these numbers more than most code changes do.
-- **Small payloads show a delta near zero.** The strategies have fixed overhead; below a few
-  kilobytes there is nothing for them to save.
-- **The commit-total delta is the headline**, but only the per-stage panels say _where_ a win came
-  from. `BoostCompare` answers "how much"; `BlockMemoCompare` and `IncrementalParseCompare` answer
-  "from what".
-- **Same-page comparisons share a main thread.** That makes them the fairest JavaScript-layer A/B
-  — both sides suffer the same GC pauses — and it makes their per-side fps figures meaningless,
-  since the two sides are one frame loop.
+## Verification boundaries
 
-## The Isolated stories need a loopback pair
+The dense performance panels disable automated accessibility assertions. Passing
+the browser suite therefore does not establish their accessibility conformance.
+Engine equivalence tests, release soak, adapter lifecycle tests and production
+browser benchmarks have separate scopes.
 
-`BlockMemoCompareIsolated`, `IncrementalParseCompareIsolated`, and `BoostCompareIsolated` put each
-side in its own cross-site iframe — `localhost` on one side, `127.0.0.1` on the other — which
-Chrome's Site Isolation places in separate renderer processes. That is what makes per-side fps,
-slow frames, and long tasks genuinely per-side.
+See the <a href={DOCS_LINKS.benchmark}>historical benchmark and methodology</a> and
 
-The cost is a setup requirement: both origins must serve the same Storybook, so these three stories
-only work on a dev server or a static build reachable at **both** `localhost` and `127.0.0.1`. Open
-them anywhere else and they render a "not ready" panel rather than pretending to measure. They are
-also excluded from the automated test run for the same reason — the handshake cannot complete
-there — while staying in the sidebar, because a human with the right setup can still run them.
-
-The other limitation is inherent: cross-origin frames cannot be compared in the DOM. The isolated
-stories therefore report timings only, and the same-page stories remain the place where
-output-invariance is verified.
-
-## A note on the panels
-
-The readouts are dense monospace instrument panels rather than prose, and their a11y checks are
-turned off rather than merely deferred. That is a deliberate trade — the panels are tuned for
-reading a measurement at a glance, and the accessibility budget is spent on the user-facing
-stories instead.
-
-Full methodology, the recorded results, and the hardware they were taken on:
-
-<a href={DOCS_LINKS.benchmark}>apps/docs/content/guides/benchmark.md</a>.
+<a href={DOCS_LINKS['streaming-and-performance']}>current rendering guidance</a>.

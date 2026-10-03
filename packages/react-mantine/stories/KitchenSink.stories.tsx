@@ -34,9 +34,8 @@ const meta: MantineMeta = {
           'passing a model response straight through. Everything on screen comes from the',
           'defaults; no story here configures anything.',
           '',
-          "This is deliberately not core's Playground fixture. That one carries malformed",
-          "LaTeX and stray delimiters on purpose, because core's job there is to survive",
-          'bad input. This document is the one you would screenshot.',
+          'The shared showcase fixture combines these features in one document so you',
+          'can compare the streaming and completed presentations.',
           '',
           `The streaming machinery underneath is core's — see ${docsLink('streaming-and-performance', 'streaming & performance')}`,
           'for how partial markdown is parsed without re-rendering the whole answer.',
@@ -50,16 +49,14 @@ const meta: MantineMeta = {
 export default meta;
 
 /**
- * The showcase document arriving token by token, which is the only state a
- * chat UI ever actually renders.
+ * The showcase document arriving token by token, followed by its completed state.
  *
  * Worth watching, in the order it happens:
  *
  * - The **mermaid flowchart** shows its raw source until enough of the diagram
- *   has arrived to parse, then swaps to the SVG and refreshes on each later
- *   successful parse. Half-written diagram source is invalid source, so parse
- *   failures during the stream are the normal case and are never surfaced as
- *   errors.
+ *   has arrived to render, then swaps to the SVG. Later attempts are throttled.
+ *   Ordinary parse failures during streaming are suppressed; size-limit
+ *   errors can appear immediately.
  * - The **JSON block** is reformatted only once it is complete enough to
  *   parse; before that it renders as the raw text that has arrived so far.
  * - **Code fences re-highlight** as lines land, and the collapse cap applies

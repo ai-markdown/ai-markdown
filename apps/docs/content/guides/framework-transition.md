@@ -84,6 +84,6 @@ Vue is part of the published stable release train. Functional integration checks
 
 ## Documentation site
 
-The dedicated documentation site is not yet published. Use the repository guides and package READMEs for stable v3 integration, and [Storybook](storybook.md) for interactive examples.
+Use the [documentation site](https://ai-markdown.github.io/docs/) for current integration guides and API references, package READMEs for minimal setup, and [Storybook](storybook.md) for interactive examples.
 
 Package READMEs continue to include complete installation, minimal examples, environment requirements and important limitations. Legacy 1.x-to-2.x guidance remains historical material; new users should start with the current framework README and this migration guide.

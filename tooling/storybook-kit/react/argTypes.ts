@@ -23,10 +23,13 @@ export const reactArgTypes: ReactArgTypes = {
   fontSize: { control: 'text', description: 'Base font size (e.g. `"0.9375rem"`, `"14px"`, or a number for px).' },
   colorScheme: { table: { disable: true } },
   // Behaviors-system flat props.
-  blockMemo: { control: 'boolean', description: 'Block-level memoization (output-invariant). Default `true`.' },
+  blockMemo: {
+    control: 'boolean',
+    description: 'Reuse rendered blocks. Default `true`; required for cross-chunk coordination.',
+  },
   incrementalParse: {
     control: 'boolean',
-    description: 'Incremental (prefix-freeze) parsing for streaming appends (output-invariant). Default `true`.',
+    description: 'Reuse a verified parse prefix when eligible. Default `true`; requires `blockMemo`.',
   },
   preserveOrphanReferences: {
     control: 'boolean',

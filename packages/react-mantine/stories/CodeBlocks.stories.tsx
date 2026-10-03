@@ -28,7 +28,7 @@ const meta: MantineMeta = {
     docs: {
       description: {
         component: [
-          'Core emits `<pre><code class="language-ts">` and stops there — it attaches no',
+          'The React adapter emits `<pre><code class="language-ts">` without highlighting — it attaches no',
           'highlighter, because bundling one would make every consumer pay for a feature',
           'many of them already solve differently. The Mantine package fills that gap by',
           'overriding `pre` with a renderer built on `@mantine/code-highlight`, which adds',

@@ -1,5 +1,8 @@
 import { useEffect, type ReactNode } from 'react';
 import type { Decorator } from '@storybook/react-vite';
+import { catalogVariables } from '../common/catalogTheme';
+import { storyPresentation } from '../common/storyPresentation';
+import '../common/preview.css';
 import { useGlobals } from 'storybook/preview-api';
 import { ColorSchemeContext, PAGE_PALETTE, type StoryColorScheme } from '@ai-markdown/storybook-kit/react/colorScheme';
 
@@ -25,7 +28,7 @@ const ColorSchemeScope = ({ scheme, children }: { scheme: StoryColorScheme; chil
   );
 };
 
-export const withColorScheme: Decorator = (Story) => {
+export const withColorScheme: Decorator = (Story, context) => {
   // `useGlobals` is a Storybook *preview* hook, not a React hook; the
   // react-hooks plugin cannot tell the two apart in a lowercase-named
   // function. It has to be called in the decorator body — from a nested
@@ -37,9 +40,28 @@ export const withColorScheme: Decorator = (Story) => {
   const [globals] = useGlobals();
   const scheme: StoryColorScheme = globals.theme === 'dark' ? 'dark' : 'light';
 
+  const presentation = storyPresentation(context.title, context.name, context.viewMode, context.parameters.layout);
   return (
     <ColorSchemeScope scheme={scheme}>
-      <Story />
+      {presentation.bare ? (
+        <Story />
+      ) : (
+        <div
+          className="aim-story"
+          data-embedded={context.viewMode === 'docs'}
+          style={{ ...catalogVariables(scheme), colorScheme: scheme }}
+        >
+          {presentation.heading && (
+            <header className="aim-story-header">
+              <p className="aim-story-breadcrumb">{presentation.breadcrumb}</p>
+              <p className="aim-story-title">{presentation.name}</p>
+            </header>
+          )}
+          <div className="aim-story-body">
+            <Story />
+          </div>
+        </div>
+      )}
     </ColorSchemeScope>
   );
 };

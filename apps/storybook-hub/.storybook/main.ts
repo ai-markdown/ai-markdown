@@ -1,8 +1,10 @@
+import { docsAddon } from '@ai-markdown/storybook-kit/common/docsAddon';
 import type { StorybookConfig } from '@storybook/react-vite';
 const config: StorybookConfig = {
+  features: { sidebarOnboardingChecklist: false },
   framework: '@storybook/react-vite',
   stories: ['../stories/*.mdx'],
-  addons: ['@storybook/addon-docs'],
+  addons: [docsAddon],
   refs: {
     react: {
       title: 'React',

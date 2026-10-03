@@ -1,3 +1,4 @@
+import { ComparisonPanel } from '@ai-markdown/storybook-kit/vue/layouts';
 import { SMARTYPANTS_DOC, CJK_MIXED_DOC, COMMENTS_DOC } from '@ai-markdown/storybook-kit/common/fixtures';
 import { smartypants, pangu, removeComments, type AIMarkdownEnginePlugin } from '../../src';
 import type { AIMarkdownProps } from '../../src';
@@ -102,15 +103,24 @@ export const ReactiveSelection: Story = {
 function comparePlugin(content: () => string, omitted: AIMarkdownEnginePlugin) {
   return {
     setup: () => () =>
-      h('section', [
-        h('h3', 'Default plugins'),
-        h(AIMarkdown, { content: content(), 'data-plugin-panel': 'enabled' }),
-        h('h3', 'Without this plugin'),
-        h(AIMarkdown, {
-          content: content(),
-          enginePlugins: defaultEnginePlugins.filter((plugin) => plugin !== omitted),
-          'data-plugin-panel': 'disabled',
-        }),
+      h('div', { class: 'aim-comparison' }, [
+        h(
+          ComparisonPanel,
+          { label: 'Default plugins' },
+          { default: () => h(AIMarkdown, { content: content(), 'data-plugin-panel': 'enabled' }) }
+        ),
+        h(
+          ComparisonPanel,
+          { label: 'Without this plugin' },
+          {
+            default: () =>
+              h(AIMarkdown, {
+                content: content(),
+                enginePlugins: defaultEnginePlugins.filter((plugin) => plugin !== omitted),
+                'data-plugin-panel': 'disabled',
+              }),
+          }
+        ),
       ]),
   };
 }

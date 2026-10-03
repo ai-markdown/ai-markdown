@@ -32,6 +32,13 @@ export function replay(smooth: boolean) {
           ),
           h('button', { onClick: stop }, 'Cancel'),
           h('output', live.value ? 'Receiving' : 'Idle'),
+          !content.value && !live.value
+            ? h(
+                'p',
+                { class: 'aim-demo-hint' },
+                'Replay the sample to watch Markdown arrive, then try finish, replace or cancel.'
+              )
+            : null,
           h(smooth ? AIMarkdownSmoothStream : AIMarkdown, {
             content: content.value,
             streaming: live.value,

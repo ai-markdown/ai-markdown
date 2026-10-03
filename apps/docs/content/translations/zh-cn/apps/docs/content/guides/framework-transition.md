@@ -100,6 +100,6 @@ Vue 已纳入发布的稳定统一版本发布之中。功能集成检查覆盖 
 
 ## 文档站点
 
-独立的文档站点尚未公开发布。请使用代码仓库中的指南与相关包 README 进行稳定版 v3 的集成，并使用 [Storybook](storybook.md) 查看交互式示例。
+当前接入指南和 API 参考见[文档站](https://ai-markdown.github.io/zh-cn/docs/)，最小接入示例见各包 README，交互式示例见 [Storybook](storybook.md)。
 
 相关包 README 继续包含完整的安装步骤、最小示例、运行环境要求及关键限制。旧版 1.x 到 2.x 的指导内容作为历史资料保留；新用户应从当前框架的 README 与本迁移指南开始阅读。

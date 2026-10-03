@@ -54,7 +54,7 @@ const content = ref('# Answer\n\n**Markdown**, $x^2$ and 中文.');
 | `documentIndex`            | 挂载顺序          | 引用注册表的排序提示；当逻辑片段存在乱序挂载或重新挂载时提供该序号                            |
 | `streaming`                | `false`           | 传递给自定义组件与元素插槽，控制光标显示与 `aria-busy` 状态                                   |
 | `incrementalParse`         | `true`            | 在浏览器端启用前缀冻结的增量解析；服务端渲染使用完整流水线                                    |
-| `preserveOrphanReferences` | `false`           | 是否在渲染结果中保留未被引用的孤立脚注定义                                                    |
+| `preserveOrphanReferences` | `false`           | 独立渲染时是否保留未被引用的脚注；在 `AIMarkdownDocuments` 内由容器策略覆盖，见下文           |
 | `enginePlugins`            | 全部内置 5 个插件 | 封闭目录选择；可选择启用哪些插件，规范执行顺序固定不变                                        |
 | `contentPreprocessors`     | `[]`              | 在内置 LaTeX 预处理之后同步运行的字符串预处理函数数组                                         |
 | `sanitizeSchema`           | 库内置 schema     | 视为不可变对象；若需扩展请使用 `extendSanitizeSchema`                                         |
@@ -69,7 +69,7 @@ const content = ref('# Answer\n\n**Markdown**, $x^2$ and 中文.');
 
 ## 自定义 Vue 组件与插槽
 
-映射的组件会接收清洗后的元素属性以及 `node`、`streaming` 与 `metadata`。其默认插槽包含转换后的 Vue 子节点。请显式声明需要使用的 props 并按需传递属性；框架事件监听器属于应用组件代码，而非 Markdown 属性。
+映射组件接收清洗后的元素属性。`node`、`streaming` 与 `metadata` 仅传给声明了对应 prop 的组件：支持数组或对象形式的 `props`，也支持通过 `extends` 或 `mixins` 继承的声明。没有声明这些 prop 的普通组件不会收到这些上下文值，避免它们作为多余属性透传到 DOM；没有 `props` 选项的函数式组件则会收到全部值。默认插槽包含转换后的 Vue 子节点。请按需转发属性；框架事件监听器属于应用组件代码，而非 Markdown 属性。
 
 ```vue
 <script setup lang="ts">
@@ -79,7 +79,7 @@ const components = { code: CodeBlock };
 </script>
 
 <template>
-  <AIMarkdown content="**Hello**" :components="components" :metadata="{ messageId: 'a' }"> </AIMarkdown>
+  <AIMarkdown content="Use `const answer = 42` here." :components="components" :metadata="{ messageId: 'a' }" />
 </template>
 ```
 
@@ -127,7 +127,7 @@ const chunks = ['A claim[^source] and [site][url].', '[^source]: Shared citation
 
 每个片段应当是结构完整的逻辑 Markdown 片段。被网络分块从中间切断的代码围栏、表格行或其他语法结构，不会被注册表自动拼合。除非业务场景确实需要独立挂载各个区域，否则请优先传入单个累积的 `content`。
 
-引用可以先于其定义出现。共享注册表负责提供规范的链接/图片目标、全局统一的脚注编号与出现序号。最后注册的片段负责渲染汇总结尾脚注区。更新或移除定义会同步更新读取方；切换 `documentId` 会释放旧的注册。不同的文档 ID 以及不同的 Provider 实例相互独立。
+引用可以先于其定义出现。共享注册表负责提供规范的链接/图片目标、全局统一的脚注编号与出现序号。注册表排序中的最后一个片段负责渲染汇总脚注区；`documentIndex` 可以改变该顺序。更新或移除定义会同步更新读取方；切换 `documentId` 会释放旧的注册。不同的文档 ID 以及不同的 Provider 实例相互独立。
 
 服务端渲染（SSR）会渲染每个片段的局部内容和局部脚注，不向外部注册或发布协调数据。客户端水合的首帧也遵循相同路径。跨片段协调解析在组件挂载并提交协调数据后生效。因此，完全由其他片段提供的引用定义不会预先解析在服务端 HTML 中。如果服务端渲染必须完整解析所有引用，请将完整文档通过单一组件渲染。
 
@@ -203,6 +203,8 @@ const finished = ref(false);
 `MarkdownComponents` 为只读的标签名到 Vue 组件的映射表。映射组件接收元素属性以及 `node`、`streaming` 与 `metadata`，并在默认插槽中接收转换后的子节点。`MarkdownElementSlot` 是接收 `MarkdownElementContext` 并返回 Vue 子节点的函数类型。完整用法见[自定义渲染指南](../guides/vue-customization.md)。
 
 `AIMarkdownDocuments` 接收默认插槽并渲染为 Fragment 片段。它不声明自定义配置属性；孤立引用策略由各个渲染器自行配置。它负责建立文档作用域，不额外生成布局 DOM 节点。
+
+`AIMarkdownDocuments` 接受默认插槽并渲染 fragment，不增加布局元素。它的唯一属性 `preserveOrphanReferences`（类型 `AIMarkdownDocumentsProps`，默认 `true`）决定所有子片段的孤立脚注策略，并优先于片段自身的同名属性。独立 Vue 渲染器的默认值则为 `false`。
 
 <span id="cursor-behavior"></span>
 

@@ -187,7 +187,7 @@ const components: AIMarkdownCustomComponents = {
 
 ## 引用稳定性（Reference Stability）的重要性
 
-`customComponents` 会直接参与块级缓存缓存（block-memo cache）的有效性校验。虽然库内部通过深度比对（`useStableValue`）对传入的对象进行了稳定性收敛，能够容忍直接声明行内对象——但每次渲染都要执行深层比对是存在性能开销的。最佳实践是在模块顶层作用域定义组件映射，或者使用 `useMemo` 进行包裹：
+`customComponents` 会直接参与块级缓存（block-memo cache）的有效性校验。虽然库内部通过深度比对（`useStableValue`）对传入的对象进行了稳定性收敛，能够容忍直接声明行内对象——但每次渲染都要执行深层比对是存在性能开销的。最佳实践是在模块顶层作用域定义组件映射，或者使用 `useMemo` 进行包裹：
 
 ```tsx
 // ⚠️ Re-created every render — internal deep-equal catches it, but pays a deep-compare cost.
@@ -365,7 +365,7 @@ const components: AIMarkdownCustomComponents = {
 
 上述示例中的 `expensiveHighlight` 代表一个受信任的代码高亮器，其生成的 HTML 字符串已对源码文本完成了必要的转义。由自定义组件直接注入的 HTML 会脱离 Markdown 安全清洗器的管控；切勿将未经转义的原始代码直接传入 `dangerouslySetInnerHTML`。兜底分支保留了非纯文本的代码子元素，而不会粗暴将其抹平。
 
-块级缓存缓存会在缓存命中时直接复用现有的 React 元素子树。但自定义组件依然可能因自身内部的 state 改变或订阅的 Context 变更而独立触发重渲染；对 React 元素的缓存并不会冻结其内部的 Hooks 或下层子孙节点。在组件内部使用 `useMemo` 的核心价值在于：当块内容确实发生了局部变动、但其中的某项昂贵子计算可以被复用时（例如内容微调但代码语言并未变更），能够有效节省计算资源。
+块级缓存会在缓存命中时直接复用现有的 React 元素子树。但自定义组件依然可能因自身内部的 state 改变或订阅的 Context 变更而独立触发重渲染；对 React 元素的缓存并不会冻结其内部的 Hooks 或下层子孙节点。在组件内部使用 `useMemo` 的核心价值在于：当块内容确实发生了局部变动、但其中的某项昂贵子计算可以被复用时（例如内容微调但代码语言并未变更），能够有效节省计算资源。
 
 <span id="heading-identity-and-component-verification"></span>
 
@@ -375,4 +375,4 @@ const components: AIMarkdownCustomComponents = {
 
 在对自定义替换组件进行测试验证时，务必覆盖它可能接收到的所有语法形态：普通链接、锚点跳转链接、多次引用的同一个脚注引用、围栏代码块、行内代码以及原始 `<pre>` HTML 标签。确保源码文本能够完整无损呈现，所有控件均能通过键盘无障碍操作，并且在更新 metadata 时能够平滑刷新回调逻辑，而无需重新实例化整个组件函数。
 
-源码参考：[`markdown/Markdown.tsx`](../../../../packages/react/src/components/markdown/Markdown.tsx) 负责 JSX 树转换；[`crossChunkPlaceholders.tsx`](../../../../packages/react/src/components/crossChunkPlaceholders.tsx) 将跨片段协调引用适配到相同的组件映射表；[`MantineAIMarkdown.tsx`](../../../../packages/react-mantine/src/MantineAIMarkdown.tsx) 演示了对代码块的安全提取与防御性处理。
+源码参考：[`markdown/Markdown.tsx`](../../../../packages/react/src/components/markdown/Markdown.tsx) 负责 JSX 树转换；[`crossChunkPlaceholders.tsx`](../../../../packages/react/src/components/crossChunkPlaceholders.tsx) 将跨片段协调引用适配到相同的组件映射表；[`PreCode.tsx`](../../../../packages/react-mantine/src/components/customized/PreCode.tsx) 演示了对代码块的安全提取与防御性处理。

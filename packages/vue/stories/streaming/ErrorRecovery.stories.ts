@@ -1,3 +1,4 @@
+import { ComparisonPanel } from '@ai-markdown/storybook-kit/vue/layouts';
 import { h, ref } from 'vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { expect, userEvent, within, waitFor } from 'storybook/test';
@@ -33,16 +34,24 @@ export const BrokenTailComparison: StoryObj = {
             },
             complete.value ? 'Restore broken tail' : 'Load completed corpus'
           ),
-          ...[false, true].map((enabled) =>
-            h('section', [
-              h('h3', enabled ? 'With repair' : 'Without repair'),
-              h(AIMarkdown, {
-                content: complete.value ? EMPHASIS : BROKEN_TAIL_FRAME,
-                contentPreprocessors: enabled ? repair : [],
-                streaming: !complete.value,
-                'data-repair': String(enabled),
-              }),
-            ])
+          h(
+            'div',
+            { class: 'aim-comparison' },
+            [false, true].map((enabled) =>
+              h(
+                ComparisonPanel,
+                { label: enabled ? 'With repair' : 'Without repair' },
+                {
+                  default: () =>
+                    h(AIMarkdown, {
+                      content: complete.value ? EMPHASIS : BROKEN_TAIL_FRAME,
+                      contentPreprocessors: enabled ? repair : [],
+                      streaming: !complete.value,
+                      'data-repair': String(enabled),
+                    }),
+                }
+              )
+            )
           ),
         ]);
     },

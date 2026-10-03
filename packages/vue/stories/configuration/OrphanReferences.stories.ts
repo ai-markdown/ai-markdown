@@ -1,3 +1,4 @@
+import { ComparisonPanel } from '@ai-markdown/storybook-kit/vue/layouts';
 import { h, ref } from 'vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { expect, userEvent, within, waitFor } from 'storybook/test';
@@ -31,15 +32,23 @@ export const PausedStreamComparison: StoryObj = {
             },
             cited.value ? 'Remove citation' : 'Add citation'
           ),
-          ...[true, false].map((preserveOrphanReferences) =>
-            h('section', [
-              h('h3', preserveOrphanReferences ? 'Preserve orphan definitions' : 'Hide orphan definitions'),
-              h(AIMarkdown, {
-                content: `${REFERENCE_SCENARIO.definition}${cited.value ? '\n\n' + REFERENCE_SCENARIO.reader : ''}`,
-                preserveOrphanReferences,
-                'data-preserve': String(preserveOrphanReferences),
-              }),
-            ])
+          h(
+            'div',
+            { class: 'aim-comparison' },
+            [true, false].map((preserveOrphanReferences) =>
+              h(
+                ComparisonPanel,
+                { label: preserveOrphanReferences ? 'Preserve orphan definitions' : 'Hide orphan definitions' },
+                {
+                  default: () =>
+                    h(AIMarkdown, {
+                      content: `${REFERENCE_SCENARIO.definition}${cited.value ? '\n\n' + REFERENCE_SCENARIO.reader : ''}`,
+                      preserveOrphanReferences,
+                      'data-preserve': String(preserveOrphanReferences),
+                    }),
+                }
+              )
+            )
           ),
         ]);
     },

@@ -1,7 +1,7 @@
 /**
  * QA: the code-block renderer while a block streams. Auto-detection labels a
- * block as soon as the evidence is conclusive, never swaps that label for an
- * unrelated language mid-stream, and starts over when a regenerate replaces
+ * block as soon as the evidence is conclusive, requires a confidence margin
+ * to switch language families, and starts over when a regenerate replaces
  * the block; JSON pretty-print lands as soon as the block looks complete
  * rather than when the whole message ends.
  */

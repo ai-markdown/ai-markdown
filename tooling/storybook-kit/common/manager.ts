@@ -1,10 +1,16 @@
 import { addons } from 'storybook/manager-api';
-import { themes } from 'storybook/theming';
+import { CATALOG_THEMES } from './catalogTheme';
 import { getUserPreferredColorTheme, setUserPreferredColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
 import { GLOBALS_UPDATED } from 'storybook/internal/core-events';
 
+// Storybook uses white text on selected navigation rows, including in dark mode.
+const managerThemes = {
+  light: CATALOG_THEMES.light,
+  dark: { ...CATALOG_THEMES.dark, colorSecondary: '#168875' },
+};
+
 addons.setConfig({
-  theme: getUserPreferredColorTheme() === 'dark' ? themes.dark : themes.light,
+  theme: managerThemes[getUserPreferredColorTheme()],
 });
 
 addons.register('theme-switcher', (api) => {
@@ -15,7 +21,7 @@ addons.register('theme-switcher', (api) => {
     if (theme && currTheme !== theme) {
       currTheme = theme;
       api.setOptions({
-        theme: theme === 'dark' ? themes.dark : themes.light,
+        theme: managerThemes[theme],
       });
     }
   }

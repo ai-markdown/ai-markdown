@@ -162,7 +162,7 @@ This rule was learned once before, recorded in a commit named for it, and then n
 ## What makes a good PR
 
 - **Test coverage for behavior changes.** New behavior gets new tests; bug fixes get regression tests. The `byteEquivalence.test.tsx` harness exists to catch silent drift between code paths — leverage it.
-- **Reference stability discipline.** Anything that participates in the block-memo cache (`customComponents`, `urlTransform`, `sanitizeSchema`, `contentPreprocessors`, `config`) must be safe under inline / module-scope / `useMemo`. See [`apps/docs/content/guides/streaming-and-performance.md`](https://ai-markdown.github.io/docs/guides/streaming-and-performance/).
+- **Reference stability discipline.** Anything that participates in the block-memo cache (`customComponents`, `urlTransform`, `sanitizeSchema`, `contentPreprocessors`, `enginePlugins`) must be safe under inline / module-scope / `useMemo`. See [`apps/docs/content/guides/streaming-and-performance.md`](https://ai-markdown.github.io/docs/guides/streaming-and-performance/).
 - **Docs updates.** If your PR changes public API or visible behavior, update the relevant doc(s):
   - Props / config → the canonical adapter reference under `apps/docs/content/reference/` + relevant task guide + JSDoc. Update a package README when its installation or minimal example changes; core/engine/plugin references still originate in their package READMEs.
   - Mechanism / invariant → relevant file under `apps/docs/content/guides/`.
@@ -219,7 +219,7 @@ git push origin main vX.Y.Z
 
 Stable versions of the five main packages use npm `latest` and a non-prerelease GitHub release; beta/RC versions use their corresponding npm channel and a GitHub prerelease. The independent highlight plugin and code language detector stay on their own stable 1.x lines.
 
-Run `pnpm preflight` before tagging to catch gate failures locally — it is the same check suite the workflow runs, minus the publish. There is deliberately no local publish path: a local `npm publish` cannot attach provenance, so publishing happens only via the tag flow.
+Run `pnpm preflight` before tagging to catch local gate failures. CI and release also run environment-specific jobs, including compatibility matrices; preflight does not replace those jobs or release approval. There is deliberately no local publish path: a local `npm publish` cannot attach provenance, so publishing happens only via the tag flow.
 
 The workflow also creates the GitHub release, with notes taken from the version's section in `apps/docs/content/guides/release-highlights.md` — write that section before tagging (it falls back to auto-generated notes otherwise).
 
@@ -240,6 +240,6 @@ Vue and the other existing packages have completed publication through their con
 
 ## Documentation language and scope
 
-Commit reader-facing documentation in English, including READMEs, usage/API references, architecture explanations, and contributor/testing guides. Use English for explanatory code comments and PR descriptions as well. Preserve non-English strings when they are meaningful CJK examples, test fixtures, or source data; explain their behavior in English.
+Write canonical reader-facing documentation in English, including READMEs, usage/API references, architecture explanations, and contributor/testing guides. Maintain the corresponding Simplified Chinese pages under `apps/docs/content/translations/zh-cn/` when changing published guidance; preserve their explicit anchor IDs and source-relative links. Generated pages under `apps/docs/src/content/docs/` must not be edited directly. Use English for explanatory code comments and PR descriptions as well. Preserve non-English strings when they are meaningful CJK examples, test fixtures, or source data; explain their behavior in English.
 
 Keep internal planning matrices, agent instructions and scratch notes, execution/status logs, and review-process records local. Do not commit them under `apps/docs/content/guides/` or elsewhere in the repository. Use the ignored `.local-notes/` directory for local material. Extract durable contracts or contributor instructions into the appropriate public guide without carrying over the internal work log. Test fixtures, API snapshots, and license notices are repository assets with their own purposes, not internal planning documents.

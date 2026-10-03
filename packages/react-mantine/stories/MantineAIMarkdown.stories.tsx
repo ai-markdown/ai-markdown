@@ -6,7 +6,7 @@ import { expect, waitFor } from 'storybook/test';
 import { CJK_EMPHASIS_REGRESSION, GFM_BASICS } from '@ai-markdown/storybook-kit/common/fixtures';
 
 /**
- * The Mantine wrapper with every prop wired to a control — core's surface plus
+ * The Mantine wrapper with common rendering controls, including
  * `codeBlock`. Color scheme follows the toolbar through Mantine's own
  * provider, so there is no `colorScheme` prop to set here.
  */
@@ -36,9 +36,9 @@ export const Default: MantineStory = {
 /**
  * The CJK emphasis fix, verified through the Mantine wrapper too — the
  * correction lives in the shared engine, so the wrapper must inherit it.
- * The core story under Features covers the same ground for readers; this one
+ * The React story under Basics covers the same ground for readers; this one
  * exists to catch a regression that only shows up here. The fixture is
- * shared with core (one source of truth): nine `**…**` pairs against CJK
+ * shared with React: nine `**…**` pairs against CJK
  * punctuation, three of them with `~~` nested inside, plus ONE escaped
  * `\*\*` that must stay literal. The play asserts exactly that shape.
  */

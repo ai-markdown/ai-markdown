@@ -1,12 +1,11 @@
+import { CATALOG_COLORS } from '../common/catalogTheme';
 import { createContext, useContext, type ReactNode } from 'react';
 
 export type StoryColorScheme = 'light' | 'dark';
 
 export interface PagePalette {
   /**
-   * Written straight onto `document.body.style.backgroundColor`. The light
-   * entry is intentionally empty: clearing the inline value lets Storybook's
-   * own canvas background show through, which is what the canvas expects.
+   * Written straight onto `document.body.style.backgroundColor`. The canvas and docs shell use the same surface.
    */
   background: string;
   /** Body text color, inherited by every story through the decorator's wrapper. */
@@ -20,8 +19,8 @@ export interface PagePalette {
  * benchmark harnesses and plain stories agree on foreground contrast.
  */
 export const PAGE_PALETTE: Record<StoryColorScheme, PagePalette> = {
-  light: { background: '', text: 'rgba(0, 0, 0, 0.88)' },
-  dark: { background: 'rgb(36, 36, 36)', text: 'rgba(255, 255, 255, 0.92)' },
+  light: { background: CATALOG_COLORS.light.surface, text: CATALOG_COLORS.light.text },
+  dark: { background: CATALOG_COLORS.dark.surface, text: CATALOG_COLORS.dark.text },
 };
 
 export const ColorSchemeContext = createContext<StoryColorScheme>('light');

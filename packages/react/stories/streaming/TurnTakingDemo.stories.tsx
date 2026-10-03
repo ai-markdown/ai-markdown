@@ -1,10 +1,10 @@
+import { docsLink } from '@ai-markdown/storybook-kit/common/docsLinks';
 import React, { type CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import AIMarkdown, { AIMarkdownDocuments, AIMarkdownStreamingCursor, useDocumentSmoothStream } from '../../src/index';
 import '../../src/components/typography/variants/all.scss';
 import { useStoryColorScheme, PAGE_PALETTE } from '@ai-markdown/storybook-kit/react/colorScheme';
 import { ThemedReplayButton } from '@ai-markdown/storybook-kit/react/streaming';
-import { docsLink } from '@ai-markdown/storybook-kit/common/docsLinks';
 import { getStreamingTheme } from '@ai-markdown/storybook-kit/react/theme';
 
 import { EMPHASIS as FIRST, QUOTES as SECOND } from '@ai-markdown/storybook-kit/common/corpus';
@@ -134,36 +134,25 @@ const meta: Meta<typeof TurnTakingChat> = {
     docs: {
       description: {
         component: [
-          'A model answer often arrives as several chat messages — a preamble, a tool',
-          'call, a conclusion — and their sources overlap. The server does not wait: the',
-          'second message can finish producing text while the first is still going. Render',
-          'each message independently and the reader watches two typewriters race, or worse,',
-          'reads the conclusion before the reasoning.',
-          '',
-          'Turn-taking fixes the *reveal* order without touching the *arrival* order. Give',
-          'the messages a shared `documentId` inside an `<AIMarkdownDocuments>` wrapper, and',
-          'each one reveals only after its predecessors have finished revealing. Nothing is',
-          'buffered upstream and nothing is delayed on the network — a message that finished',
-          'early simply waits for its turn, then plays out at normal speed rather than',
-          'snapping into place.',
+          'Turn-taking controls reveal order while the application continues receiving each source independently. Inside `AIMarkdownDocuments`, empty-mounted smooth components with the same explicit `documentId` wait for earlier registered participants to finish producing and revealing.',
           '',
           '```tsx',
-          'const smooth = useDocumentSmoothStream({ documentId, content, streaming });',
-          '',
           '<AIMarkdownDocuments>',
           '  {messages.map((m) => (',
-          '    <AIMarkdown key={m.id} {...smoothFor(m)} documentId={documentId} />',
+          '    <AIMarkdownSmoothStream',
+          '      key={m.id}',
+          '      documentId="answer-42"',
+          '      content={m.text}',
+          '      streaming={m.streaming}',
+          '      smoothWaiting={m.awaitingFirstInput}',
+          '    />',
           '  ))}',
           '</AIMarkdownDocuments>',
           '```',
           '',
-          'Queues are per `documentId`, so two conversations on one page never wait on each',
-          'other. Only messages sharing an id are ordered.',
+          'Import both components from `@ai-markdown/react`. Clear `smoothWaiting` when input starts or an empty result completes. Initial nonempty content is shown immediately; mount empty if later appends should animate. The queue follows registration order, independently of `documentIndex`, which orders references. Different document IDs have separate queues.',
           '',
-          `See ${docsLink('smooth-streaming', 'smooth streaming')} for the pacing model and`,
-          `${docsLink('cross-chunk-coordination', 'cross-chunk coordination')} for what else a shared`,
-          '`documentId` buys — footnotes and link references resolving across message',
-          'boundaries.',
+          `See ${docsLink('smooth-streaming', 'smooth streaming')} for hooks, completion and opt-out controls, and ${docsLink('cross-chunk-coordination', 'document coordination')} for shared references.`,
         ].join('\n'),
       },
     },

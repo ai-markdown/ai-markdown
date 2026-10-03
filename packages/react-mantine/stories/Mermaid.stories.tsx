@@ -19,15 +19,17 @@ const meta: MantineMeta = {
     docs: {
       description: {
         component: [
-          'A fenced block tagged `mermaid` renders as a diagram. Core leaves it as a code',
+          'A fenced block tagged `mermaid` renders as a diagram. The React adapter leaves it as a code',
           'block — diagram rendering pulls in a large dependency, so it lives in the',
           'Mantine package rather than in the base renderer.',
           '',
           'The streaming behavior is the part worth watching. A diagram that is still',
           'being written is, by definition, syntactically invalid most of the time, so the',
           'renderer shows the raw source until a prefix parses, then swaps to the SVG and',
-          'refreshes on every later successful parse. Failures mid-stream never surface as',
-          'an error tab; only the corrective pass after the stream ends can do that.',
+          'refreshes after successful render attempts. Streaming attempts are throttled',
+          'by `codeBlock.mermaidIntervalMs` (300 ms by default), with a final attempt',
+          'when streaming ends. Incomplete syntax normally keeps the current preview;',
+          'oversized input can show an error even while streaming.',
         ].join('\n'),
       },
     },
@@ -42,7 +44,7 @@ export default meta;
  * and a sequence diagram, which take different paths through mermaid and
  * report different chart types.
  *
- * Each rendered diagram carries a header with three things:
+ * Each rendered diagram carries header controls:
  *
  * - **The chart-type tag** on the left. It is not parsed out of the source by
  *   this package; it is whatever `mermaid.render()` reported as the diagram
@@ -53,7 +55,7 @@ export default meta;
  *   what keeps the render target alive for later updates.
  * - **A copy button**, which copies the mermaid source rather than the SVG.
  *
- * Clicking the diagram itself opens the SVG in a new browser tab, with a
+ * The header’s open action opens the SVG in a new browser tab, with a
  * background colour matched to the current scheme so a dark-theme diagram is
  * not white-on-white. Enter and Space do the same thing from the keyboard.
  *
@@ -76,9 +78,10 @@ export const FlowchartAndSequence: MantineStory = {
  *
  * What to watch while it streams:
  * - Mermaid blocks show their raw source (plain code block) until the first
- *   prefix parses, then switch to the live SVG and refresh on each further
- *   successful parse. Parse failures mid-stream never flash the error tab;
- *   only the post-stream corrective pass may surface a real error.
+ *   render succeeds, then switch to the live SVG. Further attempts are throttled
+ *   (300 ms by default), with a final attempt when streaming ends. Ordinary
+ *   parse failures during streaming are suppressed; size-limit errors can
+ *   appear before the stream ends.
  * - Code blocks re-highlight as lines arrive.
  *
  * Edit `content` in the Controls panel to stream your own markdown.
@@ -89,8 +92,7 @@ export const Streaming: MantineStory = {
       '# Diagrams arriving a token at a time',
       '',
       'The flowchart below takes shape as the stream lands: raw source first, then a',
-      'diagram once the first prefix parses, re-rendered on every later parse that',
-      'succeeds.',
+      'diagram once rendering succeeds, with later attempts throttled while streaming.',
       '',
       '```mermaid',
       'flowchart LR',

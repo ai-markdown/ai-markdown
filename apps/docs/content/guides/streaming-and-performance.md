@@ -59,7 +59,7 @@ When `blockMemo` is `true` (the default), the rendering pipeline:
    - `ctx` digest (for blocks that depend on cross-block syntax like footnote refs / link defs)
    - `startOffset` and `startLine` (so identical content at different positions don't false-cache)
 
-A cache hit returns the existing `ReactNode` and skips its hast-to-JSX conversion. Unchanged element identity reduces reconciliation work, while descendants can still update through local state, context, or an external-store subscription. Output is **byte-identical** to the disabled path.
+A cache hit returns the existing `ReactNode` and skips its hast-to-JSX conversion. Unchanged element identity reduces reconciliation work, while descendants can still update through local state, context, or an external-store subscription. Standalone output is equivalent to the disabled path. Under `AIMarkdownDocuments`, cross-chunk resolution requires `blockMemo`; disabling it switches that chunk to standalone rendering.
 
 ### What invalidates a block
 

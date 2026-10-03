@@ -1,3 +1,4 @@
+import { docsComponents } from '@ai-markdown/storybook-kit/react/docsComponents';
 import type { Preview } from '@storybook/react-vite';
 import { getUserPreferredColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
 // React-only decorators are shared with Mantine through the private kit.
@@ -25,6 +26,7 @@ const preview: Preview = {
 
     docs: {
       container: AimDocsContainer,
+      components: docsComponents,
     },
 
     // The sidebar is the reading order: evaluate (Introduction, Playground),

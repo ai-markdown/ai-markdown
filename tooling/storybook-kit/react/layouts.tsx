@@ -45,28 +45,15 @@ export const SideBySide = ({
   leftLabel: ReactNode;
   rightLabel: ReactNode;
 }) => {
-  const scheme = useStoryColorScheme();
-  const theme = getStreamingTheme(scheme);
-  const pane: CSSProperties = {
-    border: `1px solid ${theme.panelBorder}`,
-    borderRadius: 8,
-    color: PAGE_PALETTE[scheme].text,
-    minWidth: 0,
-    padding: 12,
-  };
   return (
-    <div className="aim-side-by-side">
-      <style>
-        {'.aim-side-by-side { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }' +
-          '@media (max-width: 720px) { .aim-side-by-side { grid-template-columns: 1fr; } }'}
-      </style>
-      <div>
-        <div style={labelStyle(theme.textMuted)}>{leftLabel}</div>
-        <div style={pane}>{left}</div>
+    <div className="aim-comparison">
+      <div className="aim-comparison-panel">
+        <div className="aim-panel-label">{leftLabel}</div>
+        <div className="aim-panel-content">{left}</div>
       </div>
-      <div>
-        <div style={labelStyle(theme.textMuted)}>{rightLabel}</div>
-        <div style={pane}>{right}</div>
+      <div className="aim-comparison-panel">
+        <div className="aim-panel-label">{rightLabel}</div>
+        <div className="aim-panel-content">{right}</div>
       </div>
     </div>
   );

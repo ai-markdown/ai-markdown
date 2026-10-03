@@ -23,7 +23,7 @@ Different document IDs and different provider instances remain independent. Chan
 
 ## Late definitions and footnotes
 
-A reference can appear before its definition is available. Once mounted contributions commit, the registry supplies shared destinations and global footnote numbering. Updating or removing a definition updates its readers. The last registered chunk owns the aggregate footnote footer.
+A reference can appear before its definition is available. Once mounted contributions commit, the registry supplies shared destinations and global footnote numbering. Updating or removing a definition updates its readers. The last chunk in registry order owns the aggregate footnote footer; `documentIndex` can change that order.
 
 Server rendering and the first hydration render use local content and local footnotes. Definitions contributed only by other chunks are not pre-resolved in server HTML. If a complete server-rendered document is required, pass all of its source to a single renderer.
 

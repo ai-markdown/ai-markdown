@@ -79,7 +79,7 @@ Keep both values at module scope when policy is fixed. If policy depends on appl
 
 ## `urlTransform` (Gate 2)
 
-A function receiving the URL plus contextual metadata; returns the rewritten URL (or `''` to drop).
+A function receiving the URL plus contextual metadata; returns a rewritten URL, an empty string, or no value as described below.
 
 ```ts
 import type { Element } from 'hast';
@@ -183,9 +183,11 @@ extendSanitizeSchema((s) => {
 
 `s` is the deep clone — log it once at module load to learn what's allowed, then write your real override.
 
-### Why isn't the default schema exported as a value?
+<span id="why-isnt-the-default-schema-exported-as-a-value"></span>
 
-Because the obvious extension pattern — `{ ...sanitizeSchema, protocols: { ...sanitizeSchema.protocols, href: [...] } }` — is a shallow spread. A shallow spread retains nested object and array references. The engine singleton is now deep-frozen, so mutating one of those shared arrays can throw rather than producing an independent schema. Deep cloning provides a mutable graph with no shared nested state. `extendSanitizeSchema` always works on a deep clone, so this entire class of bug is impossible by construction.
+### Why use the helper instead of importing the default schema?
+
+The React and Vue adapters expose the extension helper; engine also exports its frozen default schema. The obvious extension pattern — `{ ...sanitizeSchema, protocols: { ...sanitizeSchema.protocols, href: [...] } }` — is a shallow spread. A shallow spread retains nested object and array references. The engine singleton is now deep-frozen, so mutating one of those shared arrays can throw rather than producing an independent schema. Deep cloning provides a mutable graph with no shared nested state. `extendSanitizeSchema` always works on a deep clone, so this entire class of bug is impossible by construction.
 
 ---
 

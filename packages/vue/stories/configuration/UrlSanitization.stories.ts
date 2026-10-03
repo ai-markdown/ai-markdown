@@ -1,3 +1,4 @@
+import { ComparisonPanel } from '@ai-markdown/storybook-kit/vue/layouts';
 import { LINKS } from '@ai-markdown/storybook-kit/common/corpus';
 import { URL_SCHEMES_DOC } from '@ai-markdown/storybook-kit/common/fixtures';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
@@ -53,16 +54,28 @@ export const AllowCustomScheme: Story = {
   },
   render: () => ({
     setup: () => () =>
-      h('section', [
-        h('h3', 'URL transform only'),
-        h(AIMarkdown, { content: URL_SCHEMES_DOC, urlTransform: allowAppUrl, 'data-url-policy': 'transform' }),
-        h('h3', 'URL transform and schema'),
-        h(AIMarkdown, {
-          content: URL_SCHEMES_DOC,
-          urlTransform: allowAppUrl,
-          sanitizeSchema: appSchema,
-          'data-url-policy': 'both',
-        }),
+      h('div', { class: 'aim-comparison' }, [
+        h(
+          ComparisonPanel,
+          { label: 'URL transform only' },
+          {
+            default: () =>
+              h(AIMarkdown, { content: URL_SCHEMES_DOC, urlTransform: allowAppUrl, 'data-url-policy': 'transform' }),
+          }
+        ),
+        h(
+          ComparisonPanel,
+          { label: 'URL transform and schema' },
+          {
+            default: () =>
+              h(AIMarkdown, {
+                content: URL_SCHEMES_DOC,
+                urlTransform: allowAppUrl,
+                sanitizeSchema: appSchema,
+                'data-url-policy': 'both',
+              }),
+          }
+        ),
       ]),
   }),
   play: async ({ canvasElement }) => {

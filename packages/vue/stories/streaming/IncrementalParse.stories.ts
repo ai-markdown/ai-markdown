@@ -1,3 +1,4 @@
+import { ComparisonPanel } from '@ai-markdown/storybook-kit/vue/layouts';
 import { h, ref } from 'vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { expect, userEvent, within, waitFor } from 'storybook/test';
@@ -43,16 +44,24 @@ export const SnapshotComparison: StoryObj = {
             },
             'Replace answer'
           ),
-          ...[true, false].map((incrementalParse) =>
-            h('section', [
-              h('h3', incrementalParse ? 'Incremental parser' : 'Full parser'),
-              h(AIMarkdown, {
-                content: source.value,
-                incrementalParse,
-                streaming: false,
-                'data-parser': incrementalParse ? 'incremental' : 'full',
-              }),
-            ])
+          h(
+            'div',
+            { class: 'aim-comparison' },
+            [true, false].map((incrementalParse) =>
+              h(
+                ComparisonPanel,
+                { label: incrementalParse ? 'Incremental parser' : 'Full parser' },
+                {
+                  default: () =>
+                    h(AIMarkdown, {
+                      content: source.value,
+                      incrementalParse,
+                      streaming: false,
+                      'data-parser': incrementalParse ? 'incremental' : 'full',
+                    }),
+                }
+              )
+            )
           ),
         ]);
     },

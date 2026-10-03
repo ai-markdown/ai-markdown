@@ -4,4 +4,4 @@ Private Astro Starlight application. See [Documentation site](https://ai-markdow
 
 From the repository root, run `pnpm dev:docs`. Production output is `apps/docs/dist/`.
 
-The public website is [ai-markdown.github.io](https://ai-markdown.github.io/). Author guides in `content/guides/`; `src/content/docs/` is generated and must not be edited. Package READMEs are imported as package references.
+The public website is [ai-markdown.github.io](https://ai-markdown.github.io/). Author guides in `content/guides/`; `src/content/docs/` is generated and must not be edited. Adapter references live in `content/reference/`; core, engine and standalone plugin references are imported from their package READMEs.

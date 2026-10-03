@@ -325,7 +325,7 @@ No wrapper needed — there's only one instance. Block-level memoization minimiz
 
 ### Variant: hybrid (chunked + virtualization)
 
-Virtualization changes which contributions exist. `documentIndex` preserves the order of **mounted** chunks; it does not retain definitions, refs, or numbering from chunks that have unmounted. Consequently, a reference can become unresolved when its definition scrolls out of the mounted window, and the aggregate footer belongs to the last registered chunk rather than necessarily the final chunk in your full data set.
+Virtualization changes which contributions exist. `documentIndex` preserves the order of **mounted** chunks; it does not retain definitions, refs, or numbering from chunks that have unmounted. Consequently, a reference can become unresolved when its definition scrolls out of the mounted window, and the aggregate footer belongs to the last mounted chunk in registry order rather than necessarily the final chunk in your full data set.
 
 Use a virtualizer only when these lifetime semantics fit the application. Keep required definition-bearing chunks mounted, or keep a complete renderer mounted if the whole document must remain navigable. Reserving an ordinal alone cannot supply missing content.
 

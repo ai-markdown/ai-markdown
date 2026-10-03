@@ -3,20 +3,45 @@ import { DOCS_LINKS, REPO_URL } from '@ai-markdown/storybook-kit/common/docsLink
 
 <Meta title="AI Markdown/Overview" />
 
-# AI Markdown
+<div className="aim-catalog-intro">
+  <span className="aim-catalog-kicker">Component catalog</span>
+  <h1>Markdown, as it arrives.</h1>
+  <p>
+    {
+      'Explore streaming text, rich content and document coordination. Choose your framework to try live examples and find the right integration.'
+    }
+  </p>
+</div>
 
-Interactive examples for streaming Markdown across frameworks. Choose **React** or **Vue** in the sidebar to open the corresponding catalog. Both use the same engine and shared core; each catalog runs its own renderer and browser tests.
+<div className="aim-catalog-grid">
+  <a className="aim-catalog-link" href="./?path=/docs/react_introduction--docs" target="_top">
+    <strong>React</strong>
+    <span>Typography, component overrides and streaming hooks for React 19.</span>
+    <span className="aim-catalog-action">Explore React</span>
+  </a>
+  <a className="aim-catalog-link" href="./?path=/docs/vue_introduction--docs" target="_top">
+    <strong>Vue</strong>
+    <span>Native components, scoped slots and streaming composables for Vue 3.5+.</span>
+    <span className="aim-catalog-action">Explore Vue</span>
+  </a>
+  <a className="aim-catalog-link" href="./?path=/docs/react_integrations-mantine-overview--docs" target="_top">
+    <strong>Mantine</strong>
+    <span>Highlighted code, diagrams and code-block controls, built on the React adapter.</span>
+    <span className="aim-catalog-action">Explore Mantine</span>
+  </a>
+</div>
 
-## Choose a framework
+## Start exploring
 
-- **React 19**: `@ai-markdown/react`, including typography, component overrides and streaming hooks.
-- **Vue ^3.5**: `@ai-markdown/vue`, including Vue components, scoped slots and streaming composables.
-- **Mantine**: `@ai-markdown/react-mantine`, under React → Integrations → Mantine. It adds code-block controls, highlighting and diagrams.
+1. **Playground** — edit Markdown and try the renderer's options.
+2. **Basics & Customization** — compare syntax, components and rendering policies.
+3. **Streaming & Documents** — replay incoming text and follow references across chunks.
+4. **Performance Lab** — run measurements in your own browser.
 
-General sample Markdown comes from the repository's `corpus/documents`. Focused syntax and regression cases retain purpose-built inputs, including CJK, footnotes, unsafe URLs and cancellation sequences. Performance Lab measurements describe their own framework and environment; they are not cross-framework rankings.
+Both catalogs use the same engine, shared core and sample corpus. Each runs its own renderer and browser tests. Performance examples document their environment and are not cross-framework rankings.
 
-## Documentation
+## Integration guides
 
-Read the [repository README]({REPO_URL}), [architecture]({DOCS_LINKS.architecture}) and the framework package READMEs for installation and API contracts. This catalog demonstrates live behavior; the guides remain the source for integration instructions.
+Read the <a href={DOCS_LINKS.readme}>documentation</a> for installation and API contracts, explore the <a href={DOCS_LINKS.architecture}>architecture</a>, or browse the <a href={REPO_URL}>source on GitHub</a>.
 
-QA stories remain available during development. Public exports hide their navigation entries but still retain their indexed stories and browser assertions. The composition entry does not replace the separate React and Vue test suites.
+QA stories contain browser regression cases. They are available during development; the public catalog keeps its navigation focused on examples.

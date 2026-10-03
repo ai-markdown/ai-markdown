@@ -151,6 +151,8 @@ for (const frame of ['# Hello', '# Hello\n\nworld', '# Hello\n\nworld and more']
 
 成功的拼接处理既取决于源文本的连续性，也取决于流水线的兼容性。如果所选插件、Schema、命名空间或转换选项发生改变，请同步更新依赖项 key。原地修改插件数组同时保留其引用同一性可能会导致手动构建的适配器在错误的假设下复用旧状态。示例中仅创建一次流水线，并在解析选项与插件选择中一致地启用定义列表处理。
 
+`gfmTaskListItems: true` 声明插件链支持 GFM 任务列表。`mathFlow` 有三种状态：`true` 表示启用 remark-math，`$$` 区域按数学内容处理；`false` 表示未启用，该区域按普通文本处理；省略表示语法未知，扫描器同时考虑两种语法，采取更保守的冻结边界。三种状态之间切换都会丢弃保留的语法树。React 与 Vue 适配器均传入 `gfmTaskListItems: true` 和 `mathFlow: true`，因为其标准插件链包含 remark-gfm 与 remark-math。
+
 `advanceIncrementalParse` 不会自动隐式应用 core 所暴露的每一项预处理便利功能。当需要 core 的 LaTeX 行为时，请先规范化原始输入；若使用有状态形式，每个流需保留独立的增量 LaTeX 预处理器。用户自定义转换在 core 中针对规范化字符串运行；单纯复现解析调用并不等同于复现 React 适配器的完整输入流水线。
 
 <span id="adapter-responsibilities"></span>
@@ -159,7 +161,7 @@ for (const frame of ['# Hello', '# Hello\n\nworld', '# Hello\n\nworld and more']
 
 HAST 语法树是中间表示，不是最终的 HTML 或 React 输出。Rehype 安全清洗器在插件链中运行，而 URL 转换属于后续的渲染关注点。直接使用方必须对保留下来的 URL 属性应用对应的 URL 策略，并且在重新访问保留语法树时必须保持收敛性。
 
-跨片段协调不仅需要创建注册表。Core 在提交后注册片段并贡献处理后的数据，订阅文档与标签变动，在使用片段策略下渲染占位符，并输出统一的聚合页脚。Engine 构建的私有占位符标签在发布的流水线中同样使用溯源边界。缺少匹配凭据生命周期的手工组装流水线无法直接作为开箱即用的协调渲染器使用。
+跨片段协调不仅需要创建注册表。框架适配器使用 core 在提交后注册片段并贡献处理后的数据。适配器订阅文档与标签变动，按消费片段的策略渲染占位符，并输出统一的聚合页脚。Engine 构建的私有占位符标签在发布的流水线中同样使用溯源边界。缺少匹配凭据生命周期的手工组装流水线无法直接作为开箱即用的协调渲染器使用。
 
 在构建其他宿主时，可将 React 适配器作为源码级参考，并为该宿主建立独立的生命周期与等价性测试。[架构设计全景](https://ai-markdown.github.io/docs/guides/architecture/)梳理了阶段执行顺序，而[压测覆盖](https://ai-markdown.github.io/docs/guides/soak-coverage/)区分了成功的 Oracle 比对与优化路径确实得到执行的测试证据。
 

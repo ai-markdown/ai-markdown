@@ -73,7 +73,7 @@ const components = { code: CodeBlock };
 </script>
 
 <template>
-  <AIMarkdown content="**Hello**" :components="components" :metadata="{ messageId: 'a' }"> </AIMarkdown>
+  <AIMarkdown content="Use `const answer = 42` here." :components="components" :metadata="{ messageId: 'a' }" />
 </template>
 ```
 
@@ -119,7 +119,7 @@ const chunks = ['A claim[^source] and [site][url].', '[^source]: Shared citation
 
 Chunks are intentionally complete logical Markdown sections. A code fence, table row or other syntax construct split across arbitrary transport chunks is not joined by the registry. Prefer one accumulated `content` unless the application genuinely needs independently mounted sections.
 
-References may precede definitions. The shared registry supplies canonical link/image destinations, global footnote numbering and occurrence IDs. The last registered chunk renders the aggregate footer. Updating/removing a definition updates readers; switching `documentId` releases the old registration. Different IDs and different provider instances remain independent.
+References may precede definitions. The shared registry supplies canonical link/image destinations, global footnote numbering and occurrence IDs. The last chunk in registry order renders the aggregate footer; `documentIndex` can change that order. Updating/removing a definition updates readers; switching `documentId` releases the old registration. Different IDs and different provider instances remain independent.
 
 The aggregate footer follows the orphan policy in force for each chunk. `AIMarkdownDocuments` accepts `preserveOrphanReferences` (default `true`) and applies it to every chunk under it, so a definition whose reference never arrives (a stream that stops early, a chunk that is never mounted) stays in the footer. The wrapper value wins over each chunk's own `preserveOrphanReferences`; both adapters resolve the wrapper value first, so this matches React's `<AIMarkdownDocuments>`. Outside the wrapper the chunk prop applies and defaults to `false`.
 

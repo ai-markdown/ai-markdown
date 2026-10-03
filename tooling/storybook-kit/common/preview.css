@@ -1,0 +1,258 @@
+/* Catalog chrome only. Renderer typography, code tools and test fixtures own
+   their styles; these rules must not become hidden library defaults. */
+.aim-story,
+.aim-docs {
+  color: var(--catalog-text);
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.aim-story {
+  container-type: inline-size;
+  max-width: 1120px;
+  margin-inline: auto;
+  padding: clamp(12px, 3vw, 36px);
+  box-sizing: border-box;
+}
+.aim-story[data-embedded='true'] {
+  padding: 8px;
+}
+.aim-story-header {
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--catalog-border);
+}
+.aim-story-breadcrumb {
+  color: var(--catalog-muted);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  margin: 0 0 8px;
+}
+.aim-story-title {
+  color: var(--catalog-text);
+  font-size: clamp(24px, 3vw, 32px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.2;
+  margin: 0;
+}
+.aim-story-body {
+  min-width: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+/* Native demo controls only: never restyle controls inside rendered Markdown
+   or Mantine's components. Inline styles still own specialized controls. */
+.aim-story-body :where(button:not([class])):not(:where(.aim-typography-root *, .aimd-vue *, [class*='mantine-'] *)) {
+  background: var(--catalog-surface);
+  color: var(--catalog-text);
+  border: 1px solid var(--catalog-border);
+  border-radius: 7px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 550;
+  min-height: 36px;
+  padding: 7px 13px;
+  margin: 0 8px 12px 0;
+  cursor: pointer;
+}
+.aim-story-body
+  :where(button:not([class])):not(:where(.aim-typography-root *, .aimd-vue *, [class*='mantine-'] *)):hover {
+  border-color: var(--catalog-accent);
+}
+.aim-story :where(button, input, select, textarea, a):focus-visible,
+.aim-docs .aim-catalog-link:focus-visible {
+  outline: 2px solid var(--catalog-accent);
+  outline-offset: 3px;
+}
+.aim-story-body :where(button:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+.aim-story-body :where(output):not(:where(.aim-typography-root *, .aimd-vue *)) {
+  display: inline-block;
+  color: var(--catalog-muted);
+  background: var(--catalog-background);
+  border: 1px solid var(--catalog-border);
+  border-radius: 6px;
+  padding: 5px 10px;
+  margin-block: 0 12px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+.aim-comparison {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+.aim-comparison-panel {
+  min-width: 0;
+  border: 1px solid var(--catalog-border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--catalog-surface);
+}
+.aim-panel-label {
+  margin: 0;
+  padding: 12px 16px;
+  background: var(--catalog-background);
+  border-bottom: 1px solid var(--catalog-border);
+  color: var(--catalog-muted);
+  font-size: 12px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.aim-panel-content {
+  padding: 18px;
+  min-width: 0;
+}
+@container (max-width: 680px) {
+  .aim-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 680px) {
+  .aim-comparison {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.aim-docs .sbdocs-wrapper {
+  background: var(--catalog-surface);
+  padding: 48px clamp(20px, 5vw, 64px) 80px;
+}
+.aim-docs .sbdocs-content {
+  max-width: 1080px;
+  min-width: 0;
+}
+.aim-docs .sbdocs-content > :where(h1) {
+  font-size: clamp(30px, 4vw, 42px);
+  font-weight: 650;
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  margin-bottom: 20px;
+}
+.aim-docs .sbdocs-content > :where(p, ul, ol) {
+  font-size: 15px;
+  line-height: 1.8;
+}
+.aim-docs .sbdocs-content > :where(h2) {
+  margin-top: 36px;
+  letter-spacing: -0.025em;
+}
+.aim-docs .sbdocs-preview {
+  border-radius: 10px;
+  border-color: var(--catalog-border);
+  box-shadow: none;
+}
+.aim-docs .sbdocs-content > table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+  margin-block: 24px;
+  font-size: 14px;
+}
+.aim-docs .sbdocs-content > table :where(th, td) {
+  border: 1px solid var(--catalog-border);
+  padding: 12px 16px;
+  text-align: start;
+  line-height: 1.6;
+}
+.aim-docs .sbdocs-content > table th {
+  background: var(--catalog-background);
+}
+.aim-docs .sbdocs-content > table code {
+  overflow-wrap: anywhere;
+}
+.aim-docs .sbdocs-content pre.aim-docs-code {
+  overflow-x: auto;
+  padding: 20px 24px;
+  border: 1px solid var(--catalog-border);
+  border-radius: 10px;
+  background: var(--catalog-background);
+  color: var(--catalog-text);
+  font:
+    13px/1.8 ui-monospace,
+    SFMono-Regular,
+    Menlo,
+    Consolas,
+    monospace;
+  margin-block: 24px;
+  tab-size: 2;
+}
+.aim-docs .aim-catalog-intro {
+  padding-bottom: 12px;
+}
+.aim-docs .aim-catalog-kicker {
+  color: var(--catalog-accent);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.aim-docs .aim-catalog-intro h1 {
+  font-size: clamp(36px, 5vw, 56px);
+  line-height: 1.08;
+  letter-spacing: -0.05em;
+  margin: 16px 0;
+}
+.aim-docs .aim-catalog-intro p {
+  max-width: 680px;
+  font-size: 17px;
+  line-height: 1.75;
+  color: var(--catalog-muted);
+}
+.aim-docs .aim-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 28px 0 36px;
+}
+.aim-docs .aim-catalog-link {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px;
+  border: 1px solid var(--catalog-border);
+  border-radius: 12px;
+  background: var(--catalog-surface);
+  color: var(--catalog-text);
+  text-decoration: none;
+}
+.aim-docs .aim-catalog-link:hover {
+  border-color: var(--catalog-accent);
+  background: var(--catalog-background);
+}
+.aim-docs .aim-catalog-link strong {
+  font-size: 22px;
+  letter-spacing: -0.025em;
+}
+.aim-docs .aim-catalog-link span {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--catalog-muted);
+}
+.aim-docs .aim-catalog-link .aim-catalog-action {
+  color: var(--catalog-accent);
+  font-weight: 600;
+  margin-top: auto;
+  padding-top: 10px;
+}
+@media (max-width: 760px) {
+  .aim-docs .aim-catalog-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .aim-docs .aim-catalog-link {
+    padding: 20px;
+  }
+}
+
+.aim-demo-hint {
+  color: var(--catalog-muted);
+  border: 1px dashed var(--catalog-border);
+  border-radius: 8px;
+  padding: 24px;
+  margin: 8px 0 0;
+  font-size: 14px;
+}

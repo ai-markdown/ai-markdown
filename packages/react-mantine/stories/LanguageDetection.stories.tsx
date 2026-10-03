@@ -30,7 +30,7 @@ const meta: MantineMeta = {
       description: {
         component: [
           '`@ai-markdown/code-language-detector` names the language of a code block that',
-          'arrived without an info string. It is a set of about 315 weighted regex rules',
+          'arrived without an info string. It is a set of weighted regex rules',
           'over 42 languages: synchronous, dependency-free, and cheap enough to run during',
           'render.',
           '',

@@ -1,10 +1,10 @@
+import { docsLink } from '@ai-markdown/storybook-kit/common/docsLinks';
 import type { StoryObj } from '@storybook/react-vite';
 import 'katex/dist/katex.min.css';
 import '../../src/components/typography/variants/all.scss';
 import AIMarkdown, { AIMarkdownStreamingCursor } from '../../src/index';
 import { WithScheme, type StoryColorScheme } from '@ai-markdown/storybook-kit/react/colorScheme';
 import type { ReactMeta } from '../_shared/meta';
-import { docsLink } from '@ai-markdown/storybook-kit/common/docsLinks';
 import {
   StreamingReplay,
   ThemedReplayButton,
@@ -30,32 +30,17 @@ const meta: ReactMeta = {
     docs: {
       description: {
         component: [
-          'Streaming here means one thing: you keep passing the accumulated text so far as',
-          '`content`, and you set `streaming` while more is coming.',
+          'Pass the complete accumulated text as `content`, and set `streaming` while the producer is active.',
           '',
           '```tsx',
           '<AIMarkdown content={accumulated} streaming={!done} />',
           '```',
           '',
-          'There is no append API and no token queue — the component is a pure function of',
-          'the string you hand it, which is what makes it safe against retries, edits, and',
-          'regenerations. What `streaming` adds is knowledge of *why* the document looks',
-          'unfinished: an unclosed fence is a fence still being written rather than a',
-          'syntax error, a lone `$$` is the start of a formula rather than two stray',
-          'dollars, and a table with one row is a table waiting for its second.',
+          "The application owns transport framing, retries and cancellation. Replacing `content` is supported. `streaming` informs custom components and cursor presentation; it does not enable incremental parsing or change the parser's interpretation of an incomplete fence or formula.",
           '',
-          'Underneath, the renderer avoids re-doing work it has already done. The',
-          'incremental parser re-parses only the tail below a frozen boundary, and',
-          'block-level memoization reuses the React subtree of every block whose source',
-          'has not changed. Both are on by default and neither changes a rendered byte —',
-          'they are visible only in the profiler, which is what Performance Lab is for.',
+          'Incremental parsing and block memoization are enabled by default. A verified prefix can be reused when the input and configuration permit it; other frames use a full parse. Cached React blocks still respond to child state and context changes. Cross-chunk coordination requires `blockMemo` to remain enabled.',
           '',
-          'The rest of this section builds on that: a cursor that follows the tail, a',
-          'typewriter that evens out bursty arrivals, and the incremental parser with its',
-          'boundary exposed.',
-          '',
-          `See ${docsLink('streaming-and-performance', 'streaming & performance')} for the mechanics and`,
-          `${docsLink('streaming-chat-example', 'the streaming chat example')} for a full application wiring.`,
+          `Continue with the cursor, smooth reveal and incremental comparison examples. See ${docsLink('streaming-and-performance', 'streaming and performance')} and the ${docsLink('streaming-chat-example', 'complete chat recipe')}.`,
         ].join('\n'),
       },
     },

@@ -49,7 +49,7 @@ React 是信息架构的参考基准。其目录划分了使用章节（Basics�
 | Documents/Cross-Chunk Coordination  | 迟到定义、重复脚注出现与有效反向链接            |
 | Documents/Definition Lifecycle      | 定义更新、移除、恢复与文档隔离                  |
 
-共享的章节名称并不意味着适配器 API 完全相同。Vue 通过 props/作用域插槽接收元素上下文。其 `preserveOrphanReferences` 默认为 `false` 并按渲染器配置；React 的 Provider 层级覆盖在 Vue 中不是组件属性。平滑轮流呈现顺序即注册顺序，而 `documentIndex` 用于决定引用顺序。排空未完成的平滑流时，会暂留其最后一个推测性字素，直到后续追加内容或生产端完成信号对其进行确认。
+共享的章节名称并不意味着适配器 API 完全相同。Vue 通过 props/作用域插槽接收元素上下文。独立 Vue 渲染器的 `preserveOrphanReferences` 默认为 `false`；在 `AIMarkdownDocuments` 内，容器的同名属性（默认 `true`）优先于每个片段自己的属性。React 也采用容器优先规则，但独立 React 渲染器的默认值为 `true`。平滑轮流呈现顺序即注册顺序，而 `documentIndex` 用于决定引用顺序。排空未完成的平滑流时，会暂留其最后一个推测性字素，直到后续追加内容或生产端完成信号对其进行确认。
 
 其余的 React 章节承担明确的框架或验证职责：
 
@@ -141,4 +141,4 @@ Stories 存放在 `packages/react/stories`、`packages/react-mantine/stories` �
 
 React 此前的 `Core/...` 侧边栏名称现在直接描述功能特性；组合入口提供 React 分组。Mantine 移至 `Integrations/Mantine` 下。包含 `core-` 或 `mantine-` 的旧 Story URL 必须进行更新；本仓库中的隔离 iframe 引用使用新 ID。Story ID 由标题和导出名称生成，因此重命名任何一项都需要核对嵌入链接与浏览器回归测试。
 
-安装、公开 API、架构以及迁移指南归属于文档与相关包 README。Storybook 提供交互式示例与简明说明，并配有指向这些指南的链接。共享文档链接集中管理在私有工具包中，以便后续能够定位到独立的文档站点。
+安装、公开 API、架构以及迁移指南归属于文档与相关包 README。Storybook 提供交互式示例与简明说明，并配有指向这些指南的链接。共享文档链接集中管理在私有工具包中，并指向已发布的文档站点。

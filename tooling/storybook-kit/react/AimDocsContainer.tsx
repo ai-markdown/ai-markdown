@@ -1,36 +1,36 @@
-import { useEffect, useState, type ComponentProps } from 'react';
+import { useEffect, useSyncExternalStore, useCallback, type ComponentProps } from 'react';
 import { DocsContainer } from '@storybook/addon-docs/blocks';
-import { addons } from 'storybook/preview-api';
-import { themes } from 'storybook/theming';
+import { CATALOG_THEMES, CATALOG_COLORS, catalogVariables } from '../common/catalogTheme';
+import '../common/preview.css';
 import { GLOBALS_UPDATED } from 'storybook/internal/core-events';
-import { getUserPreferredColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
+import { getPreviewColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
 import type { StoryColorScheme } from '@ai-markdown/storybook-kit/react/colorScheme';
 
-const normalize = (theme: unknown): StoryColorScheme => (theme === 'dark' ? 'dark' : 'light');
-
-/**
- * Docs-page shell that follows the `theme` toolbar global. The container is
- * not a decorator, so `useGlobals` is unavailable here — the channel event is
- * the only live signal. The initial value comes from the same persisted
- * preference the manager chrome reads, so the shell and the sidebar agree on
- * first paint.
- */
+/** Read the docs context's own channel. The latest event also survives a docs
+ * remount; rereading the iframe URL would restore its stale initial theme. */
 export const AimDocsContainer = (props: ComponentProps<typeof DocsContainer>) => {
-  const [scheme, setScheme] = useState<StoryColorScheme>(() => normalize(getUserPreferredColorTheme()));
+  const { channel } = props.context;
+  const subscribe = useCallback(
+    (notify: () => void) => {
+      channel.on(GLOBALS_UPDATED, notify);
+      return () => channel.off(GLOBALS_UPDATED, notify);
+    },
+    [channel]
+  );
+  const getSnapshot = useCallback((): StoryColorScheme => {
+    const theme = channel.last(GLOBALS_UPDATED)?.[0]?.globals?.theme;
+    return theme === 'dark' || theme === 'light' ? theme : getPreviewColorTheme();
+  }, [channel]);
+  const scheme = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   useEffect(() => {
-    const channel = addons.getChannel();
-    const onGlobalsUpdated = ({ globals }: { globals: Record<string, unknown> }) => {
-      setScheme(normalize(globals.theme));
-    };
-    channel.on(GLOBALS_UPDATED, onGlobalsUpdated);
-    return () => {
-      channel.off(GLOBALS_UPDATED, onGlobalsUpdated);
-    };
-  }, []);
+    document.body.style.backgroundColor = CATALOG_COLORS[scheme].surface;
+    document.body.style.colorScheme = scheme;
+  }, [scheme]);
 
-  // Swap the `theme` prop only. Passing a theme-derived `key` would remount the
-  // container on every toggle, which tears down the docs context and leaves the
-  // page stuck on "No Preview".
-  return <DocsContainer {...props} theme={scheme === 'dark' ? themes.dark : themes.light} />;
+  return (
+    <div className="aim-docs" style={{ ...catalogVariables(scheme), colorScheme: scheme }}>
+      <DocsContainer {...props} theme={CATALOG_THEMES[scheme]} />
+    </div>
+  );
 };

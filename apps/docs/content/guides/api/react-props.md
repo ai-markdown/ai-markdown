@@ -62,7 +62,7 @@ Additional preprocessors run after the built-in LaTeX preprocessor. An optional 
 
 Type: `AIMarkdownCustomComponents`. Default: `undefined`.
 
-`react-markdown` component overrides for specific HTML elements.
+React component overrides for specific HTML elements. Components receive the converted element props and the source HAST `node`; omit `node` when forwarding props to a DOM element.
 
 ### `Typography`
 

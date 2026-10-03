@@ -16,7 +16,7 @@ Mantine 集成包安装了一个默认的 `<pre>` 渲染器（`MantineAIMPreCode
 
 无论 JSON 显示如何美化，点击复制按钮均会复制最原始的代码文本（包含尾部换行符）。包含嵌套元素、兄弟文本或额外属性的原生 HTML `<pre>` 结构会保持原生渲染，不会错误进入代码高亮器。
 
-所有常规代码块默认携带 `withBorder` 边框与 `withExpandButton` 展开按钮，默认折叠至 `maxCollapsedHeight="320px"`，直至用户点击展开。
+常规代码块携带 `withBorder` 边框与 `withExpandButton` 展开按钮，默认展开。将 `codeBlock.defaultExpanded` 设为 `false` 后，才会以 `maxCollapsedHeight="320px"` 折叠显示。
 
 ### 代码高亮适配器
 
@@ -76,7 +76,7 @@ const CODE_BLOCK = {
 
 检测由 [`@ai-markdown/code-language-detector`](../../../../packages/code-language-detector/README.md) 完成。它是本包的常规依赖，因此无需提供 highlight.js 实例，也无需额外安装。检测是同步的，在渲染期间执行，包括服务端渲染：检测出的标签页标题直接出现在 SSR 标记中，代码块不会先显示“unknown”再原位升级。证据不足时检测器会放弃判断而不是猜测，被放弃的代码块保持纯文本，标签为“unknown”。检测器永远不会覆盖显式声明的围栏语言。检测出的语言与书写在围栏上的语言经由同一套 [`languageFormat` 映射](#highlighter-language-names)交给高亮器。
 
-`streaming` 为 `true` 期间，检测器在证据充分时才为代码块标注语言，之后只有代码块明显增长才会重新检测。它不会降低已有的置信度，也不会在流式中途切换到另一个语言家族。如果新文本不是在旧文本之后追加（例如重新生成，包括长度相同的替换），检测会从头开始。`streaming` 结束时，检测器基于完整代码块确定最终结果。流式传输时请传入 `streaming`，以便应用上述策略。
+`streaming` 为 `true` 期间，检测器在证据充分时才为代码块标注语言，之后只有代码块明显增长才会重新检测。它不会降低已有的置信度；只有新结果的置信度达到额外的优势阈值时，才会在流式中途切换到另一个语言家族。如果新文本不是在旧文本之后追加（例如重新生成，包括长度相同的替换），检测会从头开始。`streaming` 结束时，检测器基于完整代码块确定最终结果。流式传输时请传入 `streaming`，以便应用上述策略。
 
 ### 预加载按需资源
 

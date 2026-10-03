@@ -1,3 +1,4 @@
+import { CATALOG_COLORS } from '../common/catalogTheme';
 import type { CSSProperties } from 'react';
 
 export type ColorScheme = 'light' | 'dark';
@@ -54,12 +55,13 @@ export const controlStyles = (theme: StreamingTheme): ControlStyles => {
   const baseButton: CSSProperties = {
     background: 'transparent',
     border: `1px solid ${theme.buttonBorder}`,
-    borderRadius: 6,
+    borderRadius: 7,
     color: theme.buttonText,
     cursor: 'pointer',
     font: 'inherit',
-    fontSize: 12,
-    padding: '4px 12px',
+    fontSize: 13,
+    minHeight: 34,
+    padding: '6px 12px',
   };
   return {
     layout: {
@@ -87,16 +89,17 @@ export const controlStyles = (theme: StreamingTheme): ControlStyles => {
 
 export const getStreamingTheme = (scheme: ColorScheme): StreamingTheme => {
   const dark = scheme === 'dark';
+  const palette = CATALOG_COLORS[scheme];
   return {
-    text: dark ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.88)',
-    textMuted: dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.55)',
+    text: palette.text,
+    textMuted: palette.muted,
     panelBg: dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)',
-    panelBorder: dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)',
+    panelBorder: palette.border,
     surfaceBorder: dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)',
     buttonBorder: dark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)',
     buttonText: dark ? 'rgba(255,255,255,0.92)' : 'rgba(0,0,0,0.88)',
-    primaryBg: dark ? '#fafafa' : '#1a1a1a',
-    primaryText: dark ? '#1a1a1a' : '#fafafa',
+    primaryBg: palette.accent,
+    primaryText: dark ? '#12251d' : '#ffffff',
     chunkBg: dark ? 'rgb(24, 24, 27)' : '#f6f8fa',
     chunkBorder: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
     chunkText: dark ? '#d4d4d4' : '#1f2328',

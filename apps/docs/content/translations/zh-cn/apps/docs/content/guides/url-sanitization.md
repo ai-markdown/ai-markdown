@@ -89,7 +89,7 @@ function App({ content }: { content: string }) {
 
 ## `urlTransform`（第二关）
 
-该函数接收当前 URL 以及上下文元数据；返回改写后的新 URL（或返回空值将其剔除）。
+该函数接收 URL 与上下文元数据，可返回改写后的 URL、空字符串或空值；各返回值的区别见下文。
 
 ```ts
 import type { Element } from 'hast';
@@ -147,7 +147,7 @@ const URL_TRANSFORM = (url) => {
 
 ### 将 `urlTransform` 设置为 `null`
 
-传入 `null` 完全等价于不传该 prop——`<AIMarkdown>` 会自动优雅回退至内置的 `defaultUrlTransform`（React 适配器在透传前会自动对空值进行规范化）。系统不存在“彻底关闭逐属性审查”的开关；`urlTransform` 审查阶段必定会执行。如果需要放宽白名单，请如上文所示与 `defaultUrlTransform` 组合使用。
+传入 `null` 完全等价于不传该 prop——`<AIMarkdown>` 会回退至内置的 `defaultUrlTransform`（React 适配器在透传前会自动对空值进行规范化）。系统不存在“彻底关闭逐属性审查”的开关；`urlTransform` 审查阶段必定会执行。如果需要放宽白名单，请如上文所示与 `defaultUrlTransform` 组合使用。
 
 ---
 
@@ -175,7 +175,7 @@ const RETURNED_SCHEMA = extendSanitizeSchema((s) => ({
 }));
 ```
 
-> ⚠️ **返回对象模式不会执行任何字段自动合并。** 你返回的任何对象都会被不加修改地原样采纳。如果你自作聪明地写下 `({ ...s, protocols: { href: ['myapp'] } })` 并以为“我只是追加了一个协议”，实际上你**彻底覆盖了整个 `protocols` 对象**——这不仅抹杀了继承而来的原有 `href` 白名单，更将 `src` 等其余所有属性的协议限制全部清空。对于增量修改，就地修改模式更加安全（直接对现有数组执行 push）；返回对象模式仅在极少数你确实希望全盘重写 Schema 且愿意为补充所有字段承担全部责任的场景下使用。
+> ⚠️ **返回对象模式不会执行任何字段自动合并。** 你返回的任何对象都会被不加修改地原样采纳。如果写下 `({ ...s, protocols: { href: ['myapp'] } })` 并以为“我只是追加了一个协议”，实际上你**彻底覆盖了整个 `protocols` 对象**——这不仅覆盖了继承的 `href` 白名单，更将 `src` 等其余所有属性的协议限制全部清空。对于增量修改，就地修改模式更加安全（直接对现有数组执行 push）；返回对象模式仅在极少数你确实希望全盘重写 Schema 且愿意为补充所有字段承担全部责任的场景下使用。
 
 <span id="why-use-the-helper-instead-of-building-a-schema-from-scratch"></span>
 
@@ -207,9 +207,11 @@ extendSanitizeSchema((s) => {
 
 <span id="why-isnt-the-default-schema-exported-as-a-value"></span>
 
-### 为什么不直接导出一个 Schema 静态常量？
+<span id="why-use-the-helper-instead-of-importing-the-default-schema"></span>
 
-因为最容易被开发者写出的扩展写法——`{ ...sanitizeSchema, protocols: { ...sanitizeSchema.protocols, href: [...] } }`——本质上只是浅拷贝（Shallow spread）。浅拷贝依然会共享内层嵌套的对象和数组引用。底层引擎的单例配置现在已被全局深层冻结（deep-frozen），直接修改这些共享的内层数组会触发运行时报错，而无法生成独立的规则配置。只有深拷贝才能提供完全无共享状态的可变对象图。`extendSanitizeSchema` 始终在深拷贝副本上操作，从架构设计上彻底杜绝了这类隐患。
+### 为什么推荐辅助函数，而不是直接导入默认 Schema？
+
+React 和 Vue 适配器提供扩展辅助函数；engine 还导出了冻结的默认 Schema。常见的扩展写法——`{ ...sanitizeSchema, protocols: { ...sanitizeSchema.protocols, href: [...] } }`——本质上只是浅拷贝（Shallow spread）。浅拷贝依然会共享内层嵌套的对象和数组引用。底层引擎的单例配置现在已被全局深层冻结（deep-frozen），直接修改这些共享的内层数组会触发运行时报错，而无法生成独立的规则配置。只有深拷贝才能提供完全无共享状态的可变对象图。`extendSanitizeSchema` 始终在深拷贝副本上操作，避免共享嵌套对象导致的修改问题。
 
 ---
 
@@ -217,7 +219,7 @@ extendSanitizeSchema((s) => {
 
 ## 引用稳定性——非对称处理机制
 
-这两个 props 均参与了块级缓存缓存的校验，但其稳定化策略是**非对称的**：
+这两个 props 均参与了块级缓存的校验，但其稳定化策略是**非对称的**：
 
 | 配置属性         | 追踪判断依据                                   | 库内部的安全兜底防护                                     |
 | :--------------- | :--------------------------------------------- | :------------------------------------------------------- |
@@ -226,7 +228,7 @@ extendSanitizeSchema((s) => {
 
 为什么是非对称的？因为函数的内部实现无法进行深层内容比对（函数体完全一致的两个闭包永远是不相等的），因此 `urlTransform` **无法**提供自动兜底。而 Schema 属于纯数据对象，深度递归比对是完全可行且有明确语义的。
 
-**核心工程启示**：在 JSX 中直接编写行内函数 `urlTransform={(url) => …}` 会导致每一帧渲染都彻底丢弃块级缓存缓存。在行内编写 `sanitizeSchema` 虽然不会清空缓存，但会带来额外的每帧计算开销：每次调用 `extendSanitizeSchema((s) => …)` 都会对整个默认规则执行一次 `cloneDeep`，随后 `useStableValue` 还要对前后两套完整规则执行全量深度递归比对（包含 protocols、attributes、ancestors、tagNames 等海量属性）。将它们提取至**模块顶层作用域**能够一举消除这两项不必要的开销。
+**核心工程启示**：在 JSX 中直接编写行内函数 `urlTransform={(url) => …}` 会导致每一帧渲染都彻底丢弃块级缓存。在行内编写 `sanitizeSchema` 虽然不会清空缓存，但会带来额外的每帧计算开销：每次调用 `extendSanitizeSchema((s) => …)` 都会对整个默认规则执行一次 `cloneDeep`，随后 `useStableValue` 还要对前后两套完整规则执行全量深度递归比对（包含 protocols、attributes、ancestors、tagNames 等海量属性）。将它们提取至**模块顶层作用域**能够一举消除这两项不必要的开销。
 
 ```tsx
 // ⚠️ Anti-pattern — discards the entire markdown cache every render.

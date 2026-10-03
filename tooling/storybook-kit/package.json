@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "exports": {
+    "./common/preview.css": "./common/preview.css",
     "./common/*": "./common/*.ts",
     "./react/*": "./react/*.tsx",
     "./react/theme": "./react/theme.ts",
@@ -12,13 +13,14 @@
   },
   "devDependencies": {
     "@bench/corpus": "workspace:*",
-    "@storybook/react-vite": "10.6.0",
     "@storybook/addon-docs": "10.6.0",
-    "storybook": "10.6.0",
+    "@storybook/react-vite": "10.6.0",
+    "@types/react": "^19.2.18",
     "react": "^19",
     "react-dom": "^19",
     "react-scan": "^0.5.7",
-    "@types/react": "^19.2.18",
+    "remark-gfm": "4.0.1",
+    "storybook": "10.6.0",
     "vue": "^3.5.0"
   }
 }

@@ -1,3 +1,4 @@
+import { docsAddon } from '@ai-markdown/storybook-kit/common/docsAddon';
 import { withWorkspaceSources } from '@ai-markdown/storybook-kit/common/workspaceSources';
 import type { StorybookConfig } from '@storybook/react-vite';
 
@@ -11,7 +12,8 @@ const config: StorybookConfig = {
     '../../../packages/react-mantine/stories/**/*.mdx',
     '../../../packages/react-mantine/stories/**/*.stories.@(ts|tsx)',
   ],
-  addons: ['@storybook/addon-vitest', '@storybook/addon-a11y', '@storybook/addon-docs'],
+  addons: ['@storybook/addon-vitest', '@storybook/addon-a11y', docsAddon],
+  features: { sidebarOnboardingChecklist: false },
   framework: '@storybook/react-vite',
   // Locally authored placeholders for the story fixtures. Keeping them in-repo
   // is what lets the "zero external requests" rule hold — every image a story

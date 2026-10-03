@@ -40,7 +40,7 @@ const meta: MantineMeta = {
     docs: {
       description: {
         component: [
-          'Core requires an explicit `colorScheme` prop. The Mantine wrapper does not:',
+          'The React adapter defaults `colorScheme` to `light`. The Mantine wrapper differs:',
           "when the prop is absent it calls Mantine's own `useComputedColorScheme()` and",
           'renders in whatever scheme the surrounding `MantineProvider` resolved to. An',
           'app that already has a working light/dark switch gets markdown that follows it',

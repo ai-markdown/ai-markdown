@@ -9,33 +9,34 @@ A React markdown renderer built for text that arrives one token at a time.
 
 ## What this is
 
-Most markdown renderers assume a finished document. A model's output is not finished — it is a
-prefix that grows a few characters at a time, and every one of those prefixes has to render as
-valid, non-flickering UI. Half a code fence, a footnote reference whose definition has not been
-written yet, a `$$` that is still waiting for its closing pair: those are the normal states, not
-the edge cases.
+A streamed response can end inside a code fence, formula or reference. Pass the
+complete accumulated string on every update; the application owns transport
+framing, cancellation and retries.
 
-That assumption is what this library is built around. Parsing is incremental, so an append
-re-parses the tail rather than the document; rendering is memoized per block, so a new chunk
-touches the blocks that changed and leaves the rest alone; and references resolve across the
-chunk boundaries a chat UI splits a single answer into. On top of that sit the things assistants
-actually emit — GFM, KaTeX math, mermaid diagrams, CJK text, and untrusted URLs that need
-sanitizing before they reach the DOM.
+The engine retains a verified prefix when an append and the grammar permit it,
+then parses the remaining tail. Otherwise it falls back to a full parse. The React
+adapter can reuse unchanged block plans while custom components still respond to
+state and context updates. Document coordination shares references between
+independently parsed sections; it does not join syntax split across network packets.
 
 ```bash
-npm install @ai-markdown/react
+npm install @ai-markdown/react react@^19 react-dom@^19 katex
 ```
 
 ```tsx
 import AIMarkdown from '@ai-markdown/react';
+import '@ai-markdown/react/typography/default.css';
+import 'katex/dist/katex.min.css';
 
 export function Answer({ text, done }: { text: string; done: boolean }) {
   return <AIMarkdown content={text} streaming={!done} />;
 }
 ```
 
-That is the whole integration. Everything else in this Storybook is an option you may never need
-to reach for.
+The typography stylesheet supplies the default presentation; KaTeX CSS is needed
+for math. In a React Server Components application, use a client boundary and
+import global CSS where your framework permits it. Code highlighting and Mermaid
+rendering require Mantine or a custom component.
 
 ## Packages
 
@@ -48,8 +49,8 @@ to reach for.
 | `@ai-markdown/code-language-detector` | You want to detect the language of unlabelled code, or map fence language names to Shiki or highlight.js names, without Mantine. | Used by **Integrations / Mantine / Code Blocks**; it has no UI of its own. |
 
 The Mantine package **wraps** the React adapter rather than replacing it: same props, same engine, same
-streaming behaviour, plus its own renderers. Nothing in the React catalog stops being true over
-there, which is why the Mantine stories only cover the differences.
+streaming behaviour, plus its own renderers. Its typography and color-scheme defaults differ, and `codeBlock` configures the
+added code and diagram renderers. The Mantine stories cover those differences.
 
 React and Vue already depend on core and engine at their release-train version. Renderer consumers install the adapter; authors building a new adapter can use core for coordination and engine for parsing.
 
@@ -59,7 +60,7 @@ The Vue 3.5+ catalog is a separate renderer instance in the composition entry. T
 
 The sidebar is a reading order, top to bottom: evaluate, then integrate, then dig.
 
-- **Playground** — every prop wired to a control. Start here to judge output quality.
+- **Playground** — editable source and common rendering options. Start here to judge output quality.
 - **Basics** — what the renderer does with markdown: GFM basics, footnotes and
   definition lists, math, CJK and international text, and the engine plugin catalog.
 - **Customization / Theming** — design tokens, font size, color scheme.
@@ -70,8 +71,9 @@ The sidebar is a reading order, top to bottom: evaluate, then integrate, then di
 - **Customization / Extending** — the `define*` factories and the context/hook surface, from the point of
   view of someone writing a wrapper package.
 - **Performance Lab** — the reproducible measurement harnesses behind the numbers in the
-  benchmark guide. They are instruments, not demos: they start streaming on mount and report
-  render counts, DOM equality, and long-task budgets.
+  benchmark guide. Use their run/restart controls to collect
+  timings and render counts. Same-page comparisons also check DOM equality.
+  Historical benchmark values depend on the recorded version and environment.
 - **QA** — `play`-function assertion suites. They run in CI and are visible here for
   debugging; they are not documentation.
 - **Integrations / Mantine / …** — overview, playground, code blocks, mermaid diagrams, color scheme, and a
@@ -79,21 +81,20 @@ The sidebar is a reading order, top to bottom: evaluate, then integrate, then di
 
 ## Using the canvas
 
-- **Theme toolbar** (the mirror icon) switches the whole preview between light and dark,
+- **Theme toolbar** (the sun/moon icon) switches the whole preview between light and dark,
   including this docs shell. Stories that pin their own scheme say so.
 - **Controls** are narrowed per story to the props that story is about, so the panel stays a
   short list of relevant knobs rather than the whole prop surface. The Playground stories are the
-  exception — they expose everything.
+  exception — they expose a broader selection of rendering options.
 - **Replay buttons** restart a stream from the beginning. Streaming stories render a settled
   document once the replay finishes, so if you arrived late, press it.
 - **React Scan** (the lightning icon) outlines re-renders. One caveat: the outlines only appear
-  in the standalone iframe view, so use "Open canvas in new tab" first — inside the docs page
-  they will not show.
+  in the standalone iframe view, so use "Open canvas in new tab" first. It is a
+  development aid and is disabled in browser tests and public documentation exports.
 
 ## Deeper docs
 
-Story descriptions link to the relevant guide as they go. The full index lives in the
-repository: <a href={DOCS_LINKS.readme}>apps/docs/content/guides/index.md</a>, alongside the{' '}
+Story descriptions link to the relevant guide as they go. Browse the <a href={DOCS_LINKS.readme}>guide directory</a>, the{' '}
 
 <a href={DOCS_LINKS.architecture}>architecture overview</a> and the
 <a href={DOCS_LINKS.benchmark}>benchmark methodology</a>. Source, issues, and releases are at

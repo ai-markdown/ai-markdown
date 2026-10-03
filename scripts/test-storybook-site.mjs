@@ -48,6 +48,50 @@ try {
     if (/^https?:/.test(req.url()) && new URL(req.url()).origin !== origin)
       errors.push(`External request: ${req.url()}`);
   });
+  // The hub's links must work under a deployment prefix, not open iframe.html
+  // with a manager query. MDX-only pages must show their real tables and code.
+  await page.goto(`${base}?path=/docs/ai-markdown-overview--docs`);
+  const hub = page.frameLocator('iframe[src*="iframe.html"]');
+  await hub.locator('.aim-catalog-link').first().waitFor();
+  assert.equal(await hub.locator('a[href*="%7B"]').count(), 0, 'MDX links must not contain literal expressions');
+  await hub.locator('.aim-catalog-link[href*="vue_introduction"]').click();
+  await page.waitForURL(`${base}?path=/docs/vue_introduction--docs`);
+  await page.frameLocator('iframe[src*="/vue/iframe.html"]').locator('.aim-docs-code').waitFor();
+  for (const [framework, id] of [
+    ['react', 'introduction--docs'],
+    ['vue', 'introduction--docs'],
+    ['react', 'integrations-mantine-overview--docs'],
+  ]) {
+    await page.goto(`${base}${framework}/iframe.html?id=${id}&viewMode=docs&globals=theme:light`);
+    await page.locator('.sbdocs-content > table').waitFor();
+    const samples = page.locator('.aim-docs-code');
+    await samples.first().waitFor();
+    assert(
+      (await samples.first().innerText()).includes('import') ||
+        (await samples.first().innerText()).includes('npm install')
+    );
+    assert((await samples.first().boundingBox()).height > 30, 'Code sample must be visible');
+  }
+  // A globals change can remount docs while its iframe URL still has the old
+  // theme. Verify both shell and embedded renderer without reloading.
+  await page.goto(`${base}vue/?path=/docs/customization-custom-components--docs&globals=theme:light`);
+  const docs = page.frameLocator('iframe[src*="iframe.html"]');
+  await docs.locator('.aim-story').first().waitFor();
+  for (const theme of ['Dark', 'Light']) {
+    await page.getByRole('button', { name: /Preview color scheme/ }).click();
+    await page.getByRole('option', { name: theme, exact: true }).click();
+    const frame = page.frames().find((f) => f.url().includes('/vue/iframe.html'));
+    await frame.waitForFunction(
+      (scheme) =>
+        document.querySelector('.aim-docs')?.style.colorScheme === scheme &&
+        [...document.querySelectorAll('.aim-story')].every((node) => node.style.colorScheme === scheme),
+      theme.toLowerCase()
+    );
+  }
+  assert(
+    (await docs.locator('.aim-story').first().boundingBox()).height < 600,
+    'Embedded samples should fit their content'
+  );
   const react = await (await fetch(base + 'react/index.json')).json();
   const vue = await (await fetch(base + 'vue/index.json')).json();
   // Common capabilities must remain discoverable under identical chapter names.

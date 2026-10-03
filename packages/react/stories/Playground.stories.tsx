@@ -10,7 +10,7 @@ import { GFM_BASICS, KITCHEN_SINK } from '@ai-markdown/storybook-kit/common/fixt
 import { getStreamingTheme } from '@ai-markdown/storybook-kit/react/theme';
 
 /**
- * The full `<AIMarkdown>` surface with every prop wired to a control. Start
+ * Editable source and common `<AIMarkdown>` rendering options. Start
  * here to try the component against your own content: paste markdown into
  * `content`, flip the behavior flags, switch the theme from the toolbar.
  *
@@ -54,9 +54,9 @@ export const Default: ReactStory = {
  * is mermaid source, which stays a code block here: core ships no diagram
  * renderer, so it is the Mantine branch that draws it.
  *
- * Watch the fenced blocks and the `$$` math in particular: neither flashes
- * its raw source before settling, because a block that has opened without
- * closing renders as nothing rather than as literal text.
+ * Watch how incomplete constructs settle. An open code fence can already
+ * render code text; the LaTeX preprocessor handles incomplete display-math
+ * tails separately. The `streaming` flag does not select those parse rules.
  *
  * Hit **Restart** to replay. `content` is a control, so you can stream any
  * markdown you paste in.

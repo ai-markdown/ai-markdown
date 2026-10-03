@@ -66,7 +66,7 @@
 
 类型：`AIMarkdownCustomComponents`。默认值：`undefined`。
 
-用于替换特定 HTML 元素渲染实现的 `react-markdown` 自定义组件映射表。
+React 组件映射表，用于替换特定 HTML 元素的渲染实现。组件接收元素属性与可选的 HAST `node`；将属性传给原生 DOM 元素前，请先移除 `node`。
 
 ### `Typography`
 
