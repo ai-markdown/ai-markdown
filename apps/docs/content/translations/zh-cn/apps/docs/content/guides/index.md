@@ -34,18 +34,19 @@
 
 ## 内容与样式
 
-| 任务                              | 指南                                             | 适用范围 |
-| --------------------------------- | ------------------------------------------------ | -------- |
-| 选择需要调整的配置层              | [配置渲染](configuration.md)                     | 全部     |
-| 确认支持渲染的 Markdown 语法      | [Markdown 语法支持](markdown-features.md)        | 全部     |
-| 渲染中日韩与混合语言文本          | [CJK 排版](cjk-typography.md)                    | 全部     |
-| 在解析前转换源文本                | [内容预处理器](content-preprocessors.md)         | 全部     |
-| 配置 URL 与 HTML 安全策略         | [URL 过滤与安全策略](url-sanitization.md)        | 全部     |
-| 用自己的组件替换渲染出的元素      | [React 自定义组件](custom-components.md)         | React    |
-| 替换排版容器                      | [React 自定义排版容器](custom-typography.md)     | React    |
-| 通过 CSS 变量调整间距、颜色与字体 | [React CSS 设计变量](design-tokens.md)           | React    |
-| 在 Vue 中自定义渲染与样式         | [Vue 自定义渲染与样式定制](vue-customization.md) | Vue      |
-| 在浏览器中试用自己的 Markdown     | [交互示例与 Playground](../examples.md)          | 全部     |
+| 任务                                    | 指南                                             | 适用范围            |
+| --------------------------------------- | ------------------------------------------------ | ------------------- |
+| 添加代码块、Mermaid、图片预览与表格导出 | [增强 Markdown 组件](rich-components.md)         | React、Vue、Mantine |
+| 选择需要调整的配置层                    | [配置渲染](configuration.md)                     | 全部                |
+| 确认支持渲染的 Markdown 语法            | [Markdown 语法支持](markdown-features.md)        | 全部                |
+| 渲染中日韩与混合语言文本                | [CJK 排版](cjk-typography.md)                    | 全部                |
+| 在解析前转换源文本                      | [内容预处理器](content-preprocessors.md)         | 全部                |
+| 配置 URL 与 HTML 安全策略               | [URL 过滤与安全策略](url-sanitization.md)        | 全部                |
+| 用自己的组件替换渲染出的元素            | [React 自定义组件](custom-components.md)         | React               |
+| 替换排版容器                            | [React 自定义排版容器](custom-typography.md)     | React               |
+| 通过 CSS 变量调整间距、颜色与字体       | [React CSS 设计变量](design-tokens.md)           | React               |
+| 在 Vue 中自定义渲染与样式               | [Vue 自定义渲染与样式定制](vue-customization.md) | Vue                 |
+| 在浏览器中试用自己的 Markdown           | [交互示例与 Playground](../examples.md)          | 全部                |
 
 ## 集成与性能
 

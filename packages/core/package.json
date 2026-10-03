@@ -12,7 +12,8 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "components"
   ],
   "exports": {
     ".": {
@@ -27,7 +28,15 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./components": {
+      "types": {
+        "import": "./dist/components/index.d.ts",
+        "require": "./dist/components/index.d.cts"
+      },
+      "import": "./dist/components/index.js",
+      "require": "./dist/components/index.cjs"
+    }
   },
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-boundary.mjs",
@@ -64,5 +73,12 @@
   "homepage": "https://github.com/ai-markdown/ai-markdown/tree/main/packages/core#readme",
   "bugs": {
     "url": "https://github.com/ai-markdown/ai-markdown/issues"
+  },
+  "typesVersions": {
+    "*": {
+      "components": [
+        "./dist/components/index.d.ts"
+      ]
+    }
   }
 }

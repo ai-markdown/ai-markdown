@@ -1,0 +1,16 @@
+// Generated from the built public declaration. Review changes before updating.
+import * as react from 'react';
+import { ComponentProps, ComponentType, ReactNode } from 'react';
+import { Element } from 'hast';
+import { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
+interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+    renderers?: Readonly<Record<string, ComponentType<CodeRendererInput> | false>>;
+    highlight?: (code: string, language: string) => ReactNode;
+}
+type MarkdownCodeBlockProps = ComponentProps<'pre'> & {
+    node?: Element;
+};
+declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
+export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, createMarkdownCodeBlock };

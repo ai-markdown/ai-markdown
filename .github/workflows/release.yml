@@ -121,6 +121,19 @@ jobs:
       - name: Build
         run: pnpm build
 
+      - name: Verify soak toolchain (bounded six-leg smoke)
+        if: steps.soak.outputs.smoke_required == 'true'
+        timeout-minutes: 15
+        run: pnpm test:soak-smoke
+      - name: Upload soak smoke reports
+        if: always() && steps.soak.outputs.smoke_required == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: release-soak-smoke
+          path: .soak-logs/toolchain-smoke-*/
+          include-hidden-files: true
+          retention-days: 7
+
       # Publish-surface gate, mirroring CI's build task: exports-map
       # resolution (attw) + manifest lint (publint) on the packed tarballs.
       - name: Package export checks (attw + publint)

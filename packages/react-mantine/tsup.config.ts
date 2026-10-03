@@ -4,7 +4,7 @@ import postcss from 'postcss';
 import autoprefixer from 'autoprefixer';
 
 export default defineConfig({
-  entry: ['src/index.tsx'],
+  entry: { index: 'src/index.tsx', components: 'src/components.tsx' },
   format: ['cjs', 'esm'],
   dts: true,
   sourcemap: true,

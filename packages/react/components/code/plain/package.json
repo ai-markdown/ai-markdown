@@ -1,0 +1,8 @@
+{
+  "name": "@ai-markdown/react/components/code/plain",
+  "private": true,
+  "main": "../../../dist/components/code/plain.cjs",
+  "module": "../../../dist/components/code/plain.js",
+  "types": "../../../dist/components/code/plain.d.ts",
+  "sideEffects": false
+}

@@ -14,6 +14,27 @@ export const TASK_FILES = {
 export const OFFSETS = { fuzz: 0, dir: 100, scanner: 200, oracle: 300, latex: 400 };
 export const integer = (value, min = 1, max = 100) => Number.isInteger(value) && value >= min && value <= max;
 
+// Independent, reviewed inventory: never derive the expected set from the
+// report being validated. Suite parameters are expanded from the manifest;
+// JSON tuples preserve suite boundaries without relying on reporter separators.
+const inventory = JSON.parse(readFileSync(new URL('./test-inventory.json', import.meta.url), 'utf8'));
+export function expectedTests(m, leg, shard) {
+  const env = taskEnvironment(m, leg, shard);
+  const values = {
+    ...m.parameters,
+    runs: env.FUZZ_RUNS,
+    seed: env.FUZZ_SEED,
+  };
+  return inventory[leg].map((names) =>
+    names.map((name) =>
+      name.replace(/\{(\w+)\}/g, (_, key) => {
+        if (values[key] === undefined) throw new Error(`Unknown inventory parameter ${key}`);
+        return String(values[key]);
+      })
+    )
+  );
+}
+
 export function seedOverlap(a, b) {
   return a.legs.some((leg) => {
     if (!b.legs.includes(leg)) return false;
@@ -88,6 +109,12 @@ export function validateTask(dir, m, leg, shard) {
     suite.assertionResults.some((a) => a.status !== 'passed' || (a.failureMessages?.length ?? 0) > 0)
   )
     throw new Error(`${id}: wrong test file or inconsistent assertion results`);
+  const names = suite.assertionResults.map((a) => JSON.stringify([...(a.ancestorTitles ?? []), a.title])).sort();
+  const expectedNames = expectedTests(m, leg, shard)
+    .map((names) => JSON.stringify(names))
+    .sort();
+  if (JSON.stringify(names) !== JSON.stringify(expectedNames))
+    throw new Error(`${id}: test inventory differs (missing, duplicate or unexpected test)`);
   const expected = taskEnvironment(m, leg, shard);
   if (
     runtime.runId !== m.runId ||

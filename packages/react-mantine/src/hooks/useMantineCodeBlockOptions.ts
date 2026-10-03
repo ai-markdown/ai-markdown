@@ -28,7 +28,9 @@ const LANGUAGE_FORMATS = new Set<unknown>(Object.values(MantineLanguageFormat));
  * wrapped in the mantine Provider stack) — throws outside, same contract
  * as the core narrow hooks.
  */
-export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> {
+export function useMantineCodeBlockOptions(
+  overrides?: Partial<MantineCodeBlockOptions>
+): Required<MantineCodeBlockOptions> {
   const behaviors = useAIMarkdownBehaviors();
   // The single assertion: the `codeBlock` group key is owned by this
   // package, contributed by `MantineAIMarkdown` via its behaviors Provider.
@@ -40,7 +42,7 @@ export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> 
     // `Required<…>` (2026-08 project review, pkg-small-12).
     const resolved = { ...defaultMantineCodeBlockOptions } as Required<MantineCodeBlockOptions>;
     for (const key of Object.keys(defaultMantineCodeBlockOptions) as Array<keyof MantineCodeBlockOptions>) {
-      const value = group?.[key];
+      const value = overrides?.[key] ?? group?.[key];
       if (value !== undefined) (resolved as Record<string, unknown>)[key] = value;
     }
     if (!Number.isFinite(resolved.highlightIntervalMs) || resolved.highlightIntervalMs < 0) {
@@ -53,5 +55,5 @@ export function useMantineCodeBlockOptions(): Required<MantineCodeBlockOptions> 
       resolved.languageFormat = defaultMantineCodeBlockOptions.languageFormat!;
     }
     return resolved;
-  }, [group]);
+  }, [group, overrides]);
 }

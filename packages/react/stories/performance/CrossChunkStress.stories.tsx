@@ -102,7 +102,7 @@ function buildThirtyChunkSingleDoc(): string[] {
     // 29
     '[ref-3]: https://example.com/glossary\n\n[ref-4]: https://example.com/conclusion',
     // 30
-    '[img-1]: ./placeholder-200x300.svg',
+    '[img-1]: https://picsum.photos/seed/ai-markdown-stress/200/300',
   ];
 }
 

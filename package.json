@@ -26,6 +26,7 @@
     "test:unit": "node scripts/test-unit.mjs",
     "test:core-contracts": "node scripts/check-core-contracts.mjs",
     "test:command-control": "node --test scripts/development-commands.test.mjs",
+    "test:soak-smoke": "node scripts/soak/smoke.mjs",
     "test:soak-control": "node --test scripts/soak/soak-control.test.mjs scripts/soak/impact.test.mjs",
     "test:release-control": "node --test scripts/publish-packages.test.mjs scripts/check-published-release.test.mjs scripts/version-packages.test.mjs",
     "test:document-lifetime": "node scripts/test-document-scope-lifetime.mjs",
@@ -37,7 +38,7 @@
     "test:storybook:vue": "vitest run --project=storybook-vue",
     "test:storybook:dev": "node --test scripts/storybook-processes.test.mjs scripts/storybook-readiness.test.mjs && node scripts/test-storybook-dev.mjs",
     "test:storybook:site": "node scripts/test-storybook-site.mjs",
-    "bench:unit": "vitest bench --run --project unit",
+    "bench:unit": "vitest bench --run --reporter=default --project \"unit (bench)\"",
     "bench:web": "node benchmarks/runner/run.mjs",
     "bench:streaming": "node benchmarks/runner/streaming.mjs",
     "bench:code-prefix": "node benchmarks/runner/code-prefix.mjs",
@@ -58,7 +59,10 @@
     "check:docs": "pnpm --filter @ai-markdown/docs check",
     "test:docs": "pnpm --filter @ai-markdown/docs test:docs",
     "dev:docs": "pnpm --filter @ai-markdown/docs dev",
-    "assemble:pages": "node scripts/assemble-pages.mjs"
+    "assemble:pages": "node scripts/assemble-pages.mjs",
+    "bench:sentinel": "node benchmarks/sentinel/run.mjs",
+    "test:perf-control": "node --test benchmarks/sentinel/compare.test.mjs",
+    "test:rich-components": "node scripts/check-packed-consumers.mjs --browser"
   },
   "keywords": [
     "react",
@@ -92,8 +96,9 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@types/unist": "^3.0.3",
-    "@vitest/browser-playwright": "^4.1.11",
-    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/browser": "5.0.1",
+    "@vitest/browser-playwright": "5.0.1",
+    "@vitest/coverage-v8": "5.0.1",
     "autoprefixer": "^10.5.6",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
@@ -110,7 +115,7 @@
     "tsup": "^8.5.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.58.2",
-    "vitest": "^4.1.11",
+    "vitest": "5.0.1",
     "yaml": "2.9.1",
     "@storybook/vue3-vite": "10.6.0"
   }

@@ -4,6 +4,7 @@ import { defineConfig } from 'vitest/config';
 // of the root Storybook project while the root unit project also finds it.
 export default defineConfig({
   test: {
+    fsModuleCache: true,
     name: 'unit',
     environment: 'node',
     include: ['src/**/*.{test,spec}.{ts,tsx}'],

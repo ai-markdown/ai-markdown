@@ -155,8 +155,15 @@ export function mSpanDisagreement(
   baseMdast?: NodeLike,
   boundary = base.length
 ): string | null {
-  const mp = baseMdast ?? (runFull(base, config).mdast as NodeLike);
-  const mf = runFull(base + tail, config).mdast as NodeLike;
+  return compareSpans(
+    base,
+    boundary,
+    baseMdast ?? (runFull(base, config).mdast as NodeLike),
+    runFull(base + tail, config).mdast as NodeLike
+  );
+}
+
+function compareSpans(base: string, boundary: number, mp: NodeLike, mf: NodeLike): string | null {
   const spansP: Array<[number, number]> = [];
   const spansF: Array<[number, number]> = [];
   collectSpans(mp, spansP);
@@ -412,6 +419,29 @@ export function snapshotRawDisagreement(
   config: CatalogConfig,
   docMdast?: NodeLike
 ): SnapshotResult {
+  return prepareSnapshotRawCheck(doc, boundary, config, docMdast)(tail);
+}
+
+/** Prepare one document's immutable raw-layer baseline for its probe battery.
+ *  Each tail still gets its own appended parse and multiset comparison. Only
+ *  reference data is retained; no engine state or tree enters this closure. */
+export function prepareSnapshotRawCheck(
+  doc: string,
+  boundary: number,
+  config: CatalogConfig,
+  docMdast?: NodeLike
+): (tail: string) => SnapshotResult {
+  return prepareRawCheck(doc, boundary, docMdast ?? (runFull(doc, config).mdast as NodeLike), (content) =>
+    runToRawLayer(content, config)
+  );
+}
+
+function prepareRawCheck(
+  doc: string,
+  boundary: number,
+  docMdast: NodeLike,
+  rawReference: (content: string) => NodeLike
+): (tail: string) => SnapshotResult {
   // SCOPE LIMITS, measured and accepted rather than papered over:
   //  - 26.0% of provably-frozen nodes carry no position offsets and are
   //    invisible here (raw reserialization drops them). The direction
@@ -465,28 +495,26 @@ export function snapshotRawDisagreement(
   // the appended side's own ranges would let a definition that GREW under
   // the tail exempt a node it did not own before, which is the direction
   // that hides things.
-  const footnoteBytes = footnoteDefinitionRanges(docMdast ?? (runFull(doc, config).mdast as NodeLike));
-  const frozen = frozenSignatures((runToRawLayer(doc, config) as NodeLike).children ?? [], boundary, footnoteBytes);
-  const appended = frozenSignatures(
-    (runToRawLayer(doc + tail, config) as NodeLike).children ?? [],
-    boundary,
-    footnoteBytes
-  );
-  const counts = new Map<string, number>();
-  for (const signature of frozen) counts.set(signature, (counts.get(signature) ?? 0) + 1);
-  for (const signature of appended) counts.set(signature, (counts.get(signature) ?? 0) - 1);
-  for (const [signature, delta] of counts) {
-    if (delta === 0) continue;
-    const how =
-      delta > 0
-        ? `did not survive the append (${delta} fewer)`
-        : `appeared below the boundary that the append added (${-delta} more)`;
-    return {
-      detail: `P-snap: frozen node ${signature.slice(0, 220)} ${how} (boundary ${boundary})`,
-      nodesCompared: frozen.length,
-    };
-  }
-  return { detail: null, nodesCompared: frozen.length };
+  const footnoteBytes = footnoteDefinitionRanges(docMdast);
+  const frozen = frozenSignatures(rawReference(doc).children ?? [], boundary, footnoteBytes);
+  return (tail) => {
+    const appended = frozenSignatures(rawReference(doc + tail).children ?? [], boundary, footnoteBytes);
+    const counts = new Map<string, number>();
+    for (const signature of frozen) counts.set(signature, (counts.get(signature) ?? 0) + 1);
+    for (const signature of appended) counts.set(signature, (counts.get(signature) ?? 0) - 1);
+    for (const [signature, delta] of counts) {
+      if (delta === 0) continue;
+      const how =
+        delta > 0
+          ? `did not survive the append (${delta} fewer)`
+          : `appeared below the boundary that the append added (${-delta} more)`;
+      return {
+        detail: `P-snap: frozen node ${signature.slice(0, 220)} ${how} (boundary ${boundary})`,
+        nodesCompared: frozen.length,
+      };
+    }
+    return { detail: null, nodesCompared: frozen.length };
+  };
 }
 
 // ── raw-layer exemption families (the ORACLE_RAW allowlist) ─────────────
@@ -930,11 +958,24 @@ export function rawLayerIdentityDisagreement(
   config: CatalogConfig,
   family?: { tail: string; spliced: boolean; value: RawFamily | null }
 ): string | null {
+  return rawIdentityWithReference(prefix, tail, (content) => runToRawLayer(content, config), family);
+}
+
+function rawIdentityWithReference(
+  prefix: string,
+  tail: string,
+  rawReference: (content: string) => NodeLike,
+  family?: { tail: string; spliced: boolean; value: RawFamily | null }
+): string | null {
   if (!/[\n\r]$/.test(prefix)) throw new Error('rawLayerIdentityDisagreement: prefix must end at a line ending');
-  const left = runToRawLayer(prefix, config);
-  const full = runToRawLayer(prefix + tail, config);
-  const right = runToRawLayer(tail, config);
-  return identityDisagreement('P-raw', prefix, left, full, right, family);
+  return identityDisagreement(
+    'P-raw',
+    prefix,
+    rawReference(prefix),
+    rawReference(prefix + tail),
+    rawReference(tail),
+    family
+  );
 }
 
 // ── probe battery ───────────────────────────────────────────────────────
@@ -1006,6 +1047,15 @@ export function engineProbe(
   tail: string,
   config: CatalogConfig
 ): { disagreement: string | null; usedIncremental: boolean } {
+  return engineProbeWithReference(baseDoc, tail, config, (content) => runFull(content, config));
+}
+
+function engineProbeWithReference(
+  baseDoc: string,
+  tail: string,
+  config: CatalogConfig,
+  fullReference: (content: string) => ReturnType<typeof runFull>
+): { disagreement: string | null; usedIncremental: boolean } {
   const options = buildAdvanceOptions(config);
   // THREE frames, not two. A two-frame probe starts at
   // `advance(null, baseDoc)`, which is not append-only and therefore
@@ -1023,12 +1073,12 @@ export function engineProbe(
   const f0 = advanceIncrementalParse(null, firstCut, options);
   const f1 = advanceIncrementalParse(f0.nextState, baseDoc, options);
   const second = advanceIncrementalParse(f1.nextState, baseDoc + tail, options);
-  const expected = runFull(baseDoc + tail, config);
+  const expected = fullReference(baseDoc + tail);
   let disagreement: string | null = null;
   // The INTERMEDIATE frame is asserted too: it is the frame that first
   // splices onto a spliced tree, so a fault there is real even when the
   // final frame happens to converge.
-  const midExpected = runFull(baseDoc, config);
+  const midExpected = fullReference(baseDoc);
   if (!isEqual(f1.mdast, midExpected.mdast) || !isEqual(f1.hast, midExpected.hast)) {
     disagreement = `engine: mismatch at the INTERMEDIATE frame (boundary=${f1.boundary}, cut=${firstCut.length})`;
   } else if (!isEqual(second.mdast, expected.mdast)) {
@@ -1134,6 +1184,34 @@ export function oracleCheckDoc(
   depth = 0,
   options?: { idealIdentity?: boolean }
 ): OracleFinding[] {
+  // Scoped to this document and its one zero-distance recursion. The full
+  // and raw reference parses are only READ by the instruments; the engine
+  // still executes all three frames afresh for EVERY probe, including the
+  // two empty tails. Nothing is shared with its trees or mutable checkpoint.
+  return checkDocWithReferences(doc, config, stats, depth, options, {
+    full: memoizeReference((content) => runFull(content, config)),
+    raw: memoizeReference((content) => runToRawLayer(content, config)),
+  });
+}
+
+function memoizeReference<T>(parse: (content: string) => T): (content: string) => T {
+  const runs = new Map<string, T>();
+  return (content) => {
+    if (runs.has(content)) return runs.get(content)!;
+    const result = parse(content);
+    runs.set(content, result);
+    return result;
+  };
+}
+
+function checkDocWithReferences(
+  doc: string,
+  config: CatalogConfig,
+  stats: OracleSweepStats | undefined,
+  depth: number,
+  options: { idealIdentity?: boolean } | undefined,
+  references: { full: (content: string) => ReturnType<typeof runFull>; raw: (content: string) => NodeLike }
+): OracleFinding[] {
   const { defListEnabled } = buildAdvanceOptions(config);
   const boundary = computeFreezeBoundary(doc, { defListEnabled }).boundary;
   if (boundary <= 0) return [];
@@ -1144,11 +1222,14 @@ export function oracleCheckDoc(
   const prefix = doc.slice(0, boundary);
   const realTail = doc.slice(boundary);
   const probes = probeTailsFor(prefix);
-  const docRun = runFull(doc, config);
+  const docRun = references.full(doc);
+  const checkRaw = options?.idealIdentity
+    ? prepareRawCheck(doc, boundary, docRun.mdast as NodeLike, references.raw)
+    : undefined;
   const findings: OracleFinding[] = [];
 
   for (const probe of [{ id: 'realTailOnly', tail: '' }, ...probes]) {
-    const engine = engineProbe(doc, probe.tail, config);
+    const engine = engineProbeWithReference(doc, probe.tail, config, references.full);
     if (stats) {
       stats.probesRun += 1;
       if (probe.tail !== '') {
@@ -1161,7 +1242,12 @@ export function oracleCheckDoc(
     }
     // (M), snapshot-anchored: the frozen region's spans must survive the
     // probe being appended to the snapshot the boundary was granted on.
-    const m = mSpanDisagreement(doc, probe.tail, config, docRun.mdast as NodeLike, boundary);
+    const m = compareSpans(
+      doc,
+      boundary,
+      docRun.mdast as NodeLike,
+      references.full(doc + probe.tail).mdast as NodeLike
+    );
     if (m !== null) {
       findings.push({
         probeId: probe.id,
@@ -1183,7 +1269,7 @@ export function oracleCheckDoc(
       // memo-hit bug the engagement floors had, repeated here and caught
       // by the same adversarial reading.
       if (probe.tail !== '') {
-        const snap = snapshotRawDisagreement(doc, probe.tail, boundary, config, docRun.mdast as NodeLike);
+        const snap = checkRaw!(probe.tail);
         if (stats) {
           stats.snapshotNodesCompared += snap.nodesCompared;
           if (snap.nodesCompared > 0) stats.snapshotPositions += 1;
@@ -1209,7 +1295,7 @@ export function oracleCheckDoc(
         spliced: engine.usedIncremental && probe.tail !== '',
         value: null as RawFamily | null,
       };
-      const r = rawLayerIdentityDisagreement(prefix, family.tail, config, family);
+      const r = rawIdentityWithReference(prefix, family.tail, references.raw, family);
       if (r !== null) {
         findings.push({
           probeId: probe.id,
@@ -1224,7 +1310,7 @@ export function oracleCheckDoc(
 
   // Zero-distance variant: the claimed prefix as its own document.
   if (depth === 0 && prefix.length < doc.length) {
-    findings.push(...oracleCheckDoc(prefix, config, stats, 1, options));
+    findings.push(...checkDocWithReferences(prefix, config, stats, 1, options, references));
   }
   if (stats && options?.idealIdentity && depth === 0) {
     stats.documentsProbed += 1;

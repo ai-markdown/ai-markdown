@@ -24,7 +24,7 @@ vi.mock('@ai-markdown/react', async (importOriginal) => {
     recorded.customComponents.push(props.customComponents);
     return createElement(actual.default, props);
   };
-  return { ...actual, default: Recording };
+  return { ...actual, default: Recording, AIMarkdown: Recording };
 });
 
 beforeAll(() => {

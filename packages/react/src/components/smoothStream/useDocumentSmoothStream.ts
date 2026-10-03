@@ -34,7 +34,7 @@
  * @module components/smoothStream/useDocumentSmoothStream
  */
 
-import { useContext, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useContext, useEffect, useId, useRef, useState, useSyncExternalStore } from 'react';
 import { useSmoothStream, type UseSmoothStreamOptions, type UseSmoothStreamResult } from './useSmoothStream';
 import { evaluateGateWarn, SmoothCoordinatorContext, type SmoothCoordinator } from './coordinator';
 
@@ -70,7 +70,17 @@ export const useDocumentSmoothStream = ({
   schedule,
 }: UseDocumentSmoothStreamOptions): UseSmoothStreamResult => {
   const ctx = useContext(SmoothCoordinatorContext);
-  const coordinator: SmoothCoordinator | null = ctx && documentId ? ctx.getCoordinator(documentId) : null;
+  const getCoordinator = useCallback(
+    (): SmoothCoordinator | null => (ctx && documentId ? ctx.getCoordinator(documentId) : null),
+    [ctx, documentId]
+  );
+  const resolved = getCoordinator();
+  const subscribe = useCallback((notify: () => void) => resolved?.subscribe(notify) ?? (() => {}), [resolved]);
+  // Observe scope identity, not every queue mutation. React rechecks it between
+  // render and subscription, so eviction cannot strand this chunk in an old
+  // queue. The resolved dependency also moves the subscription to the new scope.
+  // Progress/done notifications with unchanged identity do not rerender siblings.
+  const coordinator = useSyncExternalStore(subscribe, getCoordinator, getCoordinator);
   const reactId = useId();
 
   // ── Gate decision: FIRST MOUNT RENDER, before any effect ─────────────────

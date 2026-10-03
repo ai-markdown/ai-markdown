@@ -11,6 +11,7 @@ const dirname = import.meta.dirname;
 // More info at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon
 export default defineConfig({
   test: {
+    fsModuleCache: true,
     projects: [
       {
         test: {
@@ -23,7 +24,6 @@ export default defineConfig({
         },
       },
       ...(['react', 'vue'] as const).map((framework) => ({
-        extends: true as const,
         plugins: [
           // The plugin will run tests for the stories defined in your Storybook config
           // See options at: https://storybook.js.org/docs/next/writing-tests/integrations/vitest-addon#storybooktest
@@ -53,6 +53,9 @@ export default defineConfig({
           browser: {
             enabled: true,
             headless: true,
+            // Preserve the measured v4 Storybook viewport; v5 otherwise runs
+            // these desktop stories at its default mobile size (414x896).
+            viewport: { width: 1200, height: 900 },
             provider: playwright({}),
             instances: [{ browser: 'chromium' as const }],
           },

@@ -1,13 +1,13 @@
 import process from 'node:process';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
+import { copyFileSync, mkdtempSync, writeFileSync, readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { spawnSync, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { LEGS, TASK_FILES, seedOverlap, taskEnvironment } from './soak-contract.mjs';
+import { LEGS, TASK_FILES, seedOverlap, taskEnvironment, expectedTests } from './soak-contract.mjs';
 
 const root = resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const script = (name) => resolve(root, `scripts/soak/${name}.mjs`);
@@ -56,12 +56,13 @@ function fixture(dir) {
   for (const leg of LEGS)
     for (let shard = 0; shard < 14; shard++) {
       const id = `${leg}-${shard}`;
+      const names = expectedTests(m, leg, shard);
       writeFileSync(`${dir}/${id}.log`, 'Tests  1 passed (1)\n');
       put(`${dir}/${id}.task.json`, { id, runId: m.runId, exitCode: 0, signal: null, status: 'passed' });
       put(`${dir}/${id}.vitest.json`, {
         success: true,
-        numTotalTests: 1,
-        numPassedTests: 1,
+        numTotalTests: names.length,
+        numPassedTests: names.length,
         numFailedTests: 0,
         numPendingTests: 0,
         numTodoTests: 0,
@@ -69,7 +70,12 @@ function fixture(dir) {
           {
             name: `/fixture/src/${TASK_FILES[leg]}`,
             status: 'passed',
-            assertionResults: [{ status: 'passed', failureMessages: [] }],
+            assertionResults: names.map((path) => ({
+              ancestorTitles: path.slice(0, -1),
+              title: path.at(-1),
+              status: 'passed',
+              failureMessages: [],
+            })),
           },
         ],
       });
@@ -114,6 +120,10 @@ for (const fault of [
   'wrong-file',
   'empty-assertions',
   'failed-assertion',
+  'omitted-test',
+  'duplicate-test',
+  'wrong-test',
+  'wrong-suite',
 ]) {
   test(`rejects ${fault} evidence`, (t) => {
     const dir = temp(t);
@@ -160,6 +170,17 @@ for (const fault of [
     if (fault === 'failed-assertion')
       edit('vitest', (d) => {
         d.testResults[0].assertionResults = [{ status: 'failed' }];
+      });
+    if (['omitted-test', 'duplicate-test', 'wrong-test', 'wrong-suite'].includes(fault))
+      edit('vitest', (d) => {
+        const assertions = d.testResults[0].assertionResults;
+        if (fault === 'omitted-test') {
+          assertions.pop();
+          d.numTotalTests = d.numPassedTests = assertions.length;
+        }
+        if (fault === 'duplicate-test') assertions[1] = assertions[0];
+        if (fault === 'wrong-test') assertions[0].title = 'unexpected passing test';
+        if (fault === 'wrong-suite') assertions[0].ancestorTitles = ['unexpected suite'];
       });
     if (fault === 'log') writeFileSync(`${dir}/fuzz-0.log`, 'Tests 1 failed | 1 passed\nTests 1 passed\n');
     assert.notEqual(aggregate(dir).status, 0);
@@ -222,6 +243,119 @@ test('concurrent overlapping seed reservations cannot both succeed', async (t) =
   );
   assert.equal(outcomes.filter((r) => r.status === 'fulfilled').length, 1);
 });
+
+// Use quick subprocesses to exercise cross-leg scheduling without running the
+// fuzz/census workloads. Real Vitest setup and reporting are exercised below.
+for (const scenario of [
+  {
+    name: 'full run prioritizes short checks and oracle',
+    legs: LEGS,
+    order: ['dir', 'scanner', 'oracle', 'latex', 'fuzz', 'census'],
+  },
+  {
+    name: 'subset preserves selection with execution priority',
+    legs: ['fuzz', 'scanner', 'oracle'],
+    order: ['scanner', 'oracle', 'fuzz'],
+  },
+  {
+    name: 'fail-fast leaves later legs unstarted',
+    legs: ['fuzz', 'dir', 'oracle'],
+    order: ['dir'],
+    failure: true,
+    failFast: true,
+  },
+  {
+    name: 'collect mode continues into later legs',
+    legs: ['fuzz', 'dir', 'oracle'],
+    order: ['dir', 'oracle', 'fuzz'],
+    failure: true,
+    failFast: false,
+  },
+]) {
+  test(scenario.name, (t) => {
+    const dir = temp(t);
+    const fixtureRoot = `${dir}/fixture`;
+    const run = `${dir}/run`;
+    for (const path of ['scripts/soak', 'packages/engine', 'node_modules/vitest'])
+      mkdirSync(`${fixtureRoot}/${path}`, { recursive: true });
+    mkdirSync(run);
+    for (const file of ['soak-runner', 'soak-contract', 'soak-metadata'])
+      copyFileSync(script(file), `${fixtureRoot}/scripts/soak/${file}.mjs`);
+    copyFileSync(resolve(root, 'scripts/soak/test-inventory.json'), `${fixtureRoot}/scripts/soak/test-inventory.json`);
+    writeFileSync(
+      `${fixtureRoot}/node_modules/vitest/vitest.mjs`,
+      `import process from 'node:process';
+import { appendFileSync, readFileSync, writeFileSync } from 'node:fs';
+import { expectedTests } from '../../scripts/soak/soak-contract.mjs';
+import { dirname, resolve } from 'node:path';
+const task = JSON.parse(process.env.SOAK_TASK);
+appendFileSync(resolve(dirname(task.output), 'started.jsonl'), JSON.stringify(task) + '\\n');
+writeFileSync(task.output, JSON.stringify({ ...task, environment: task.environment }));
+const failed = task.id === process.env.CONTROL_FAILED_TASK;
+const manifest = JSON.parse(readFileSync(resolve(dirname(task.output), 'manifest.json')));
+const [leg, shard] = task.id.split('-');
+const names = expectedTests(manifest, leg, Number(shard));
+const report = {
+  success: !failed, numTotalTests: names.length, numPassedTests: failed ? 0 : names.length,
+  numFailedTests: failed ? 1 : 0, numPendingTests: 0, numTodoTests: 0,
+  testResults: [{ name: resolve(process.argv[3]), status: failed ? 'failed' : 'passed',
+    assertionResults: names.map((path) => ({ ancestorTitles: path.slice(0, -1), title: path.at(-1), status: failed ? 'failed' : 'passed', failureMessages: [] })) }],
+};
+writeFileSync(process.argv.find((arg) => arg.startsWith('--outputFile.json=')).slice('--outputFile.json='.length), JSON.stringify(report));
+process.stdout.write(failed ? 'Tests 1 failed\\n' : 'Tests 1 passed\\n');
+process.exitCode = failed ? 1 : 0;
+`
+    );
+    const git = (...args) => spawnSync('git', args, { cwd: root, encoding: 'utf8' }).stdout.trim();
+    const m = {
+      schemaVersion: 2,
+      runId: 'scheduling',
+      label: 'scheduling',
+      mode: scenario.legs.length === LEGS.length ? 'full' : 'subset',
+      runKind: 'replay',
+      profile: 'smoke',
+      repository: { commit: git('rev-parse', 'HEAD'), dirty: !!git('status', '--porcelain') },
+      startedAt: new Date().toISOString(),
+      seedBase: 700001,
+      legs: scenario.legs,
+      shards: 2,
+      workers: 1,
+      failFast: scenario.failFast ?? true,
+      parameters,
+    };
+    put(`${run}/manifest.json`, m);
+    const outcome = spawnSync(process.execPath, [`${fixtureRoot}/scripts/soak/soak-runner.mjs`, run], {
+      cwd: root,
+      encoding: 'utf8',
+      timeout: 10000,
+      env: { ...process.env, CONTROL_FAILED_TASK: scenario.failure ? 'dir-0' : '' },
+    });
+    assert.ifError(outcome.error);
+    assert.equal(outcome.status, scenario.failure ? 1 : 0, outcome.stderr);
+    assert.deepEqual(JSON.parse(readFileSync(`${run}/manifest.json`)), m);
+    const result = JSON.parse(readFileSync(`${run}/result.json`));
+    assert.equal(result.status, scenario.failure ? 'failed' : 'passed');
+    assert.deepEqual(Object.keys(result.legs), scenario.order);
+    const started = readFileSync(`${run}/started.jsonl`, 'utf8').trim().split('\n').map(JSON.parse);
+    const expectedIds = scenario.order.flatMap((leg) =>
+      Array.from({ length: scenario.failure && m.failFast ? 1 : m.shards }, (_, i) => `${leg}-${i}`)
+    );
+    assert.deepEqual(
+      started.map((task) => task.id),
+      expectedIds
+    );
+    for (const task of started) {
+      const [leg, shard] = task.id.split('-');
+      assert.deepEqual(task.environment, taskEnvironment(m, leg, Number(shard)));
+    }
+    if (!scenario.failure && m.mode === 'full') {
+      const aggregated = spawnSync(process.execPath, [script('soak-aggregate'), '--profile', 'smoke', run], {
+        encoding: 'utf8',
+      });
+      assert.equal(aggregated.status, 0, aggregated.stderr);
+    }
+  });
+}
 
 // Exercise the actual Vitest subprocess and its setup/reporting boundary.
 async function realRun(t, workers, interrupt = false, fault = false, failFast = true, denyGroupKill = false) {
@@ -330,4 +464,72 @@ test('a previously replayed stream cannot become fresh evidence', (t) => {
 
 test('process-group denial still persists interruption and cleans other workers', { timeout: 20000 }, (t) =>
   realRun(t, 2, true, false, true, true)
+);
+
+test(
+  'bounded smoke pins every budget and propagates launcher and evidence failures',
+  { skip: process.platform === 'win32' },
+  (t) => {
+    const dir = temp(t);
+    const log = resolve(dir, 'environment.json');
+    writeFileSync(
+      resolve(dir, 'bash'),
+      `#!${process.execPath}
+require('node:fs').writeFileSync(process.env.SMOKE_TEST_LOG, JSON.stringify(process.env));
+process.exit(Number(process.env.SMOKE_TEST_EXIT));
+`,
+      { mode: 0o755 }
+    );
+    for (const status of [7, 0]) {
+      const result = spawnSync(process.execPath, [script('smoke')], {
+        encoding: 'utf8',
+        timeout: 15000,
+        env: {
+          ...process.env,
+          PATH: `${dir}:${process.env.PATH}`,
+          SMOKE_TEST_LOG: log,
+          SMOKE_TEST_EXIT: String(status),
+          SOAK_PROFILE: 'release',
+          RUN_KIND: 'fresh',
+          LEGS: 'latex',
+          SHARDS: '99',
+          WORKERS: '99',
+          FUZZ1: '1',
+          FUZZ2: '1',
+          FUZZ3: '1',
+          FUZZ4: '1',
+          ORACLE: '1',
+          CENSUS_K: '4',
+          CENSUS_NAME_K: '4',
+          CENSUS_STRIDE: '99',
+          CENSUS_NAME_STRIDE: '99',
+          FALLBACK_ORACLE_SAMPLE: '999',
+          FAIL_FAST: '0',
+        },
+      });
+      assert.ifError(result.error);
+      assert.equal(result.status, status || 1, result.stderr);
+      if (status === 0) assert.match(result.stderr, /missing manifest.json|missing result.json/);
+      const env = JSON.parse(readFileSync(log, 'utf8'));
+      for (const [key, value] of Object.entries({
+        SOAK_PROFILE: 'smoke',
+        RUN_KIND: 'replay',
+        LEGS: LEGS.join(','),
+        SHARDS: '2',
+        WORKERS: '2',
+        FUZZ1: '1000',
+        FUZZ2: '1000',
+        FUZZ3: '1000',
+        FUZZ4: '1000',
+        ORACLE: '100',
+        CENSUS_K: '2',
+        CENSUS_NAME_K: '2',
+        CENSUS_STRIDE: '1',
+        CENSUS_NAME_STRIDE: '1',
+        FALLBACK_ORACLE_SAMPLE: '20',
+        FAIL_FAST: '1',
+      }))
+        assert.equal(env[key], value, key);
+    }
+  }
 );

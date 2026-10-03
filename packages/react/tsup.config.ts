@@ -11,7 +11,7 @@ const shared: Options = {
   // (documentRegistry etc.) would be double-instantiated — a correctness
   // bug that only surfaces in real distribution, never in the workspace.
   // assert-dist-clean.mjs holds the matching dist-side assertion.
-  external: ['react', 'react-dom', '@ai-markdown/engine', '@ai-markdown/core'],
+  external: ['react', 'react-dom', '@ai-markdown/engine', '@ai-markdown/core', '@ai-markdown/react', 'mermaid'],
   noExternal: ['lodash-es'],
   // NO `treeshake: true` here: tsup's rollup treeshake pass strips the
   // module-level "use client" directive (verified), which would break RSC
@@ -44,7 +44,15 @@ export default defineConfig([
   // The build:js script rm -rf's dist BEFORE tsup starts instead.
   {
     ...shared,
-    entry: { index: 'src/index.tsx', 'plugins/index': 'src/plugins/index.ts' },
+    entry: {
+      index: 'src/index.tsx',
+      'plugins/index': 'src/plugins/index.ts',
+      'components/index': 'src/rich/index.ts',
+      'components/code': 'src/rich/code.ts',
+      'components/code/plain': 'src/rich/code-plain.tsx',
+      'components/image': 'src/rich/image.tsx',
+      'components/table': 'src/rich/table.tsx',
+    },
     dts: true,
     clean: false,
     env: { NODE_ENV: 'production' },

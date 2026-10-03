@@ -39,17 +39,13 @@
  * above against the real scheduler and records the trace (`release R1`,
  * `resolve R1`, `onEmpty R1`, `resolve R2`, `register R2`).
  *
- * The smooth-coordinator scope has the first half of that pair (its release
- * cleanup calls `_notify` before `onEmpty`) but not the second:
- * `useDocumentSmoothStream` subscribes from an effect, not through
- * `useSyncExternalStore`, so the same interleaving can leave a chunk
- * registered in an evicted coordinator until its next render. The
- * consequence is bounded: that chunk is alone at the head of its own
- * queue and the next chunk is alone at the head of a fresh one, so nothing
- * is gated and no queue can wedge; the chunk's next render (its own
- * streaming content) re-resolves the scope and re-registers. A new scope
- * type needs one of the two protections — a version bump before `onEmpty`
- * read through `useSyncExternalStore`, or a re-resolve at effect time.
+ * The smooth-coordinator consumer also uses `useSyncExternalStore`, reading
+ * the cached scope identity. Empty-release notifies subscribers after cache
+ * eviction, and React's pre-subscription consistency check covers an eviction
+ * between render and effects. Queue mutations that retain the scope do not
+ * cause extra renders. `useDocumentSmoothStream.interleave.test.tsx` exercises
+ * the real scheduler interleaving and verifies successor gating. New scope
+ * types need equivalent protection against registering an evicted scope.
  */
 /** A cache of per-document scopes keyed by id. */
 export interface DocumentScopeCache<T extends object> {

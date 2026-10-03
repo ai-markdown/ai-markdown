@@ -29,7 +29,7 @@ pnpm build
 
 You'll need:
 
-- The Node version pinned in CI (currently 22.23.2) for reproducible validation
+- The Node version pinned in CI (currently 22.23.2) for reproducible validation. Vitest 5 requires Node `^22.12.0 || ^24.0.0 || >=26.0.0`; the published packages' consumer support is separate.
 - pnpm 11.x (this repo pins the exact version via the `packageManager` field — Corepack, or pnpm itself, will fetch it)
 
 > pnpm settings live in `pnpm-workspace.yaml`, not in a `pnpm` field in `package.json` — pnpm 11 ignores that field. `pnpm check:overrides` fails the build if one reappears, or if the lockfile no longer matches the declared overrides.
@@ -58,6 +58,10 @@ pnpm preflight
 ```
 
 CI runs static checks, package and browser tests, build/export validation and soak-impact reporting on every PR. See the [development command reference](https://ai-markdown.github.io/docs/guides/development-commands/) for prerequisites, focused checks and compatibility aliases. `preflight` does not run a long soak or validate release approval.
+
+Vitest 5 caches transformed Node test modules on disk (`fsModuleCache`), including across soak shard processes. Tests still evaluate in isolated workers with their own seed and environment. To discard the cache, run `pnpm exec vitest --clearCache`; `--fsModuleCache=false` disables it for a diagnostic test run. Browser tests use their own Vite cache.
+
+Storybook 10.6.0's peer ranges predate Vitest 5. The workspace allows only the tested 5.0.1 combination and explicitly preserves the previous 1200×900 browser viewport. Mutation testing disables the disk module cache and carries a pnpm patch for Stryker 9.6.1: both its coverage IDs and test-name filters must use Vitest 5's `>` suite separator, otherwise mutants silently run zero tests.
 
 ### Changing the shared core
 
@@ -92,6 +96,20 @@ logical shards, while `WORKERS` defaults to detected cores minus two. Use
 reducing coverage. Release runs require at least 14 logical shards. `FAIL_FAST=1`
 is the default; use `FAIL_FAST=0` to collect failures across all legs.
 
+Execution proceeds through direction, scanner, oracle, LaTeX, fuzz, then census,
+so shorter checks and oracle failures surface before the long campaign. Leg
+selection, logical shards, seeds and budgets are unchanged by this ordering.
+
+Census shares immutable P3 reference preparation across a document's probes and
+checks P2 once per distinct scanner profile and cut sequence; P1 still drives
+every selected rendering configuration through fresh engine state. Oracle reference
+parses are reused only within one document and its zero-distance probes. Sample
+budgets, probe batteries, actual engine frames and anti-vacuity floors stay intact.
+`node scripts/soak/optimization-evidence.mjs <baseline-commit>` compares the two
+optimized harness files with their baseline versions on fixed diagnostic slices,
+checking test identities, coverage counters and diagnostic classifications while
+measuring time. These comparisons are not release-profile evidence.
+
 Each task writes a log, a Vitest JSON report, a task exit record and a runtime
 record of effective test parameters and worker CPU/peak RSS. Aggregate completed
 runs with `node scripts/soak/soak-aggregate.mjs .soak-logs/<run-id>`. Schema 2
@@ -110,7 +128,9 @@ ledger entries without shard counts conservatively reserve 100 seeds per leg.
 A reservation lock left by an abruptly killed metadata process fails closed;
 confirm that no metadata writer is active before removing that stale lock.
 
-A green soak is an **engine-impacting release** gate, not a per-PR one; CI does not execute the full campaign. `pnpm check:soak-impact` determines whether the committed candidate needs it. Validate local evidence with `pnpm check:release-soak --evidence <run-dir>...`; release CI waits for `soak-approval` when required. See [soak coverage](https://ai-markdown.github.io/docs/guides/soak-coverage/) for trigger rules, evidence reuse, and reviewer responsibilities. If your PR changes engine behavior, say in the description whether you ran it and what the result was.
+A green soak is an **engine-impacting release** gate, not a per-PR one; CI does not execute the full campaign. `pnpm check:soak-impact` separates full engine campaigns from bounded toolchain smoke. Vitest/cache/runner upgrades run `pnpm test:soak-smoke` automatically in CI and release verification; engine, generator, oracle and sampling changes still require full soak. Validate local evidence with `pnpm check:release-soak --evidence <run-dir>...`; release CI waits for `soak-approval` when required. See [soak coverage](https://ai-markdown.github.io/docs/guides/soak-coverage/) for trigger rules, evidence reuse, and reviewer responsibilities. If your PR changes engine behavior, say in the description whether you ran it and what the result was.
+
+Soak reports must match the independent suite/test identities in `scripts/soak/test-inventory.json`, including manifest-scaled names. When intentionally adding or renaming a soak case, review that inventory alongside the test. Never regenerate the expected set from the report being validated: that would accept accidental filtering or missing collection. Validate the change with `pnpm test:soak-control` and the bounded six-leg smoke.
 
 #### Where a number goes
 

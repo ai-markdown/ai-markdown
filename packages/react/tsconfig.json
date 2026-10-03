@@ -1,6 +1,7 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
+    "paths": { "@ai-markdown/react": ["./src/index.tsx"] },
     "types": ["vitest/globals", "node"]
   },
   "include": ["src"]

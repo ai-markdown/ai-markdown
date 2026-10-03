@@ -46,7 +46,8 @@
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "components"
   ],
   "exports": {
     ".": {
@@ -58,7 +59,15 @@
       "require": "./dist/index.cjs"
     },
     "./styles.css": "./dist/index.css",
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./components": {
+      "types": {
+        "import": "./dist/components.d.ts",
+        "require": "./dist/components.d.cts"
+      },
+      "import": "./dist/components.js",
+      "require": "./dist/components.cjs"
+    }
   },
   "scripts": {
     "build": "tsup && node scripts/assert-dist-clean.mjs",
@@ -80,7 +89,8 @@
   },
   "dependencies": {
     "@ai-markdown/code-language-detector": "workspace:^",
-    "mermaid": "^11.17.2"
+    "mermaid": "^11.17.2",
+    "@ai-markdown/core": "workspace:*"
   },
   "devDependencies": {
     "@ai-markdown/react": "workspace:*",
@@ -94,5 +104,12 @@
     "postcss": "^8.5.28",
     "tsup": "^8.5.1",
     "@ai-markdown/storybook-kit": "workspace:*"
+  },
+  "typesVersions": {
+    "*": {
+      "components": [
+        "./dist/components.d.ts"
+      ]
+    }
   }
 }

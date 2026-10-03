@@ -1,4 +1,4 @@
-import { bench, describe } from 'vitest';
+import { test } from 'vitest';
 import { preprocessLaTeX } from './latex';
 
 // ── Fixture builders ────────────────────────────────────────────────────────
@@ -57,20 +57,20 @@ const htmlFalsePositiveDoc = htmlFalsePositiveChunk.repeat(200);
 
 // ── Benchmarks ─────────────────────────────────────────────────────────────
 
-describe('preprocessLaTeX', () => {
-  bench('realistic ~10 KB markdown document', () => {
+test('preprocessLaTeX', async ({ bench }) => {
+  await bench('realistic ~10 KB markdown document', () => {
     preprocessLaTeX(realisticDoc);
-  });
+  }).run();
 
-  bench('currency-inside-LaTeX stress (O(n²) → O(n) path)', () => {
+  await bench('currency-inside-LaTeX stress (O(n²) → O(n) path)', () => {
     preprocessLaTeX(currencyStressDoc);
-  });
+  }).run();
 
-  bench('many HTML tags, success path (sticky regex matches)', () => {
+  await bench('many HTML tags, success path (sticky regex matches)', () => {
     preprocessLaTeX(htmlStressDoc);
-  });
+  }).run();
 
-  bench('many `<` characters, false-positive path (sticky regex misses)', () => {
+  await bench('many `<` characters, false-positive path (sticky regex misses)', () => {
     preprocessLaTeX(htmlFalsePositiveDoc);
-  });
+  }).run();
 });

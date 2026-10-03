@@ -1,0 +1,8 @@
+{
+  "name": "@ai-markdown/vue/components/image",
+  "private": true,
+  "main": "../../dist/components/image.cjs",
+  "module": "../../dist/components/image.js",
+  "types": "../../dist/components/image.d.ts",
+  "sideEffects": false
+}

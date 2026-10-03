@@ -564,7 +564,7 @@ const AIMarkdownComponent = <TMetadata extends AIMarkdownMetadata = AIMarkdownMe
  * />
  * ```
  */
-const AIMarkdown = memo(AIMarkdownComponent);
+export const AIMarkdown = memo(AIMarkdownComponent) as typeof AIMarkdownComponent & { displayName?: string };
 AIMarkdown.displayName = 'AIMarkdown';
 
 export default AIMarkdown as typeof AIMarkdownComponent;

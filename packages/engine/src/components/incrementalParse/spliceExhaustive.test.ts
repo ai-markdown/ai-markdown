@@ -57,8 +57,8 @@
  *     under ONE of the six cells, and no green CI run has ever tried a
  *     given document under the other five. Only the gate can say "every
  *     document under every shipped configuration".
- *   - Full-stride cut schedules. CI runs stride 1 only because K=2
- *     documents are short; the gate's K=4 documents are strided.
+ *   - Every interior cut in the larger documents: both CI and release use
+ *     stride 1, but only release crosses the deeper bands with all configs.
  *
  * The rotation slice is FIXED, not a rolling sample: the same document
  * gets the same config on every run, so CI's blind five-sixths does not
@@ -71,18 +71,13 @@
  * in two tokens instead of eight. It is a directed search, not a proof —
  * see `checkpointAbstraction.ts`. `EXHAUSTIVE_BFS_DEPTH=0` skips it.
  *
- * The release gate passes the expensive values, sharded — one process per
- * shard, since a census is a single vitest test and therefore a single
- * core:
- *   for i in $(seq 0 11); do EXHAUSTIVE_K=4 EXHAUSTIVE_STRIDE=3 \
- *     EXHAUSTIVE_NAME_K=3 EXHAUSTIVE_CONFIG_MODE=cross \
- *     EXHAUSTIVE_SHARD=$i/12 \
- *     ../../node_modules/.bin/vitest --run src/components/incrementalParse/spliceExhaustive.test.ts & done
- * `EXHAUSTIVE_CONFIG_MODE=cross` is the load-bearing one: without it the
- * gate would inherit CI's rotation and quietly stop being the full
- * cross-product the ledger claims it is. Measured: ~27 min/shard for the
- * fragment band plus ~6 min for the name band, ~45 min on the worst shard
- * at the recorded ×1.5 skew.
+ * The release settings live in scripts/soak/profiles/release.json: fragment
+ * K=4, name K>=3, stride 1 in both bands, all configs crossed, at least 14
+ * logical shards. Run scripts/soak/soak.sh to collect validated evidence;
+ * a manual Vitest slice is diagnostic only. Each shard gets its own process
+ * because Vitest cannot parallelize the loop inside a census test.
+ * `EXHAUSTIVE_CONFIG_MODE=cross` prevents the gate from inheriting CI's
+ * rotation and silently losing the claimed configuration cross-product.
  * `EXHAUSTIVE_SHARD` scatters BOTH bands, so one set of shard processes
  * covers the whole leg. Knobs: `EXHAUSTIVE_CONFIGS` (label list) narrows
  * the catalog, `EXHAUSTIVE_ROTATE_SALT` moves the rotation slice,
@@ -96,7 +91,7 @@ import { computeFreezeBoundary, type FreezeScanCheckpoint } from './computeFreez
 import { SCANNER_NAME_LISTS } from './scannerNameLists';
 import { ADAPTER_GRAMMAR, CATALOG, scannerProfile, type CatalogConfig } from './testPluginCatalog';
 import { assertStreamEquivalence, fallbackOracleSampleFromEnv, runFull, testEnv } from './spliceArbiterHarness';
-import { engineProbe, probeTailsFor, snapshotRawDisagreement, type NodeLike } from './conformanceOracles';
+import { engineProbe, prepareSnapshotRawCheck, probeTailsFor, type NodeLike } from './conformanceOracles';
 import { CONSTRUCT_AXIS_CLAIMED_SHAPES } from './constructAxisAdapters';
 import { F20_CHAIN, SIGNATURE_DOMAIN, signatureValues } from './checkpointAbstraction';
 import { soakBeat } from './soakHeartbeat';
@@ -628,12 +623,13 @@ function driveRawFrozen(doc: string, config: CatalogConfig, stats: RawFrozenStat
   stats.boundaries += 1;
   const positionsOnEntry = stats.positions;
   const docMdast = runFull(doc, config).mdast as NodeLike;
+  const checkRaw = prepareSnapshotRawCheck(doc, boundary, config, docMdast);
   for (const probe of probeTailsFor(doc.slice(0, boundary))) {
     // An empty tail compares `raw(doc)` against itself: it cannot fire, and
     // counting it would pad the anti-vacuity readout with positions that
     // assert nothing.
     if (probe.tail === '') continue;
-    const snap = snapshotRawDisagreement(doc, probe.tail, boundary, config, docMdast);
+    const snap = checkRaw(probe.tail);
     stats.probes += 1;
     stats.nodesCompared += snap.nodesCompared;
     if (snap.nodesCompared > 0) stats.positions += 1;
@@ -730,7 +726,14 @@ interface RawFrozenStats {
  *  family"; small enough that a failure message stays readable. */
 const MAX_SAMPLES = 20;
 
-function drive(doc: string, cuts: number[], config: CatalogConfig): { frames: number; incrementalFrames: number } {
+interface Schedule {
+  cuts: number[];
+  snapshots: string[];
+}
+
+/** Build each document/cut sequence once. The consumers only read these
+ *  strings; each P1 engine and P2 scanner still starts its own state lineage. */
+function scheduleFor(doc: string, cuts: number[]): Schedule {
   const snapshots: string[] = [];
   for (const cut of cuts) {
     const end = Math.min(doc.length, alignCut(doc, cut));
@@ -739,18 +742,27 @@ function drive(doc: string, cuts: number[], config: CatalogConfig): { frames: nu
     }
   }
   if (snapshots.length === 0 || snapshots[snapshots.length - 1] !== doc) snapshots.push(doc);
+  return { cuts, snapshots };
+}
 
+function drive(
+  doc: string,
+  { cuts, snapshots }: Schedule,
+  config: CatalogConfig
+): { frames: number; incrementalFrames: number } {
   // P1 — the arbiter throws with a labeled diff on any mismatch. The
   // engagement floor is an AGGREGATE over the whole census (asserted at the
   // end of the sweep): most short token sequences legitimately poison to
   // boundary 0, so a per-schedule floor would fight the alphabet.
-  const stats = assertStreamEquivalence(
+  return assertStreamEquivalence(
     () => `exhaustive doc=${JSON.stringify(doc)} cuts=${JSON.stringify(cuts)}`,
     snapshots,
     config,
     { minIncrementalFrames: 0, fallbackOracleSample: FALLBACK_SAMPLE }
   );
+}
 
+function checkScannerResume(doc: string, snapshots: string[], profile: ReturnType<typeof scannerProfile>): number {
   // P2 — resumed scan ≡ fresh scan, own lineage.
   //
   // WHAT P2 DOES NOT LICENSE, written here because this is where anyone
@@ -770,19 +782,20 @@ function drive(doc: string, cuts: number[], config: CatalogConfig): { frames: nu
   // changing between minor versions. Audited 2026-08-28 — every other
   // resume in the repo is a linear loop, and `MarkdownContent`'s catch
   // already nulls its state ref for this exact reason.
-  const profile = scannerProfile(config);
   let checkpoint: FreezeScanCheckpoint | null = null;
+  let framesCompared = 0;
   for (const snapshot of snapshots) {
     const fresh = computeFreezeBoundary(snapshot, profile);
     const resumed = computeFreezeBoundary(snapshot, profile, checkpoint);
     if (resumed.boundary !== fresh.boundary) {
       expect.fail(
-        `resume/fresh divergence doc=${JSON.stringify(doc)} len=${snapshot.length}: resumed=${resumed.boundary} fresh=${fresh.boundary}`
+        `resume/fresh divergence profile=${JSON.stringify(profile)} doc=${JSON.stringify(doc)} len=${snapshot.length}: resumed=${resumed.boundary} fresh=${fresh.boundary}`
       );
     }
     checkpoint = resumed.checkpoint;
+    framesCompared += 1;
   }
-  return stats;
+  return framesCompared;
 }
 
 interface SweepStats {
@@ -790,6 +803,12 @@ interface SweepStats {
   schedules: number;
   frames: number;
   incrementalFrames: number;
+  scannerResume: {
+    lineages: number;
+    frames: number;
+    profiles: Set<string>;
+    expectedProfiles: Set<string>;
+  };
   rawFrozen: RawFrozenStats;
 }
 
@@ -811,6 +830,7 @@ function sweep(band: string, tokens: readonly string[], maxK: number, stride: nu
     schedules: 0,
     frames: 0,
     incrementalFrames: 0,
+    scannerResume: { lineages: 0, frames: 0, profiles: new Set(), expectedProfiles: new Set() },
     rawFrozen: {
       boundaries: 0,
       probes: 0,
@@ -860,25 +880,47 @@ function sweep(band: string, tokens: readonly string[], maxK: number, stride: nu
         CONFIG_MODE === 'cross'
           ? CONFIGS
           : [CONFIGS[(Math.imul(out.docs + ROTATE_SALT, 0x85ebca6b) >>> 13) % CONFIGS.length]];
-      for (const config of configs) {
+      // Keep every cut, including schedules whose aligned snapshots happen
+      // to coincide. Only the string construction is shared across configs.
+      const schedules: Schedule[] = [];
+      for (let cut = 1 + ((out.docs + k) % stride); cut < doc.length; cut += stride) {
+        schedules.push(scheduleFor(doc, [cut]));
+      }
+      if (doc.length >= 3) {
+        schedules.push(scheduleFor(doc, [Math.floor(doc.length / 3), Math.floor((2 * doc.length) / 3)]));
+      }
+      const profiles = configs.map(scannerProfile);
+      const profileKeys = profiles.map((profile) => JSON.stringify(profile));
+      if (schedules.length > 0) {
+        for (const key of profileKeys) out.scannerResume.expectedProfiles.add(key);
+      }
+      const checkedProfiles = new Set<string>();
+      for (const [configIndex, config] of configs.entries()) {
         // P3 first: it is per-document, not per-schedule, and it does not
         // care whether anything below engages.
         if (RAW_FROZEN) driveRawFrozen(doc, config, out.rawFrozen);
+        // P2 sees only scannerProfile, not the rendering plugins. Cross
+        // mode currently has six P1 configs but two scanner profiles;
+        // rotate still checks the one profile this document actually runs.
+        // Deduplicate only within this document, never across cut schedules
+        // or documents, and derive the key from the complete profile.
+        const profileKey = profileKeys[configIndex];
+        const checkProfile = !checkedProfiles.has(profileKey);
+        checkedProfiles.add(profileKey);
         // 2-cut schedules: every interior cut point (strided in CI; the
         // k-1 stride offsets rotate so every cut is hit across nearby
-        // docs rather than the same residue class every time).
-        for (let cut = 1 + ((out.docs + k) % stride); cut < doc.length; cut += stride) {
-          const s = drive(doc, [cut], config);
+        // docs rather than the same residue class every time), followed by
+        // the deterministic thirds sample for a mid-stream resume.
+        for (const schedule of schedules) {
+          const s = drive(doc, schedule, config);
           out.frames += s.frames;
           out.incrementalFrames += s.incrementalFrames;
           out.schedules += 1;
-        }
-        // Deterministic 3-cut sample: thirds (adds a mid-stream resume).
-        if (doc.length >= 3) {
-          const s = drive(doc, [Math.floor(doc.length / 3), Math.floor((2 * doc.length) / 3)], config);
-          out.frames += s.frames;
-          out.incrementalFrames += s.incrementalFrames;
-          out.schedules += 1;
+          if (checkProfile) {
+            out.scannerResume.frames += checkScannerResume(doc, schedule.snapshots, profiles[configIndex]);
+            out.scannerResume.lineages += 1;
+            out.scannerResume.profiles.add(profileKey);
+          }
         }
       }
       // Odometer increment.
@@ -909,12 +951,28 @@ function reportAndAssert(band: string, tokens: readonly string[], maxK: number, 
   // walk; `schedules` counts only this shard's driven work.
   expect(s.docs).toBeGreaterThanOrEqual(tokens.length ** maxK);
   expect(s.schedules * SHARD_TOTAL).toBeGreaterThan(s.docs);
+  const profileCount = new Set(CONFIGS.map((config) => JSON.stringify(scannerProfile(config)))).size;
+  const configsPerDoc = CONFIG_MODE === 'cross' ? CONFIGS.length : 1;
+  const profilesPerDoc = CONFIG_MODE === 'cross' ? profileCount : 1;
+  expect(s.scannerResume.lineages * configsPerDoc, `P2/${band} omitted a document/cut/profile lineage`).toBe(
+    s.schedules * profilesPerDoc
+  );
+  expect(s.scannerResume.frames * configsPerDoc, `P2/${band} omitted a fresh/resumed frame comparison`).toBe(
+    s.frames * profilesPerDoc
+  );
+  expect(s.scannerResume.profiles.size, `P2/${band} drove no scanner profiles`).toBeGreaterThan(0);
+  expect([...s.scannerResume.profiles].sort(), `P2/${band} omitted a selected scanner profile`).toEqual(
+    [...s.scannerResume.expectedProfiles].sort()
+  );
+  if (CONFIG_MODE === 'cross') expect(s.scannerResume.profiles.size).toBe(profileCount);
   emit(
     `\n[census:${band}] K=${maxK} stride=${stride} fallbackOracleSample=${FALLBACK_SAMPLE} alphabet=${tokens.length} ` +
       `shard=${SHARD_INDEX}/${SHARD_TOTAL} configs=${CONFIGS.length}/${CONFIG_MODE}` +
       `${CONFIG_MODE === 'rotate' ? `+salt${ROTATE_SALT}` : ''} docs=${s.docs} ` +
       `schedules=${s.schedules} frames=${s.frames} incremental=${s.incrementalFrames} ` +
       `ratio=${(s.incrementalFrames / s.frames).toFixed(4)}\n` +
+      `[census:${band}] P2 profiles=${s.scannerResume.profiles.size}/${profileCount} ` +
+      `lineages=${s.scannerResume.lineages} framesCompared=${s.scannerResume.frames}\n` +
       `[census:${band}] P3 rawFrozen=${RAW_FROZEN ? 'on' : 'off'} boundaries=${s.rawFrozen.boundaries} ` +
       `probes=${s.rawFrozen.probes} positions=${s.rawFrozen.positions} ` +
       `nodesCompared=${s.rawFrozen.nodesCompared} ` +

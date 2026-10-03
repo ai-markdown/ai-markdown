@@ -43,9 +43,17 @@ try {
   page.setDefaultTimeout(30000);
   const errors = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  // Catalog examples must not download remote images/fonts/scripts.
+  // Live demos use Picsum; fulfill only its seeded photo requests locally so
+  // acceptance remains deterministic and does not depend on a third-party CDN.
+  const isPicsumImage = (req) =>
+    req.resourceType() === 'image' && /^https:\/\/picsum\.photos\/seed\/[a-z0-9-]+\/\d+\/\d+$/.test(req.url());
+  const photoFixture = await readFile('tooling/storybook-kit/assets/placeholder-200x300.svg');
+  await page.route('https://picsum.photos/**', (route) =>
+    isPicsumImage(route.request()) ? route.fulfill({ contentType: 'image/svg+xml', body: photoFixture }) : route.abort()
+  );
+  // All other remote assets remain unexpected.
   page.on('request', (req) => {
-    if (/^https?:/.test(req.url()) && new URL(req.url()).origin !== origin)
+    if (/^https?:/.test(req.url()) && new URL(req.url()).origin !== origin && !isPicsumImage(req))
       errors.push(`External request: ${req.url()}`);
   });
   // The hub's links must work under a deployment prefix, not open iframe.html
@@ -103,6 +111,7 @@ try {
     'Basics/Footnotes & Definition Lists',
     'Basics/Engine Plugins',
     'Customization/Custom Components',
+    'Customization/Rich Components',
     'Customization/Metadata',
     'Customization/URL Sanitization',
     'Customization/Content Preprocessors',
@@ -160,12 +169,39 @@ try {
         .slice(corpus.indexOf('### block-quotes\n'), corpus.indexOf('### block-thematic-breaks\n'))
         .trim();
       assert(sample.length > 0);
+      const frame = page.frames().find((candidate) => candidate.url().includes('/vue/iframe.html'));
+      assert(frame, 'Vue playground preview frame missing');
+      await frame.waitForFunction(
+        (id) =>
+          window.__STORYBOOK_PREVIEW__?.storyRenders.some((render) => render.id === id && render.phase === 'finished'),
+        entry.id
+      );
+      // Addon selection persists independently from the rendered story. Exercise
+      // a non-Controls starting state instead of relying on the default panel.
+      await page.getByRole('tab', { name: /^Interactions/ }).click();
+      await page.getByRole('tab', { name: /^Controls/ }).click();
       await page.locator('#control-content').fill(sample);
       const preview = page.frameLocator('iframe[src*="/vue/iframe.html"]');
       await preview.locator('#storybook-root table').waitFor({ state: 'detached' });
       await preview.locator('#storybook-root blockquote').first().waitFor();
       assert.equal(await preview.locator('#storybook-root h3').first().textContent(), 'block-quotes');
     }
+  }
+  // Public component subentries and the Markdown root must share context in
+  // the static build too; development source aliases can hide a duplicate.
+  for (const framework of ['react', 'vue']) {
+    await page.goto(
+      `${base}${framework}/iframe.html?id=customization-rich-components--direct-registration&viewMode=story`
+    );
+    await page.locator('#storybook-root .aimd-diagram svg').waitFor();
+    assert.equal(await page.locator('#storybook-root .aimd-code').count(), 2);
+    assert.equal(await page.locator('#storybook-root .aimd-table-scroll table').count(), 1);
+    assert.equal(await page.locator('#storybook-root .aimd-image-trigger').count(), 1);
+    // A mounted image component can still hide a broken deployment URL.
+    await page.waitForFunction(() => {
+      const image = document.querySelector('#storybook-root .aimd-image-trigger img');
+      return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0;
+    });
   }
   // Plugin comparisons must read live Controls, not capture their initial source.
   const pluginStory = 'basics-engine-plugins--smartypants';
@@ -183,6 +219,7 @@ try {
     .split('### block-thematic-breaks\n')[0]
     .trim();
   assert(comparisonSource.length > 0);
+  await page.getByRole('tab', { name: /^Controls/ }).click();
   await page.locator('#control-content').fill(comparisonSource);
   await pluginFrame.waitForFunction(() =>
     ['enabled', 'disabled'].every(
@@ -203,6 +240,7 @@ try {
       window.__STORYBOOK_PREVIEW__?.storyRenders.some((render) => render.id === id && render.phase === 'finished'),
     contextStory
   );
+  await page.getByRole('tab', { name: /^Controls/ }).click();
   await page.locator('#control-metadata').fill('Metadata from Controls');
   await contextFrame.waitForFunction(
     () => {
@@ -248,6 +286,7 @@ try {
         'Frames:',
         page.frames().map((frame) => frame.url())
       );
+      console.error('Selected addon:', await page.locator('[role=tab][aria-selected=true]').allTextContents());
       console.error((await page.locator('body').innerText()).slice(0, 3000));
     }
   throw error;

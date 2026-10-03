@@ -16,8 +16,9 @@ if (execFileSync('git', ['status', '--porcelain'], { cwd: root, encoding: 'utf8'
 }
 const result = inspect(undefined, 'HEAD', root);
 console.log(JSON.stringify(result, null, 2));
+let smokeRequired = result.smokeRequired;
 if (!result.required) {
-  console.log('Release soak: NOT REQUIRED for this change range. Core and adapter gates still apply.');
+  console.log('Full release soak: NOT REQUIRED for this change range. Normal CI gates still apply.');
 } else {
   const at = args.indexOf('--evidence');
   const directories = at < 0 ? [] : args.slice(at + 1).map((dir) => resolve(dir));
@@ -27,9 +28,10 @@ if (!result.required) {
     const manifest = JSON.parse(readFileSync(resolve(directory, 'manifest.json'), 'utf8'));
     const tested = manifest.repository?.commit;
     if (!tested) throw new Error('Evidence has no source commit');
-    // Allow documentation/adapter-only follow-ups to the clean tested commit,
-    // but never reuse evidence after an engine/dependency/oracle change.
+    // Tool-only follow-ups are covered by the smoke below. Engine, generator
+    // and oracle changes still invalidate the full campaign evidence.
     const followup = inspect(tested, result.head, root);
+    smokeRequired ||= followup.smokeRequired;
     if (followup.required)
       throw new Error(`Soak evidence does not cover the candidate: ${followup.reasons.join('; ')}`);
   }
@@ -40,3 +42,5 @@ if (!result.required) {
   );
   console.log('Release soak: candidate covered by validated local evidence.');
 }
+if (smokeRequired)
+  execFileSync(process.execPath, [resolve(root, 'scripts/soak/smoke.mjs')], { cwd: root, stdio: 'inherit' });

@@ -10,6 +10,8 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
+    // Stryker changes the instrumented program between runs.
+    fsModuleCache: false,
     environment: 'node',
     include: [
       'src/components/incrementalParse/spliceEquivalence.test.ts',
