@@ -1,42 +1,10 @@
 /* eslint-disable no-undef */
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
-import { readFile, stat } from 'node:fs/promises';
-import { resolve, extname, sep } from 'node:path';
+import { readFile } from 'node:fs/promises';
+import { startStorybookServer } from './storybook-static-server.mjs';
 import { chromium } from 'playwright';
 
-const root = resolve('storybook-static');
-const prefix = '/preview/storybook/';
-const mime = {
-  '.html': 'text/html',
-  '.js': 'text/javascript',
-  '.css': 'text/css',
-  '.json': 'application/json',
-  '.svg': 'image/svg+xml',
-  '.woff2': 'font/woff2',
-};
-const server = createServer(async (req, res) => {
-  try {
-    const url = new URL(req.url, 'http://localhost');
-    if (!url.pathname.startsWith(prefix)) {
-      res.writeHead(404).end();
-      return;
-    }
-    let path = resolve(root, decodeURIComponent(url.pathname.slice(prefix.length)) || '.');
-    if (path !== root && !path.startsWith(root + sep)) {
-      res.writeHead(403).end();
-      return;
-    }
-    if ((await stat(path)).isDirectory()) path += '/index.html';
-    res.setHeader('Content-Type', mime[extname(path)] ?? 'application/octet-stream');
-    res.end(await readFile(path));
-  } catch {
-    res.writeHead(404).end();
-  }
-});
-await new Promise((r) => server.listen(0, '127.0.0.1', r));
-const origin = `http://127.0.0.1:${server.address().port}`;
-const base = origin + prefix;
+const { server, origin, base } = await startStorybookServer();
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage();
@@ -79,6 +47,14 @@ try {
         (await samples.first().innerText()).includes('npm install')
     );
     assert((await samples.first().boundingBox()).height > 30, 'Code sample must be visible');
+  }
+  // Rich Vue code reads a factory theme callback, including proxied Controls args.
+  for (const theme of ['light', 'dark']) {
+    await page.goto(
+      `${base}vue/iframe.html?id=customization-rich-components--direct-registration&viewMode=story&globals=theme:${theme}`
+    );
+    await page.locator(`.aimd-code[data-color-scheme="${theme}"]`).first().waitFor();
+    assert.equal(await page.locator('.aimd-code').count(), 2);
   }
   // A globals change can remount docs while its iframe URL still has the old
   // theme. Verify both shell and embedded renderer without reloading.

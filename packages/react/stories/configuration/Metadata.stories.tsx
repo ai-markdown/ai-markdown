@@ -15,10 +15,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Trialled at 'error' and reverted: `color-contrast` on the citation
-    // links. The default anchor blue (#228be6) is 3.55:1 on white — the same
-    // library-level gap the other link-bearing stories hit.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content', 'metadata'] },
     docs: {
       description: {

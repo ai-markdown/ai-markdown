@@ -84,8 +84,12 @@ import { useRegistryContribution } from './useRegistryContribution';
 const REGISTRY_SERVER_VERSION = -1;
 const getRegistryServerVersion = () => REGISTRY_SERVER_VERSION;
 
-/** Stable empty object to avoid unnecessary re-renders when no custom components are given. */
-const DefaultCustomComponents: AIMarkdownCustomComponents = {};
+/** Stable defaults avoid unnecessary re-renders when no custom components are given. */
+const DefaultCustomComponents: AIMarkdownCustomComponents = {
+  // Default code blocks can overflow horizontally. Custom renderers own their
+  // focus behavior; leave their HAST untouched for rich-code detection.
+  pre: ({ node: _node, ...props }) => <pre tabIndex={0} {...props} />,
+};
 
 /** Stable empty result for the PASS 0 def-label scan in standalone mode
  *  (no registry). One shared frozen instance so `ownLabels` keeps the same

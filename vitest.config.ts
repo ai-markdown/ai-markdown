@@ -34,7 +34,7 @@ export default defineConfig({
             // them, so they render their idle UI instead of burning rAF and
             // long-task budget for the whole run. The stories still mount and
             // still assert — only the auto-start is off.
-            initialGlobals: { autoStart: 'off' },
+            initialGlobals: { autoStart: 'off', theme: process.env.STORYBOOK_TEST_THEME ?? 'light' },
           }),
         ],
         test: {

@@ -68,10 +68,15 @@ async function same(content: string, tag: string, extra: Record<string, unknown>
 describe('SSR attribute mapping matches the React adapter', () => {
   it('renders GFM task-list checkboxes as bare boolean attributes', async () => {
     const html = await vueSSR('- [x] done\n- [ ] todo');
-    expect(html).toContain('<input type="checkbox" checked disabled>');
-    expect(html).toContain('<input type="checkbox" disabled>');
+    expect(html).toContain('<input type="checkbox" checked disabled aria-label="done">');
+    expect(html).toContain('<input type="checkbox" disabled aria-label="todo">');
     expect(html).not.toContain('checked="');
-    expect(await same('- [x] done', 'input')).toEqual({ checked: '', disabled: '', type: 'checkbox' });
+    expect(await same('- [x] done', 'input')).toEqual({
+      checked: '',
+      disabled: '',
+      type: 'checkbox',
+      'aria-label': 'done',
+    });
   });
   it('keeps the camelCase viewBox name on an inline svg', async () => {
     const source = '<svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 0"/></svg>';

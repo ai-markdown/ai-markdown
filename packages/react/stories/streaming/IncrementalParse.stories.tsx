@@ -16,7 +16,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 
-import AIMarkdown from '../../src/index';
+import { ThemedAIMarkdown as AIMarkdown } from '../_shared/ThemedAIMarkdown';
 import { AIMarkdownDocuments } from '../../src/components/AIMarkdownDocuments';
 import { subscribeStageTimings } from '@ai-markdown/engine';
 import { buildChunkSources, sliceChunkContents } from './crossChunkFixtures';
@@ -202,6 +202,9 @@ const meta: Meta<typeof IncrementalParseSmoke> = {
     // Live DOM comparison harness — snapshotting the mid-stream markup is
     // meaningless and flaky by construction.
     chromatic: { disableSnapshot: true },
+    // The byte-equivalence fixture intentionally duplicates complete documents,
+    // including identical footnote region labels. Other a11y rules still gate.
+    a11y: { config: { rules: [{ id: 'landmark-unique', enabled: false }] } },
   },
 };
 export default meta;

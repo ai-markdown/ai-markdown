@@ -1,8 +1,14 @@
-import { h } from 'vue';
+import { h, toRaw } from 'vue';
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 import { expect, waitFor } from 'storybook/test';
 import { AIMarkdown } from '@ai-markdown/vue';
-import { MarkdownCodeBlock, MarkdownImage, MarkdownTable, createMarkdownImage } from '@ai-markdown/vue/components';
+import {
+  MarkdownCodeBlock,
+  MarkdownImage,
+  MarkdownTable,
+  createMarkdownImage,
+  createMarkdownCodeBlock,
+} from '@ai-markdown/vue/components';
 import '@ai-markdown/vue/components/styles.css';
 import { RICH_COMPONENTS_EXAMPLE, IMAGE_GALLERY_EXAMPLE } from '@ai-markdown/storybook-kit/common/richComponents';
 const components = { pre: MarkdownCodeBlock, img: MarkdownImage, table: MarkdownTable };
@@ -11,7 +17,19 @@ const meta: Meta<typeof AIMarkdown> = {
   component: AIMarkdown,
   tags: ['autodocs'],
   args: { content: RICH_COMPONENTS_EXAMPLE, components },
-  render: (args) => ({ setup: () => () => h(AIMarkdown, args) }),
+  render: (args, { globals }) => ({
+    setup() {
+      const themedCode = createMarkdownCodeBlock({ colorScheme: () => (globals.theme === 'dark' ? 'dark' : 'light') });
+      return () =>
+        h(AIMarkdown, {
+          ...args,
+          components: {
+            ...args.components,
+            ...(toRaw(args.components?.pre) === MarkdownCodeBlock ? { pre: themedCode } : {}),
+          },
+        });
+    },
+  }),
   parameters: {
     docs: {
       description: {

@@ -25,12 +25,7 @@ const meta: ReactMeta = {
   title: 'Performance Lab/Streaming Comparisons',
   component: AIMarkdown,
   parameters: {
-    // Off, not 'todo': these are instrument panels — dense monospace readouts
-    // tuned for legibility against the measurement, and the axe color-contrast
-    // rule fires on ten of them. Chasing it here would trade the panels'
-    // information density for a score on stories nobody reads as prose. The
-    // user-facing metas carry the a11y budget instead.
-    a11y: { test: 'off' },
+    a11y: { test: 'error' },
   },
   argTypes: {
     ...reactArgTypes,

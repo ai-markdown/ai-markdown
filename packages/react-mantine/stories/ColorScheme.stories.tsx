@@ -29,13 +29,7 @@ const meta: MantineMeta = {
   // given. So the meta ships no decorator and each story brings its own.
   decorators: [],
   parameters: {
-    // Trialled at 'error' and reverted on two library-level rules:
-    // `color-contrast` on the highlight.js token palette in the code block
-    // (the `atom-one-light` theme's own colours), and `link-in-text-block` on
-    // the inline link — the default anchor style distinguishes links by colour
-    // alone, and that colour is under 3:1 against the surrounding prose. A
-    // sample built to exercise every scheme-swapped token has to contain both.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content'] },
     docs: {
       description: {

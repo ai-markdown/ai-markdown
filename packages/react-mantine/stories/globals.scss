@@ -26,10 +26,31 @@
 
 @layer highlight-js {
   [data-mantine-color-scheme='light'] {
-    @import 'highlight.js/styles/atom-one-light.min';
+    @import 'highlight.js/styles/github.min';
+    // Keep tokens above 4.5:1 on Mantine's #f8f9fa code background.
+    .hljs-keyword,
+    .hljs-doctag,
+    .hljs-meta .hljs-keyword,
+    .hljs-template-tag,
+    .hljs-template-variable,
+    .hljs-type,
+    .hljs-variable.language_ {
+      color: #cf222e;
+    }
+    .hljs-built_in,
+    .hljs-symbol {
+      color: #953800;
+    }
+    .hljs-name,
+    .hljs-quote,
+    .hljs-selector-tag,
+    .hljs-selector-pseudo,
+    .hljs-addition {
+      color: #116329;
+    }
   }
 
   [data-mantine-color-scheme='dark'] {
-    @import 'highlight.js/styles/agate.min';
+    @import 'highlight.js/styles/github-dark.min';
   }
 }

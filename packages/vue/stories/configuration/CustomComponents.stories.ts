@@ -54,7 +54,11 @@ export const ScopedSlots: Story = {
         { content: EMPHASIS, metadata: 'Corpus emphasis' },
         {
           strong: ({ children, metadata }: MarkdownElementContext) =>
-            h('strong', { 'data-slot': 'strong', title: String(metadata), style: { color: '#9c36b5' } }, children),
+            h(
+              'strong',
+              { 'data-slot': 'strong', title: String(metadata), style: { color: 'light-dark(#9c36b5, #e599f7)' } },
+              children
+            ),
         }
       ),
   }),
@@ -120,7 +124,10 @@ export const SlotPrecedence: Story = {
           ),
           h(
             AIMarkdown,
-            { content: LINKS, components: { a: ContextLink } },
+            {
+              content: LINKS.replace('[](https://example.test/c)', '[Example C](https://example.test/c)'),
+              components: { a: ContextLink },
+            },
             slotEnabled.value
               ? {
                   a: ({ properties, children }: MarkdownElementContext) =>

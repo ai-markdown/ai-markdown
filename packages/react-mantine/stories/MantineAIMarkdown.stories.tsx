@@ -16,10 +16,7 @@ const meta: MantineMeta = {
   tags: ['autodocs'],
   component: MantineAIMarkdown,
   parameters: {
-    // Was 'error' while this story rendered empty content. The GFM baseline
-    // brings in an autolink, and Mantine's default link blue (#228be6) is
-    // 3.55:1 against white — a theme-level decision this story cannot fix.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   render: (args) => <MantineAIMarkdown {...args} />,
 };

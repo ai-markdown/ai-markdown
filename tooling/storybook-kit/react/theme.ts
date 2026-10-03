@@ -103,11 +103,11 @@ export const getStreamingTheme = (scheme: ColorScheme): StreamingTheme => {
     chunkBg: dark ? 'rgb(24, 24, 27)' : '#f6f8fa',
     chunkBorder: dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)',
     chunkText: dark ? '#d4d4d4' : '#1f2328',
-    chunkMuted: dark ? '#888' : '#6e7781',
+    chunkMuted: dark ? '#888' : '#626b73',
     chunkIndex: dark ? '#6a9955' : '#1a7f37',
     chunkDelay: dark ? '#569cd6' : '#0550ae',
     chunkSize: dark ? '#ce9178' : '#bf3989',
-    good: dark ? 'rgb(82, 196, 26)' : 'rgb(31, 137, 56)',
+    good: dark ? 'rgb(82, 196, 26)' : 'rgb(26, 127, 55)',
     warn: dark ? 'rgb(250, 173, 20)' : 'rgb(180, 124, 0)',
     bad: dark ? 'rgb(255, 77, 79)' : 'rgb(207, 34, 46)',
   };

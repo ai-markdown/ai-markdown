@@ -7,7 +7,7 @@ import { sanitizeSchema } from '@ai-markdown/engine';
 const meta: Meta = {
   title: 'QA/Reference and queue regressions',
   tags: ['qa'],
-  parameters: { a11y: { test: 'off' } },
+  parameters: { a11y: { test: 'error' } },
 };
 export default meta;
 

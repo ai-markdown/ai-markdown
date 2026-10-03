@@ -70,11 +70,7 @@ export const StreamingMath: ReactStory = {
     content: MATH_DOC,
   },
   parameters: {
-    // Streaming stories stay report-only. axe samples whatever is on screen at
-    // one arbitrary instant of the stream, and a heading caught halfway
-    // through being typed is a legitimately empty `<h1>` — `empty-heading`
-    // then fires or does not fire depending on machine speed.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content'] },
   },
   render: (args) => (

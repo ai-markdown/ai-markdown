@@ -1,3 +1,4 @@
+import { ThemedAIMarkdown as AIMarkdown } from '../_shared/ThemedAIMarkdown';
 /**
  * Stateful integration smoke for `createRemendPreprocessor`.
  *
@@ -14,7 +15,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 
-import AIMarkdown, { createRemendPreprocessor } from '../../src/index';
+import { createRemendPreprocessor } from '../../src/index';
 import 'katex/dist/katex.min.css';
 import '../../src/components/typography/variants/all.scss';
 import { codePointSnapshots } from '../../../engine/src/components/incrementalParse/codePointSnapshots';

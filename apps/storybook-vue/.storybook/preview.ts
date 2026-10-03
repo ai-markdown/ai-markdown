@@ -13,7 +13,7 @@ import 'katex/dist/katex.min.css';
 const preview: Preview = {
   parameters: {
     docs: { container: AimDocsContainer, components: docsComponents },
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     options: {
       storySort: {
         // Storybook statically parses this array. Keep both renderer orders aligned.

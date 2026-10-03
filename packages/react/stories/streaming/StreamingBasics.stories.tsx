@@ -21,10 +21,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Streaming stories never trial 'error': axe samples the DOM at whatever
-    // instant it happens to run, and a heading caught half-typed reports
-    // `empty-heading` at random.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     // Mid-stream markup is nondeterministic by construction.
     chromatic: { disableSnapshot: true },
     docs: {

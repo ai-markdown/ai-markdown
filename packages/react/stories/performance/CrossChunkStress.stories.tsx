@@ -22,7 +22,7 @@ const meta: Meta<typeof AIMarkdownDocuments> = {
     // Sixty stacked documents each render their own footnote <section>, which
     // trips landmark-unique. That duplication IS the scenario — the isolation
     // being verified is exactly that each document keeps its own footer.
-    a11y: { test: 'off' },
+    a11y: { config: { rules: [{ id: 'landmark-unique', enabled: false }] } },
   },
 };
 export default meta;

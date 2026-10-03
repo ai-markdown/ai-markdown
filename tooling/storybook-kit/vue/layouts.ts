@@ -7,7 +7,7 @@ export const ComparisonPanel = defineComponent({
     (props, { slots }) =>
     () =>
       h('section', { class: 'aim-comparison-panel' }, [
-        h('h3', { class: 'aim-panel-label' }, props.label),
+        h('p', { class: 'aim-panel-label' }, props.label),
         h('div', { class: 'aim-panel-content' }, slots.default?.()),
       ]),
 });

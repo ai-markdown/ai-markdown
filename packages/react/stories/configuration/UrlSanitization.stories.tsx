@@ -19,11 +19,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Trialled at 'error' and reverted: `color-contrast` on the links that
-    // survive sanitization. The default anchor blue (#228be6) is 3.55:1 on
-    // white — a library-level gap, and a story about link handling has no way
-    // to render fewer links.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content'] },
     docs: {
       description: {

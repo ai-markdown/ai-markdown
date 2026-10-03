@@ -1,3 +1,4 @@
+import { waitFor } from 'storybook/test';
 import { docsComponents } from '@ai-markdown/storybook-kit/react/docsComponents';
 import type { Preview } from '@storybook/react-vite';
 import { getUserPreferredColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
@@ -9,6 +10,17 @@ import { AimDocsContainer } from '@ai-markdown/storybook-kit/react/AimDocsContai
 armReactScan();
 
 const preview: Preview = {
+  // In automated tests, runs before the addon's finalizer. Check settled content rather than
+  // a heading or SVG caught halfway through a replay.
+  afterEach: async ({ canvasElement }) => {
+    if (import.meta.env.MODE !== 'test') return;
+    await waitFor(
+      () => {
+        if (canvasElement.querySelector('[data-story-streaming="true"]')) throw new Error('Replay still streaming');
+      },
+      { timeout: 30000 }
+    );
+  },
   parameters: {
     controls: {
       matchers: {
@@ -21,7 +33,7 @@ const preview: Preview = {
       // 'todo' - show a11y violations in the test UI only
       // 'error' - fail CI on a11y violations
       // 'off' - skip a11y checks entirely
-      test: 'todo',
+      test: 'error',
     },
 
     docs: {

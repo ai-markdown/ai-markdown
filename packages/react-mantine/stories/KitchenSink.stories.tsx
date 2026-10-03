@@ -15,11 +15,8 @@ const meta: MantineMeta = {
   title: 'Integrations/Mantine/Kitchen Sink',
   tags: ['autodocs'],
   component: MantineAIMarkdown,
-  // Streaming stories cannot gate on a11y — axe samples a partially typed DOM,
-  // where a heading that is mid-word is briefly an empty `<h1>`. `Full` sets
-  // its own value.
   parameters: {
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content', 'codeBlock', 'fontSize'] },
     docs: {
       description: {
@@ -79,7 +76,7 @@ export const RichStreaming: MantineStory = {
     <StreamingReplay
       text={args.content ?? ''}
       renderButton={(streaming, restart) => (
-        <Button size="xs" variant={streaming ? 'default' : 'filled'} onClick={restart} mb={12}>
+        <Button size="xs" color="blue.8" variant={streaming ? 'default' : 'filled'} onClick={restart} mb={12}>
           {streaming ? 'Streaming…' : 'Restart'}
         </Button>
       )}
@@ -105,11 +102,6 @@ export const Full: MantineStory = {
     streaming: false,
   },
   parameters: {
-    // Trialled at 'error' and reverted: `color-contrast` on the highlight.js
-    // token colours in the four code fences — the `atom-one-light` palette's
-    // strings, function names, and literals all land under 4.5:1 against the
-    // code background. Same third-party theme limitation the Code Blocks
-    // stories hit.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
 };

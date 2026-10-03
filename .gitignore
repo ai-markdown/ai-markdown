@@ -43,3 +43,6 @@ _site/
 
 # Second revision built by the bounded performance workflow.
 /.benchmark-baseline/
+
+# Browser screenshot diffs and traces.
+/test-results/

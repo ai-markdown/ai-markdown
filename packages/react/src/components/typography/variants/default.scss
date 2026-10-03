@@ -55,8 +55,8 @@
 /* --- Color Scheme: light --- */
 .aim-typography-root.light {
   --aim-color-text: inherit;
-  --aim-color-dimmed: #868e96;
-  --aim-color-anchor: #228be6;
+  --aim-color-dimmed: #626b73;
+  --aim-color-anchor: #1971c2;
   --aim-color-border: #dee2e6;
   --aim-color-code-bg: #f1f3f5;
   --aim-color-code-text: inherit;
@@ -166,7 +166,8 @@
   /* Links */
   :where(a) {
     color: var(--aim-color-anchor);
-    text-decoration: none;
+    text-decoration: underline;
+    text-underline-offset: 0.15em;
 
     &:hover {
       text-decoration: underline;

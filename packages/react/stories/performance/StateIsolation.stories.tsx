@@ -81,8 +81,7 @@ const meta: Meta<typeof IsolationHarness> = {
   tags: ['qa'],
   component: IsolationHarness,
   parameters: {
-    // Render-count probes, not prose.
-    a11y: { test: 'off' },
+    a11y: { test: 'error' },
   },
 };
 export default meta;

@@ -17,12 +17,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Not 'error': both stories render the GFM baseline, which carries the two
-    // known library-level violations — `label` (task-list checkboxes have no
-    // accessible name) and `color-contrast` (the default anchor colour is
-    // 3.55:1 against white). The BrandOverride story additionally hands the
-    // reader a colour picker, and any palette they choose is theirs to judge.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     docs: {
       description: {
         component: [
@@ -134,10 +129,10 @@ const BRAND_CLASS = 'aim-brand-override';
  */
 const BrandPanel = ({ content, ...brand }: { content: string } & BrandArgs) => {
   const declarations = [
-    `--aim-color-anchor: ${brand.anchorColor};`,
+    `--aim-color-anchor: light-dark(${brand.anchorColor}, color-mix(in srgb, ${brand.anchorColor}, white 55%));`,
     `--aim-color-border: ${brand.borderColor};`,
-    `--aim-color-code-bg: ${brand.codeBackground};`,
-    `--aim-color-blockquote-bg: ${brand.blockquoteBackground};`,
+    `--aim-color-code-bg: light-dark(${brand.codeBackground}, color-mix(in srgb, ${brand.codeBackground}, #161b22 90%));`,
+    `--aim-color-blockquote-bg: light-dark(${brand.blockquoteBackground}, color-mix(in srgb, ${brand.blockquoteBackground}, #161b22 90%));`,
     `--aim-h1-font-size: ${brand.headingScale};`,
     `--aim-radius-sm: ${brand.cornerRadius};`,
   ].join(' ');

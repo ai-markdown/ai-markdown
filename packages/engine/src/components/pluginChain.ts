@@ -42,6 +42,7 @@ import remarkCjkQuotes from './remarkCjkQuotes';
 import type { PipelineOptions as MarkdownOptions } from './markdown';
 import rehypeRebaseHashLinks from './rehypeRebaseHashLinks';
 import rehypeFooterAdorn from './rehypeFooterAdorn';
+import rehypeTaskListLabels from './rehypeTaskListLabels';
 import type { SanitizeSchema } from './extendSanitizeSchema';
 import type { AIMarkdownEnginePlugin, AIMarkdownEnginePluginName } from '../plugins/defs';
 
@@ -156,6 +157,7 @@ export function buildCoreRehypePlugins(
     // single-doc rendering visually consistent with the cross-chunk aggregate
     // footer (which builds the same shape from scratch).
     rehypeFooterAdorn,
+    rehypeTaskListLabels,
     // Re-prefix intra-document hash hrefs so they match the ids that
     // rehype-sanitize just clobbered. Must use the SAME prefix as the schema
     // above.

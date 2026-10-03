@@ -97,12 +97,7 @@ export const FootnotesStreaming: ReactStory = {
     content: FOOTNOTES_DOC,
   },
   parameters: {
-    // Streaming stories stay report-only regardless of what a given run
-    // reports. axe samples the DOM at one arbitrary instant of the stream, and
-    // a heading caught halfway through being typed is a legitimately empty
-    // `<h1>` — `empty-heading` then fires or does not fire depending on how
-    // fast the machine is.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content'] },
   },
   render: (args) => (

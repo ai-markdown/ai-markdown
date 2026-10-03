@@ -56,7 +56,7 @@ const meta: Meta<typeof Harness> = {
   tags: ['qa'],
   component: Harness,
   decorators: [withMantineProvider],
-  parameters: { chromatic: { disableSnapshot: true }, a11y: { test: 'off' } },
+  parameters: { chromatic: { disableSnapshot: true }, a11y: { test: 'error' } },
 };
 export default meta;
 

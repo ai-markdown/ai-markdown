@@ -15,15 +15,7 @@ const meta: MantineMeta = {
   tags: ['autodocs'],
   component: MantineAIMarkdown,
   parameters: {
-    // Trialled at 'error' and reverted: `color-contrast`, on the highlight.js
-    // token colours themselves. The `atom-one-light` theme this Storybook
-    // registers puts several token colours below 4.5:1 against the code
-    // block's #f8f9fa background — measured at 3.04:1 for strings (#50a14f),
-    // 3.84:1 for function names (#4078f2), 3.96:1 for literals (#0184bb).
-    // That is the third-party theme's palette, not something a story about
-    // code blocks can render its way out of, and every story in this file is
-    // by definition full of highlighted tokens.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content', 'codeBlock', 'fontSize'] },
     docs: {
       description: {

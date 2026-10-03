@@ -101,6 +101,9 @@ pnpm test:storybook:vue
 pnpm test:storybook
 # Development composition, source updates and shutdown (ports 6006–6008 must be free):
 pnpm test:storybook:dev
+
+# 深色主题的可访问性和交互检查：
+STORYBOOK_TEST_THEME=dark pnpm test:storybook
 ```
 
 开发模式检查会临时编辑并还原渲染器、core、engine 以及 Vue 样式表源码，以验证浏览器热更新而无需重启服务。请在空闲的代码检出分支上运行；切勿同时编辑这些文件或并发运行其他浏览器套件。它还会检查 Ctrl+C 是否能释放所有三个监听端口，而进程管理测试装置则覆盖了顽固子进程与启动失败的场景。
@@ -109,7 +112,7 @@ Vue 明确使用 `vue-component-meta` 进行构建期组件文档生成，替代
 
 React 套件包含 Mantine。每个项目加载各自的 Storybook 配置并在 Chromium 中运行各自的 `play` 断言。组合入口不会重复执行引用的测试套件。QA 导航在本地保持可见；设置 `STORYBOOK_DOCS_EXPORT=1` 可以在公开导航中隐藏 QA，同时保留其已建立索引的 Stories 和断言。针对隔离性能分析工具特意配置的 `!test` 排除规则依然保持生效。
 
-可访问性插件目前在 `todo` 模式下报告检测结果。浏览器套件测试通过并不代表完全符合可访问性规范。独立的 core 契约、React 生命周期/GC 测试、Vue SSR/水合/压力测试以及引擎压测仍属于分开的验证职责。
+可访问性插件使用 `error` 模式，检测到违规时浏览器测试会失败。流式演示完成后再扫描；特殊 QA 和性能测试的例外在对应文件中说明。浏览器套件测试通过并不代表完全符合可访问性规范。独立的 core 契约、React 生命周期/GC 测试、Vue SSR/水合/压力测试以及引擎压测仍属于分开的验证职责。
 
 <span id="build-a-portable-static-site"></span>
 
@@ -142,3 +145,15 @@ Stories 存放在 `packages/react/stories`、`packages/react-mantine/stories` �
 React 此前的 `Core/...` 侧边栏名称现在直接描述功能特性；组合入口提供 React 分组。Mantine 移至 `Integrations/Mantine` 下。包含 `core-` 或 `mantine-` 的旧 Story URL 必须进行更新；本仓库中的隔离 iframe 引用使用新 ID。Story ID 由标题和导出名称生成，因此重命名任何一项都需要核对嵌入链接与浏览器回归测试。
 
 安装、公开 API、架构以及迁移指南归属于文档与相关包 README。Storybook 提供交互式示例与简明说明，并配有指向这些指南的链接。共享文档链接集中管理在私有工具包中，并指向已发布的文档站点。
+
+## 视觉回归
+
+构建静态站点后运行 `pnpm test:storybook:visual`，需要 Docker。本地与 CI 使用固定的
+Playwright 1.63.0 镜像、Linux amd64、浏览器、字体、语言和时区。20 张截图覆盖 React/Vue
+介绍页、Markdown 基础页与 Mantine 代码块，分别检查明暗主题和 1200px、390px 宽度。
+截图前等待字体加载；远程资源请求会使测试失败。
+
+有意修改界面时，运行 `pnpm test:storybook:visual --update-snapshots`，逐张检查
+`tests/visual/baselines` 中的变化，再提交确认后的基线。不要仅为消除 CI 失败而更新截图。
+差异图保存在 `test-results/storybook-visual`，CI 会上传以便审查。升级 Playwright 时应同步
+更新镜像固定版本并复核基线。截图只覆盖代表性页面，与交互、键盘和可访问性检查配合使用。

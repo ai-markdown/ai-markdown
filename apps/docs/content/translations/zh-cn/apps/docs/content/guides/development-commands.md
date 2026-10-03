@@ -52,6 +52,7 @@
 | `pnpm build:storybook`                                  | 构建公开相关包，然后生成组合后的静态站点。                                                                                                       |
 | `pnpm build:storybook --skip-build`                     | 复用当前源码已构建的相关包。仅跳过相关包构建，不跳过站点构建。切勿在分发产物陈旧或缺失时使用。                                                   |
 | `pnpm test:storybook:site`                              | 验证嵌套部署路径下的现有静态导出，包括导航、Controls 面板与隔离 iframe。                                                                         |
+| `pnpm test:storybook:visual`                            | 在固定的 Linux Playwright 容器中比较 20 张已审查的截图；需要 Docker 和已构建的静态 Storybook。                                                   |
 
 若需导出公开文档，使用 `STORYBOOK_DOCS_EXPORT=1 pnpm build:storybook`。目录结构与部署细节请参阅 [Storybook](storybook.md)。
 

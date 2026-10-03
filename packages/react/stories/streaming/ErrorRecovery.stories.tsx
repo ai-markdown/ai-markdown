@@ -16,11 +16,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Trialled at 'error' and reverted on `color-contrast`. The unrepaired
-    // panel autolinks the half-typed URL, and the default anchor blue
-    // (#228be6) is 3.55:1 against white — the known library-level gap. A story
-    // about broken link syntax cannot avoid rendering one.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content'] },
     docs: {
       description: {

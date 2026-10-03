@@ -74,7 +74,7 @@ const meta: Meta<typeof MermaidContractHarness> = {
   parameters: {
     // Behavioral assertion over live mermaid renders — not a visual.
     chromatic: { disableSnapshot: true },
-    a11y: { test: 'off' },
+    a11y: { test: 'error' },
   },
 };
 export default meta;

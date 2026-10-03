@@ -152,12 +152,7 @@ const HOOKS_DOC = [
 export const HooksInCustomComponents: ReactStory = {
   args: { content: HOOKS_DOC },
   parameters: {
-    // Streaming stories stay report-only: axe samples the DOM at one
-    // arbitrary instant of the stream, and a heading caught halfway through
-    // being typed is a legitimately empty `<h1>` — `empty-heading` fires or
-    // not depending on machine speed (it tripped the v2.4.0 release job's
-    // browser smokes once). Same rule as every other replay story.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   render: (args) => (
     <StreamingReplay

@@ -18,9 +18,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // The freeze-boundary readout is an instrument panel: 12px monospace in
-    // the harness green, which lands at 4.47:1 — just under the 4.5 bar.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     // A live DOM-comparison harness — mid-stream markup is nondeterministic.
     chromatic: { disableSnapshot: true },
     docs: {

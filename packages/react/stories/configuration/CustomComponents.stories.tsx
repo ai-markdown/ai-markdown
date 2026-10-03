@@ -20,11 +20,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Trialled at 'error' and reverted: axe reports `color-contrast` on every
-    // rendered link. The default anchor blue (#228be6) is 3.55:1 on white,
-    // under the 4.5:1 bar — a library-level gap tracked separately, and this
-    // story cannot avoid links without losing its subject.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content'] },
     docs: {
       description: {
@@ -138,7 +134,7 @@ const COMPONENTS: AIMarkdownCustomComponents = { a: BadgedLink, pre: CopyPre };
  * feeds it.
  */
 export const CustomLinkAndPre: ReactStory = {
-  args: { content: LINKED_PROSE_DOC },
+  args: { content: LINKED_PROSE_DOC.replace('[](https://example.test/c)', '[Example C](https://example.test/c)') },
   render: (args) => <ThemedAIMarkdown content={args.content ?? ''} customComponents={COMPONENTS} />,
 };
 
@@ -154,11 +150,9 @@ export const CustomLinkAndPre: ReactStory = {
  * it copies whatever has arrived so far rather than a stale snapshot.
  */
 export const StreamingSafe: ReactStory = {
-  args: { content: LINKED_PROSE_DOC },
+  args: { content: LINKED_PROSE_DOC.replace('[](https://example.test/c)', '[Example C](https://example.test/c)') },
   parameters: {
-    // Mid-stream axe sampling catches half-written headings; see the streaming
-    // stories for the same reasoning.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     chromatic: { disableSnapshot: true },
   },
   render: (args) => (

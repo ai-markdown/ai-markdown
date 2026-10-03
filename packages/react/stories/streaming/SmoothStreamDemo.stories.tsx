@@ -27,9 +27,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Mid-stream: axe samples a partially written document, so 'error' would
-    // fail intermittently on half-typed headings.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     // Mid-reveal markup is nondeterministic by construction.
     chromatic: { disableSnapshot: true },
     docs: {

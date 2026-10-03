@@ -39,6 +39,7 @@
     "test:storybook:vue": "vitest run --project=storybook-vue",
     "test:storybook:dev": "node --test scripts/storybook-processes.test.mjs scripts/storybook-readiness.test.mjs && node scripts/test-storybook-dev.mjs",
     "test:storybook:site": "node scripts/test-storybook-site.mjs",
+    "test:storybook:visual": "node scripts/test-storybook-visual.mjs",
     "bench:unit": "vitest bench --run --reporter=default --project \"unit (bench)\"",
     "bench:web": "node benchmarks/runner/run.mjs",
     "bench:streaming": "node benchmarks/runner/streaming.mjs",

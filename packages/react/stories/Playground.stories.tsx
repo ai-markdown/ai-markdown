@@ -23,13 +23,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Not 'error' yet — two real violations in the GFM baseline, both from
-    // the renderer rather than from this story: GFM task-list checkboxes are
-    // emitted as bare `<input type="checkbox" disabled>` with no accessible
-    // name, and the default link color misses 4.5:1 against white (3.55).
-    // Both are library fixes; until they land, keep them visible in the a11y
-    // panel instead of red in CI.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   argTypes: {
     ...reactArgTypes,

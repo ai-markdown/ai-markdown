@@ -119,7 +119,6 @@ Things worth knowing before you adopt this, all of them deliberate:
   cleanly, but the directive blocks come through as ordinary paragraphs.
 - **React 19 is the floor.** The library uses native `useId()` and is typed against React 19.
 
-There are also two known accessibility gaps in the shipped defaults, tracked in the repository:
-GFM task checkboxes have no accessible name, and the default link colour is 3.55:1 against white
-rather than the 4.5:1 WCAG AA asks for. Several stories keep their a11y check in report-only mode
-because of them, and each one names the rule in a comment where it does.
+GFM task checkboxes receive accessible names from their item text. Default links are
+underlined and meet WCAG AA text contrast on white. Storybook accessibility checks fail
+CI for violations; specialized streaming and performance fixtures document their exceptions.

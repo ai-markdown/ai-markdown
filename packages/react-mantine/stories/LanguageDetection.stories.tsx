@@ -309,16 +309,7 @@ const tabLabel = (canvasElement: HTMLElement) =>
  */
 export const Playground: MantineStory = {
   parameters: {
-    // Trialled at 'error' and reverted: `color-contrast`, and only on the
-    // highlight.js token spans inside the rendered code block. The
-    // `atom-one-light` theme this Storybook registers puts several token
-    // colours below 4.5:1 against the block's #f8f9fa background — measured
-    // here at 3.47:1 for tag names (#e45649) and 3.04:1 for strings and
-    // attributes (#50a14f). That is the third-party palette the Code Blocks
-    // story documents; a story whose point is a highlighted detected block
-    // cannot render its way out of it. The rest of this story passes at
-    // 'error', and Fence Name Mapping stays there.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   render: () => <PlaygroundDemo />,
   play: async ({ canvasElement, step }) => {

@@ -126,10 +126,7 @@ const meta: Meta<typeof TurnTakingChat> = {
   tags: ['autodocs'],
   component: TurnTakingChat,
   parameters: {
-    // Always 'todo' for streaming stories: axe samples whatever the reveal had
-    // produced at that instant, and a partially typed line is a legitimately
-    // different DOM every run.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     chromatic: { disableSnapshot: true },
     docs: {
       description: {

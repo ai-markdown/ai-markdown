@@ -13,14 +13,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Not 'error': the GFM baseline trips two axe rules that belong to the
-    // library rather than to these stories. `label` — task-list checkboxes are
-    // emitted as bare `<input type="checkbox" disabled>` with no accessible
-    // name. `color-contrast` — the default `--aim-color-anchor` (#228be6)
-    // reaches only 3.55:1 against white. Both are tracked as library fixes;
-    // until they land, keep them visible in the a11y panel instead of red
-    // in CI.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     controls: { include: ['content'] },
     docs: {
       description: {
@@ -76,10 +69,8 @@ export const Tables: ReactStory = {
  * input. Task items nest, and they mix freely with ordinary list items in the
  * same list.
  *
- * A caveat worth knowing before you ship these: the checkbox carries no
- * accessible name, so a screen reader announces an unlabelled checkbox rather
- * than the item text beside it. It is the reason this file's a11y check runs
- * in report-only mode.
+ * Each checkbox takes its accessible name from its own item text, excluding
+ * nested task items.
  */
 export const TaskLists: ReactStory = {
   args: {

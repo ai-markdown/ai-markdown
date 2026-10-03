@@ -239,7 +239,7 @@ function convertTree(tree: Root, options: RenderOptions, keyed: boolean): VNodeC
     // `node` and `metadata`.
     return component
       ? h(component, { ...properties, ...contextProps(component, context) }, { default: () => children })
-      : h(node.tagName, properties, children);
+      : h(node.tagName, node.tagName === 'pre' ? { tabindex: 0, ...properties } : properties, children);
   }
   function convert(node: RootContent, inSvg = false): VNodeChild {
     if (node.type === 'text') return node.value;

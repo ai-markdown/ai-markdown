@@ -89,6 +89,9 @@ pnpm test:storybook:vue
 pnpm test:storybook
 # Development composition, source updates and shutdown (ports 6006–6008 must be free):
 pnpm test:storybook:dev
+
+# Dark theme accessibility and interactions:
+STORYBOOK_TEST_THEME=dark pnpm test:storybook
 ```
 
 The development check temporarily edits and restores renderer, core, engine and Vue stylesheet sources to verify browser updates without restarting the servers. Run it in an idle checkout; do not edit those files or run other browser suites concurrently. It also checks that Ctrl+C releases all three listening ports, while process-supervisor fixtures cover resistant descendants and startup failures.
@@ -97,7 +100,7 @@ Vue explicitly uses `vue-component-meta` for build-time component documentation 
 
 React's suite includes Mantine. Each project loads its own Storybook configuration and runs its own `play` assertions in Chromium. The composition entry does not execute referenced suites. QA navigation remains visible locally; setting `STORYBOOK_DOCS_EXPORT=1` hides QA in public navigation while preserving its indexed stories and assertions. Deliberate `!test` exclusions for isolated profiling instruments remain exclusions.
 
-The accessibility addon currently reports findings in `todo` mode. A successful browser suite is not a claim of complete accessibility conformance. Independent core contracts, React lifetime/GC tests, Vue SSR/hydration/stress tests and engine soak remain separate verification responsibilities.
+The accessibility addon fails browser tests on violations (`error` mode). Streaming replay demos settle before scanning; specialized QA and performance fixtures document their exceptions. A successful browser suite is not a claim of complete accessibility conformance. Independent core contracts, React lifetime/GC tests, Vue SSR/hydration/stress tests and engine soak remain separate verification responsibilities.
 
 ## Build a portable static site
 
@@ -118,6 +121,21 @@ storybook-static/
 The hub references `./react` and `./vue`, allowing the complete directory to live under a version or preview prefix. The smoke command serves it under `/preview/storybook/` and checks both direct iframe entries, refreshes, composed navigation, live Vue Controls updates and the React isolated-performance iframe target. Keep all three builds from the same commit. For a deliberately separate deployment, set `STORYBOOK_REACT_URL` and `STORYBOOK_VUE_URL` while building the hub; those overrides must point at the matching version or PR preview.
 
 The build command first builds the public packages, then clears `storybook-static`, builds the hub, then builds both children. Upload the complete directory only after all builds and smoke checks succeed. No hosting provider, public domain or release archive policy is implied by this build layout.
+
+## Visual regression
+
+After building the static export, run `pnpm test:storybook:visual`. Docker is required:
+local runs and CI use the same pinned Playwright 1.63.0 image, Linux amd64, browser,
+fonts, locale and time zone. Twenty screenshots cover React/Vue introductions,
+Markdown basics and Mantine code in light/dark themes at 1200px and 390px widths.
+Remote assets fail the test, and fonts must finish loading before capture.
+
+For an intentional UI change, run `pnpm test:storybook:visual --update-snapshots`,
+inspect every changed PNG in `tests/visual/baselines`, then commit the reviewed images.
+Never update baselines just to clear CI. Failures write actual/expected/diff images to
+`test-results/storybook-visual`; CI uploads them for review. Update the image pin and
+review baselines when upgrading Playwright. These screenshots complement interaction,
+keyboard and accessibility checks; they cover representative pages, not every story.
 
 ## Repository ownership and links
 

@@ -46,6 +46,7 @@ Install the browser with `pnpm exec playwright install chromium` before browser 
 | `pnpm build:storybook`                                  | Build public packages, then generate the composed static site.                                                                                                                                       |
 | `pnpm build:storybook --skip-build`                     | Reuse packages already built from the current source. Only skips the package build, not the site build. Do not use with stale or missing distributions.                                              |
 | `pnpm test:storybook:site`                              | Verify an existing static export under a nested deployment path, including navigation, Controls and isolated iframes.                                                                                |
+| `pnpm test:storybook:visual`                            | Compare 20 reviewed screenshots in a pinned Linux Playwright container (requires Docker and a static Storybook build).                                                                               |
 
 For a public documentation export, use `STORYBOOK_DOCS_EXPORT=1 pnpm build:storybook`. See [Storybook](storybook.md) for catalog structure and deployment details.
 

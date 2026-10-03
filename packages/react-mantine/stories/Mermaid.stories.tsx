@@ -144,18 +144,13 @@ export const Streaming: MantineStory = {
     streaming: { table: { disable: true } },
   },
   parameters: {
-    // Mid-stream stories cannot gate on a11y: axe runs against whatever the
-    // stream had rendered at that instant, and a heading that is still being
-    // typed is briefly an empty `<h1>`. The violation is an artifact of the
-    // sampling moment, not of the output — 'error' here fails intermittently
-    // on nothing.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
   },
   render: (args) => (
     <StreamingReplay
       text={args.content ?? ''}
       renderButton={(streaming, restart) => (
-        <Button size="xs" variant={streaming ? 'default' : 'filled'} onClick={restart} mb={12}>
+        <Button size="xs" color="blue.8" variant={streaming ? 'default' : 'filled'} onClick={restart} mb={12}>
           {streaming ? 'Streaming…' : 'Restart'}
         </Button>
       )}

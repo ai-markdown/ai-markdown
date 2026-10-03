@@ -21,10 +21,7 @@ const meta: ReactMeta = {
   tags: ['autodocs'],
   component: AIMarkdown,
   parameters: {
-    // Mid-stream: axe samples a partially written document, so 'error' would
-    // fail intermittently on half-typed headings. Same reasoning as the other
-    // streaming demos.
-    a11y: { test: 'todo' },
+    a11y: { test: 'error' },
     // The cursor blinks and the tail moves; a screenshot of either is noise.
     chromatic: { disableSnapshot: true },
     docs: {

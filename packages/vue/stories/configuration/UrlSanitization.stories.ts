@@ -22,7 +22,10 @@ type Story = StoryObj;
 export const LinkPolicy: Story = {
   render: () => ({
     setup: () => () =>
-      h(AIMarkdown, { content: LINKS, urlTransform: (url) => (url.startsWith('https:') ? url : undefined) }),
+      h(AIMarkdown, {
+        content: LINKS.replace('[](https://example.test/c)', '[Example C](https://example.test/c)'),
+        urlTransform: (url) => (url.startsWith('https:') ? url : undefined),
+      }),
   }),
   play: async ({ canvasElement }) => {
     await waitFor(() => expect(canvasElement.querySelector('a[href]')).not.toBeNull());

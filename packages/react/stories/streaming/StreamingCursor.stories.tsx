@@ -1,3 +1,4 @@
+import { ThemedAIMarkdown as AIMarkdown } from '../_shared/ThemedAIMarkdown';
 /**
  * Browser smoke for the streaming cursor (`streamingCursor` slot +
  * `AIMarkdownStreamingCursor` shell).
@@ -20,7 +21,7 @@ import React, { useEffect, useRef, useState, type ComponentType } from 'react';
 import type { Meta, StoryObj } from '@storybook/react-vite';
 import { expect, waitFor } from 'storybook/test';
 
-import AIMarkdown, {
+import {
   AIMarkdownStreamingCursor,
   type AIMarkdownProps,
   type AIMarkdownStreamingIndicatorComponent,

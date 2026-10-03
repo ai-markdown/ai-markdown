@@ -55,6 +55,8 @@ export const useStreamedContent = (
     seed = STREAM_JITTER_SEED,
   }: UseStreamedContentOptions = {}
 ): StreamedContent => {
+  // Keep intermediate renders in browser tests, with a bounded replay time.
+  const testing = import.meta.env.MODE === 'test';
   const [position, setPosition] = useState(0);
   const [generation, restart] = useReducer((n: number) => n + 1, 0);
   const randomRef = useRef<() => number>(mulberry32(seed));
@@ -75,13 +77,13 @@ export const useStreamedContent = (
   useEffect(() => {
     if (position >= fullText.length) return;
     const random = randomRef.current;
-    const size = randInt(random, chunkSizeMin, chunkSizeMax);
-    const delay = randInt(random, chunkDelayMin, chunkDelayMax);
+    const size = testing ? 128 : randInt(random, chunkSizeMin, chunkSizeMax);
+    const delay = testing ? 1 : randInt(random, chunkDelayMin, chunkDelayMax);
     const id = window.setTimeout(() => {
       setPosition((prev) => Math.min(fullText.length, prev + size));
     }, delay);
     return () => window.clearTimeout(id);
-  }, [position, fullText, chunkSizeMin, chunkSizeMax, chunkDelayMin, chunkDelayMax]);
+  }, [position, fullText, chunkSizeMin, chunkSizeMax, chunkDelayMin, chunkDelayMax, testing]);
 
   return {
     content: fullText.slice(0, position),
@@ -115,7 +117,7 @@ export const StreamingReplay = ({
 }) => {
   const { content, streaming, restart } = useStreamedContent(text, options);
   return (
-    <div style={style}>
+    <div style={style} data-story-streaming={streaming}>
       {renderButton(streaming, restart)}
       {children(content, streaming)}
     </div>

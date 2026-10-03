@@ -263,14 +263,25 @@ jobs:
 
       - name: Browser smokes (storybook stories)
         if: matrix.task == 'browser-smoke'
-        run: pnpm test:storybook
+        run: |
+          pnpm test:storybook
+          STORYBOOK_TEST_THEME=dark pnpm test:storybook
 
       - name: Build and verify composed Storybook site
         if: matrix.task == 'browser-smoke'
         run: |
           STORYBOOK_DOCS_EXPORT=1 pnpm build:storybook --skip-build
           pnpm test:storybook:site
+          pnpm test:storybook:visual
           pnpm test:storybook:dev
+
+      - name: Upload visual regression differences
+        if: failure() && matrix.task == 'browser-smoke'
+        uses: actions/upload-artifact@v7
+        with:
+          name: storybook-visual-differences
+          path: test-results/storybook-visual/
+          retention-days: 7
 
       - name: Concurrent document scope lifetime
         if: matrix.task == 'browser-smoke'

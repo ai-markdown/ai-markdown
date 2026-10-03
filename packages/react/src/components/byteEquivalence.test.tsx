@@ -262,7 +262,13 @@ function legacyPlugins(config: PluginConfig) {
 function renderLegacy(md: string, config: PluginConfig): string {
   const { remarkPlugins, rehypePlugins, remarkRehypeOptions } = legacyPlugins(config);
   return renderToStaticMarkup(
-    <Markdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} remarkRehypeOptions={remarkRehypeOptions}>
+    <Markdown
+      remarkPlugins={remarkPlugins}
+      rehypePlugins={rehypePlugins}
+      remarkRehypeOptions={remarkRehypeOptions}
+      // Mirror the adapter's keyboard-accessible default, independently of its render path.
+      components={{ pre: ({ node: _node, ...props }) => <pre tabIndex={0} {...props} /> }}
+    >
       {md}
     </Markdown>
   );

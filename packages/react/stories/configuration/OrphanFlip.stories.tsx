@@ -48,7 +48,7 @@ const meta: Meta<typeof OrphanFlipHarness> = {
   parameters: {
     // Behavioral assertion, not a visual.
     chromatic: { disableSnapshot: true },
-    a11y: { test: 'off' },
+    a11y: { test: 'error' },
   },
 };
 export default meta;
