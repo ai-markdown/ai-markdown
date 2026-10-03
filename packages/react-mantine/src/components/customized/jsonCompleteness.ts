@@ -1,3 +1,5 @@
+import { extendsCode } from './extendsCode';
+
 /** Bracket-balance gate, not a JSON validator. Retain quote/escape state
  * across append seams so growing JSON does not rescan its whole body when
  * each nested object closes. Replacements start a fresh lineage. */
@@ -10,7 +12,7 @@ export function createJsonCompletenessScanner() {
   let last = '';
   return (text: string): boolean => {
     let from = previous.length;
-    if (!text.startsWith(previous)) {
+    if (!extendsCode(text, previous)) {
       from = 0;
       depth = 0;
       quoted = escaped = invalid = false;

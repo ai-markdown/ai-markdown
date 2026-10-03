@@ -14,7 +14,7 @@ import { useDocumentScope } from './documents';
 import { useMarkdownChunk } from './useMarkdownChunk';
 import { deriveTailSignal } from '@ai-markdown/core';
 import { AIMarkdownStreamingCursor } from './cursor';
-import { renderTree } from './render';
+import { createTreeRenderer, renderTree } from './render';
 import { stableComputed } from './stable';
 import type { AIMarkdownProps } from './types';
 
@@ -44,6 +44,7 @@ export const AIMarkdown = defineComponent({
   name: 'AIMarkdown',
   props: markdownProps,
   setup(props, { slots }) {
+    const renderBody = createTreeRenderer();
     const scope = useDocumentScope();
     const id = useId();
     const documentId = computed(() => props.documentId ?? id);
@@ -127,7 +128,7 @@ export const AIMarkdown = defineComponent({
               ),
             }
           : frame.trees.hast;
-      const children = renderTree(tree, options);
+      const children = renderBody(tree, options);
       if (chunk.aggregate.value)
         children.push(...renderTree({ type: 'root', children: [chunk.aggregate.value] }, options));
       const cursor = props.streaming && props.streamingCursor;

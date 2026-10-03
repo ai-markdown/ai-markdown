@@ -87,9 +87,9 @@ export function createProvenance(): string {
  * source inputs, allocation and the monotonic registry notification signal.
  *
  * There is no block planner here. The plan exists to key a per-block render
- * cache, and React's block memo is the consumer; Vue converts the whole
- * frame to VNodes on every render and lets Vue's patcher diff the result,
- * so a plan would be computed every frame and read by nobody.
+ * cache, and React's block memo is the consumer. Vue's default renderer
+ * caches by retained HAST identity instead; custom rendering converts the
+ * whole frame and lets Vue's patcher diff the result.
  *
  * The notification signal is fanned out through two identity-stable
  * computeds rather than read by the pipeline directly. Every publish in the

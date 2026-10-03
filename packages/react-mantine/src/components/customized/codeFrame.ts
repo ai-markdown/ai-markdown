@@ -1,6 +1,16 @@
+import { extendsCode } from './extendsCode';
+
 export interface CodeFrame {
   code: string;
   language: string;
+  /** Shared only by exact append continuations; never mutated. */
+  generation: object;
+}
+
+export function nextCodeFrame(previous: CodeFrame | undefined, code: string, language: string): CodeFrame {
+  if (previous?.code === code && previous.language === language) return previous;
+  const continues = previous && language === previous.language && extendsCode(code, previous.code);
+  return { code, language, generation: continues ? previous.generation : {} };
 }
 
 /** A trailing throttle: append bursts replace one pending frame without
@@ -22,7 +32,7 @@ export function createCodeFrame(initial: CodeFrame, publish: (frame: CodeFrame) 
   };
   return {
     update(next: CodeFrame, streaming: boolean, interval: number) {
-      const replaced = next.language !== latest.language || !next.code.startsWith(latest.code);
+      const replaced = next.generation !== latest.generation;
       latest = next;
       if (delay !== interval) cancel();
       delay = interval;

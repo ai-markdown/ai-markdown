@@ -454,7 +454,50 @@ row, and `compare.mjs` refuses to compare runs taken at different ones — a 4x
 row beside a 1x row differs by the throttle long before it differs by
 anything worth reading.
 
-## What this suite structurally cannot see
+## Focused streaming measurements
+
+The focused runner complements `bench:web`; it does not add performance thresholds to CI.
+
+```sh
+pnpm build
+pnpm bench:streaming --repeats 3 --throttle 1 --sizes 100,500,1000
+pnpm bench:code-prefix
+```
+
+`bench:streaming` bundles the built React/Vue packages in production mode, with
+their styles. Each sample gets a fresh browser context; one warm-up per case is
+discarded. It records:
+
+- **Vue retained paragraphs:** 50 committed appends at each document size, with
+  and without the default renderer's cache. The control uses an equivalent
+  custom URL callback, which opts out of caching. These documents contain no
+  links, so the callback adds no URL work. The two arms alternate order.
+- **React and Vue smooth streams:** input arrival to DOM commit latency, time
+  from source completion until the reveal drains, and real button input to the
+  next animation frame. Both individual streams and two coordinated chunks run
+  with streaming cursors enabled. The runner rejects stale tails, shrinking
+  reveals, successors overtaking predecessors, missed interaction windows,
+  browser errors and streams that do not drain.
+
+These are DOM/animation-frame measurements, not paint completion or clipboard
+latency. The interaction button is outside the Markdown subtree. The cache
+comparison covers the default renderer; custom components, slots and URL
+callbacks retain their every-render behavior. Results include each retained
+sample, runtime/browser versions, commit and dirty-worktree status in
+`benchmarks/results/streaming-*.json`. Compare timings on the same machine and
+throttle setting without other tests running; a dirty result describes local
+changes, not the named commit alone.
+
+`bench:code-prefix` is a source-level Node microbenchmark: JSON arrives through
+`+=` in four-character steps, with one warm-up and three retained samples per
+size. It exercises the real completeness scanner, including exact replacement
+checks. Prefix equality still costs O(prefix length); this optimization reduces
+comparison cost and redundant work, and does not claim a linear full-string API.
+
+`pnpm test:benchmark-control` fault-tests shared preview/browser cleanup. These
+deterministic lifecycle tests run in CI; the timing measurements remain manual.
+
+## What the original `bench:web` suite structurally cannot see
 
 Not a to-do list — a boundary. Each of these is something a user could
 notice and this design, as built, cannot report. Written down because a

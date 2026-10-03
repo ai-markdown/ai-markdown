@@ -8,6 +8,7 @@ import {
   footnoteSafeId,
   isFootnoteSection,
   resolveCrossChunkReference,
+  defaultUrlTransform,
   type Registry,
   type SanitizeSchema,
   type UrlTransform,
@@ -136,6 +137,65 @@ function keyedChild(child: VNodeChild, key: string): VNodeChild {
 /** Clone before final URL conversion: render must not mutate parser or registry trees. */
 export function renderTree(tree: Root, options: RenderOptions): VNodeChild[] {
   return convertTree(tree, options, true);
+}
+
+/** Per-instance cache for the engine's immutable, retained HAST blocks.
+ * Custom components, slots and URL callbacks keep their every-render
+ * semantics. Only the current frame is retained, so replacements/unmounts
+ * cannot accumulate historical trees or VNodes. */
+export function createTreeRenderer() {
+  let cache = new Map<RootContent, { index: number; child: VNodeChild }>();
+  let previous: readonly unknown[] = [];
+  return (tree: Root, options: RenderOptions): VNodeChild[] => {
+    const componentPrototype = Object.getPrototypeOf(options.components);
+    if (
+      options.urlTransform !== defaultUrlTransform ||
+      Reflect.ownKeys(options.components).length > 0 ||
+      (componentPrototype !== null && componentPrototype !== Object.prototype) ||
+      Object.keys(options.slots).length > 0 ||
+      // The full transform removes raw nodes before assigning root keys.
+      // Converting isolated blocks would otherwise leave empty placeholders
+      // and shift the keys of positionless siblings.
+      tree.children.some((node) => node.type === 'raw')
+    ) {
+      cache.clear();
+      previous = [];
+      return renderTree(tree, options);
+    }
+    // Registry objects are mutable. Identity alone cannot validate resolved
+    // destinations, numbering or occurrence counts after another chunk commits.
+    const context = [
+      options.registry,
+      options.registry?.version,
+      options.sym,
+      options.clobberPrefix,
+      options.sanitizeSchema,
+      options.streaming,
+      options.metadata,
+    ];
+    if (context.length !== previous.length || context.some((value, i) => !Object.is(value, previous[i]))) {
+      cache.clear();
+    }
+    previous = context;
+    const next = new Map<RootContent, { index: number; child: VNodeChild }>();
+    const children = tree.children.map((node, index) => {
+      const hit = cache.get(node);
+      const entry =
+        hit?.index === index
+          ? hit
+          : {
+              index,
+              child: keyedChild(
+                convertTree({ type: 'root', children: [node] }, options, false)[0],
+                blockKey(node, index)
+              ),
+            };
+      next.set(node, entry);
+      return entry.child;
+    });
+    cache = next;
+    return children;
+  };
 }
 
 /** `keyed` only for a frame root: the children of the wrapper `div` are

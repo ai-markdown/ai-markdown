@@ -36,7 +36,7 @@ export function useSmoothStream(input: () => SmoothStreamInput) {
     });
     visible.value = controller.getVisible();
     stop = watch(
-      () => [input().content, input().streaming, input().pacing] as const,
+      [() => input().content, () => input().streaming, () => input().pacing],
       ([content, streaming, pacing], previous) => {
         liveOptions.pacing = pacing;
         if (streaming || previous?.[1]) {
@@ -74,7 +74,10 @@ export function useDocumentSmoothStream(input: () => DocumentSmoothStreamInput) 
   let stop: (() => void) | undefined;
   onMounted(() => {
     stop = watch(
-      () => [input().documentId, input().coordinate] as const,
+      // Compare selected values, not a newly allocated tuple. A getter may
+      // build an options object from a reactive chunk; changing its content
+      // must not re-register this slot or admit a waiting successor.
+      [() => input().documentId, () => input().coordinate],
       ([id, enabled], _old, cleanup) => {
         admitted.value = input().content.length > 0;
         const current = scope && id !== undefined && enabled !== false ? scope.acquireSmooth(id) : null;

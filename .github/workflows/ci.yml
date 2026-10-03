@@ -183,6 +183,10 @@ jobs:
         if: matrix.task == 'test'
         run: pnpm test:command-control
 
+      - name: Benchmark resource cleanup
+        if: matrix.task == 'test'
+        run: pnpm test:benchmark-control
+
       - name: Soak control tests
         if: matrix.task == 'test'
         run: pnpm test:soak-control

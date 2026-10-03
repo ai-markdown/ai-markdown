@@ -44,7 +44,7 @@ import { spawn } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { chromium } from 'playwright';
+import { withBenchmarkResources } from './resources.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(HERE, '../..');
@@ -84,6 +84,7 @@ const ANCHOR_SCENARIO = 'anchor-long';
 const sh = (cmd, args) =>
   new Promise((res, rej) => {
     const p = spawn(cmd, args, { cwd: ROOT, stdio: 'inherit' });
+    p.once('error', rej);
     p.on('exit', (c) => (c === 0 ? res() : rej(new Error(`${cmd} → ${c}`))));
   });
 
@@ -92,77 +93,6 @@ const median = (xs) => {
   if (s.length === 0) return null;
   return s.length % 2 ? s[(s.length - 1) / 2] : (s[s.length / 2 - 1] + s[s.length / 2]) / 2;
 };
-
-/** Same stale-port refusal and teardown wait as `run.mjs`. This file lacked
- *  both for a day, which mattered more here than there: the workflow runs the
- *  self-test FIRST and then `bench:web`, so a port left held by this script
- *  is a port the collection run then measures a stale build on. */
-async function serve(app = APP) {
-  try {
-    const probe = await fetch(`http://localhost:${app.port}/`, { signal: AbortSignal.timeout(1500) });
-    if (probe.ok) {
-      throw new Error(`port ${app.port} is already serving something — kill it first (pkill -f 'vite preview')`);
-    }
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith('port ')) throw e;
-  }
-  // `detached` puts the shim and everything it spawns in one process group,
-  // which is the only way to kill it. `pnpm run preview` spawns vite as a
-  // GRANDCHILD: SIGKILL on the shim leaves vite holding the port, and
-  // `stopServer` then waited ten seconds and returned as if it had worked.
-  // In CI that leaked port 4319 from the self-test into the benchmark run,
-  // whose stale-port guard correctly refused to measure a ghost — six red
-  // runs, blamed on the guard.
-  const p = spawn('pnpm', ['--filter', `./${app.dir}`, 'run', 'preview'], {
-    cwd: ROOT,
-    stdio: 'ignore',
-    detached: true,
-  });
-  let exited = false;
-  p.on('exit', () => {
-    exited = true;
-  });
-  const deadline = Date.now() + 60_000;
-  for (;;) {
-    if (exited) throw new Error(`${app.dir}: preview exited before serving (port ${app.port} taken?)`);
-    if (Date.now() > deadline) {
-      p.kill('SIGKILL');
-      throw new Error('preview server never came up');
-    }
-    try {
-      if ((await fetch(`http://localhost:${app.port}/`)).ok) return p;
-    } catch {
-      /* not up yet */
-    }
-    await new Promise((r) => setTimeout(r, 250));
-  }
-}
-
-async function stopServer(server, port) {
-  // Negative pid = the whole process group, so vite dies with its shim.
-  try {
-    process.kill(-server.pid, 'SIGKILL');
-  } catch {
-    server.kill('SIGKILL'); // group already gone, or not detached
-  }
-  const freeBy = Date.now() + 15_000;
-  for (;;) {
-    try {
-      await fetch(`http://localhost:${port}/`, { signal: AbortSignal.timeout(500) });
-    } catch {
-      return; // refused — the port is free
-    }
-    if (Date.now() > freeBy) {
-      // Do NOT return quietly. A leaked port is not this run's problem, it is
-      // the NEXT tool's, which is where it used to surface — as a stale-port
-      // refusal attributed to the guard rather than to the leak.
-      throw new Error(
-        `port ${port} is still served 15s after SIGKILL — a leftover preview will break whatever runs next`
-      );
-    }
-    await new Promise((r) => setTimeout(r, 200));
-  }
-}
 
 async function measure(browser, handicap) {
   const samples = [];
@@ -225,221 +155,221 @@ async function chunkCountOf(browser, scenario) {
 const fmt = (v) => (v === null || v === undefined ? '    n/a' : String(Math.round(v)).padStart(7));
 
 async function main() {
-  await sh('pnpm', ['--filter', `./${APP.dir}`, 'run', 'build']);
-  await sh('pnpm', ['--filter', `./${NULL_APP.dir}`, 'run', 'build']);
-  const server = await serve();
-  const browser = await chromium.launch({ headless: true });
-  const failures = [];
-  try {
-    const chunks = await chunkCountOf(browser, SCENARIO);
-    if (chunks === null) throw new Error('app did not expose __benchChunks');
+  return withBenchmarkResources(async (resources) => {
+    await sh('pnpm', ['--filter', `./${APP.dir}`, 'run', 'build']);
+    await sh('pnpm', ['--filter', `./${NULL_APP.dir}`, 'run', 'build']);
+    await resources.serve(APP, { cwd: ROOT });
+    const browser = await resources.browser();
+    const failures = [];
+    {
+      const chunks = await chunkCountOf(browser, SCENARIO);
+      if (chunks === null) throw new Error('app did not expose __benchChunks');
 
-    const base = await measure(browser, 0);
-    const small = await measure(browser, SMALL_MS);
-    const large = await measure(browser, LARGE_MS);
+      const base = await measure(browser, 0);
+      const small = await measure(browser, SMALL_MS);
+      const large = await measure(browser, LARGE_MS);
 
-    process.stdout.write(
-      `\n[selftest] scenario=${SCENARIO}  chunks=${chunks}  repeats=${REPEATS}\n` +
-        `[selftest] ${'metric'.padEnd(16)}${'base'.padStart(9)}${`+${SMALL_MS}ms`.padStart(9)}${`+${LARGE_MS}ms`.padStart(9)}\n`
-    );
-    for (const k of ['streamMs', 'longTasks', 'totalBlockingMs', 'rafP95Ms', 'renderedNodes']) {
-      process.stdout.write(`[selftest]   ${k.padEnd(16)}${fmt(base[k])}${fmt(small[k])}${fmt(large[k])}\n`);
-    }
+      process.stdout.write(
+        `\n[selftest] scenario=${SCENARIO}  chunks=${chunks}  repeats=${REPEATS}\n` +
+          `[selftest] ${'metric'.padEnd(16)}${'base'.padStart(9)}${`+${SMALL_MS}ms`.padStart(9)}${`+${LARGE_MS}ms`.padStart(9)}\n`
+      );
+      for (const k of ['streamMs', 'longTasks', 'totalBlockingMs', 'rafP95Ms', 'renderedNodes']) {
+        process.stdout.write(`[selftest]   ${k.padEnd(16)}${fmt(base[k])}${fmt(small[k])}${fmt(large[k])}\n`);
+      }
 
-    // --- SMALL arm: the handicap runs, and the clock sees it ---
-    const smallBudget = chunks * SMALL_MS;
-    const smallObserved = small.streamMs - base.streamMs;
-    process.stdout.write(
-      `[selftest] small arm: injected ${smallBudget}ms, stream grew ${Math.round(smallObserved)}ms ` +
-        `(${((100 * smallObserved) / smallBudget).toFixed(0)}%)\n`
-    );
-    if (smallObserved < smallBudget * 0.7) {
-      failures.push(
-        `stream time grew only ${Math.round(smallObserved)}ms against ${smallBudget}ms injected — ` +
-          'the handicap is not reaching the page, so the large arm below proves nothing either'
+      // --- SMALL arm: the handicap runs, and the clock sees it ---
+      const smallBudget = chunks * SMALL_MS;
+      const smallObserved = small.streamMs - base.streamMs;
+      process.stdout.write(
+        `[selftest] small arm: injected ${smallBudget}ms, stream grew ${Math.round(smallObserved)}ms ` +
+          `(${((100 * smallObserved) / smallBudget).toFixed(0)}%)\n`
       );
-    }
-    if (small.longTasks > base.longTasks + 2) {
-      failures.push(
-        `a ${SMALL_MS}ms handicap produced long tasks (${base.longTasks} → ${small.longTasks}) — ` +
-          `work under the ${LONG_TASK_MS}ms threshold must not be counted as blocking`
-      );
-    }
-
-    // --- LARGE arm: blocking work is seen, and to arithmetic ---
-    const tbtBudget = chunks * (LARGE_MS - LONG_TASK_MS);
-    const tbtObserved = (large.totalBlockingMs ?? 0) - (base.totalBlockingMs ?? 0);
-    const ratio = tbtObserved / tbtBudget;
-    process.stdout.write(
-      `[selftest] large arm: predicted TBT ${tbtBudget}ms (= ${chunks} x (${LARGE_MS} - ${LONG_TASK_MS})), ` +
-        `observed ${Math.round(tbtObserved)}ms (${(100 * ratio).toFixed(1)}%)\n`
-    );
-    // The prediction is a LOWER bound, not an identity: each task is the
-    // handicap PLUS that chunk's real render cost, and only the part above
-    // 50 ms counts. On this laptop per-chunk render is under a millisecond
-    // and Chrome's millisecond flooring swallows it, which is why the first
-    // measurement landed at 99.8% — an agreement of two errors cancelling,
-    // not evidence of precision. On a runner three times slower the render
-    // cost stops being swallowed and the honest ratio exceeds 1.15, so a
-    // fixed upper band would red the build for being slow. The upper bound
-    // is therefore derived from this run's own measured per-chunk cost.
-    const baseRenderPerChunk = Math.max(0, (base.streamMs - chunks * 16) / chunks);
-    const upper = 1.15 + (chunks * baseRenderPerChunk) / tbtBudget;
-    if (ratio < 0.85 || ratio > upper) {
-      failures.push(
-        `blocking time came in at ${(100 * ratio).toFixed(0)}% of the arithmetic prediction ` +
-          `(${Math.round(tbtObserved)}ms vs ${tbtBudget}ms, band 85%-${(100 * upper).toFixed(0)}%) — ` +
-          'the long-task observer is mis-scoped'
-      );
-    }
-    if (large.longTasks < chunks * 0.8) {
-      failures.push(
-        `only ${large.longTasks} long tasks for ${chunks} handicapped chunks — ` +
-          'most of the injected work was not observed at all'
-      );
-    }
-    if (base.rafP95Ms !== null && large.rafP95Ms !== null && large.rafP95Ms <= base.rafP95Ms * 1.5) {
-      failures.push(
-        `frame p95 barely moved (${base.rafP95Ms.toFixed(1)}ms → ${large.rafP95Ms.toFixed(1)}ms) under a ` +
-          `${LARGE_MS}ms/chunk handicap — frame sampling is in the wrong window`
-      );
-    }
-
-    // --- ARM 3: the throughput scenario is actually CPU-bound ---
-    //
-    // This is the assertion that keeps the suite honest about what it can
-    // see. Two of the three pacings turned out to be bounded by a clock
-    // rather than by the renderer — timer pacing by its own schedule, frame
-    // pacing by the display's refresh rate — and neither could see a
-    // verified fourfold CPU slowdown. If `immediate` pacing ever regresses
-    // into waiting for something, every throughput number silently becomes a
-    // restatement of that something, and nothing else here would notice.
-    //
-    // Measured 2026-08-30 on `throughput-code`: 328 ms at 1x, 1457 ms at 4x
-    // — a ratio of 4.44. The band below is wide because the ratio includes
-    // fixed costs the throttle does not scale (page setup, the final paint),
-    // but a pacing bound would collapse it to ~1.0, which no honest band
-    // contains.
-    const cpuBound = await measureThrottled(browser, APP, THROUGHPUT_SCENARIO, 4);
-    const cpuFree = await measureThrottled(browser, APP, THROUGHPUT_SCENARIO, 1);
-    const ratio4x = cpuBound.streamMs / cpuFree.streamMs;
-    process.stdout.write(
-      `[selftest] throughput arm: ${THROUGHPUT_SCENARIO} ${Math.round(cpuFree.streamMs)}ms at 1x, ` +
-        `${Math.round(cpuBound.streamMs)}ms at 4x — ratio ${ratio4x.toFixed(2)}\n`
-    );
-    if (ratio4x < 2.5) {
-      failures.push(
-        `${THROUGHPUT_SCENARIO} only slowed ${ratio4x.toFixed(2)}x under a 4x CPU throttle — ` +
-          'it is bounded by a clock rather than by the renderer, so its numbers measure pacing, not throughput'
-      );
-    }
-
-    // --- ARM 4: the app is doing more than the control ---
-    //
-    // Arm 3 alone would pass with a renderer that renders NOTHING: the
-    // `immediate` loop is itself CPU-bound (1251 dispatches plus the
-    // scenario's own string slicing), so it throttles 4x on its own merits.
-    // What that arm proves is "the scenario is not clock-bound"; it says
-    // nothing about `streamMs` being the renderer's cost, which is what the
-    // README claims.
-    //
-    // The null app closes it. It runs the same harness over the same
-    // scenario into a `<pre>`, so its duration IS the harness floor. A real
-    // renderer must be meaningfully above it, and its node count must be
-    // meaningfully above one.
-    const nullServer = await serve(NULL_APP);
-    let floor;
-    try {
-      floor = await measureThrottled(browser, NULL_APP, THROUGHPUT_SCENARIO, 1);
-    } finally {
-      await stopServer(nullServer, NULL_APP.port);
-    }
-    const overFloor = cpuFree.streamMs / Math.max(floor.streamMs, 0.001);
-    process.stdout.write(
-      `[selftest] control arm: null renderer ${Math.round(floor.streamMs)}ms / ${floor.renderedNodes} nodes, ` +
-        `app ${Math.round(cpuFree.streamMs)}ms / ${cpuFree.renderedNodes} nodes — app is ${overFloor.toFixed(2)}x the floor\n`
-    );
-    if (!(cpuFree.renderedNodes > floor.renderedNodes)) {
-      failures.push(
-        `the app rendered ${cpuFree.renderedNodes} nodes against the control's ${floor.renderedNodes} — ` +
-          'it is not rendering more than a <pre>, so every timing below is measuring nothing'
-      );
-    }
-    if (overFloor < 1.2) {
-      failures.push(
-        `the app's throughput stream (${Math.round(cpuFree.streamMs)}ms) is within 20% of the harness floor ` +
-          `(${Math.round(floor.streamMs)}ms) — ` +
-          'the number is dominated by scenario overhead, not by rendering'
-      );
-    }
-
-    // --- ARM 5: anchor drift responds to content growing above ---
-    //
-    // Same shape as the handicap arms: introduce the thing the metric claims
-    // to detect and require it to be detected. A drift of 0 everywhere is
-    // otherwise ambiguous between "this renderer is well behaved" (which is
-    // the expected and desirable result) and "the tracking never armed",
-    // and this suite has already shipped one metric that reported a constant
-    // for a day.
-    //
-    // `?grow=up` delivers the document backwards, so every chunk prepends
-    // and everything on screen is pushed down. Drift must be large. The
-    // normal direction is asserted to stay small in the same breath, because
-    // a tracker that reported huge numbers for everything would also pass
-    // the first half.
-    const driftUp = await measureThrottled(browser, APP, ANCHOR_SCENARIO, 1, { grow: 'above' });
-    const driftDown = await measureThrottled(browser, APP, ANCHOR_SCENARIO, 1);
-    process.stdout.write(
-      `[selftest] anchor arm: ${ANCHOR_SCENARIO} drift ${driftDown.anchorDriftPx}px normal, ` +
-        `${driftUp.anchorDriftPx}px with content growing above\n`
-    );
-    if (driftDown.anchorDriftPx === null || driftUp.anchorDriftPx === null) {
-      failures.push(
-        `anchor tracking never armed (down=${driftDown.anchorDriftPx}, up=${driftUp.anchorDriftPx}) — ` +
-          'the drift column is null rather than measured, so a zero elsewhere would mean nothing'
-      );
-    } else if (driftUp.anchorDriftPx < 500) {
-      failures.push(
-        `content growing ABOVE the anchor moved it only ${driftUp.anchorDriftPx}px — ` +
-          'the drift metric is not observing what it claims to'
-      );
-    } else if (driftUp.anchorDriftPx < driftDown.anchorDriftPx * 4) {
-      failures.push(
-        `growing above (${driftUp.anchorDriftPx}px) is not clearly worse than normal ` +
-          `(${driftDown.anchorDriftPx}px) — the tracker is reporting noise rather than drift`
-      );
-    }
-
-    // --- control, both arms ---
-    for (const [name, arm] of [
-      ['small', small],
-      ['large', large],
-    ]) {
-      if (arm.renderedNodes !== base.renderedNodes) {
+      if (smallObserved < smallBudget * 0.7) {
         failures.push(
-          `${name} arm rendered a different document (${base.renderedNodes} → ${arm.renderedNodes} nodes) — ` +
-            'the handicap is supposed to add time, not content, so nothing compared above holds'
+          `stream time grew only ${Math.round(smallObserved)}ms against ${smallBudget}ms injected — ` +
+            'the handicap is not reaching the page, so the large arm below proves nothing either'
         );
       }
-    }
-    for (const [name, arm] of [
-      ['base', base],
-      ['small', small],
-      ['large', large],
-    ]) {
-      if (arm.outcome !== 'settled') failures.push(`${name} arm ended as ${arm.outcome} rather than settling`);
-    }
-  } finally {
-    await browser.close();
-    await stopServer(server, APP.port);
-  }
+      if (small.longTasks > base.longTasks + 2) {
+        failures.push(
+          `a ${SMALL_MS}ms handicap produced long tasks (${base.longTasks} → ${small.longTasks}) — ` +
+            `work under the ${LONG_TASK_MS}ms threshold must not be counted as blocking`
+        );
+      }
 
-  if (failures.length > 0) {
-    process.stderr.write('\n[selftest] FAILED\n');
-    for (const f of failures) process.stderr.write(`[selftest]   - ${f}\n`);
-    process.exit(1);
-  }
-  process.stdout.write('\n[selftest] PASS — every metric responds where it can, and stays flat where it should\n');
+      // --- LARGE arm: blocking work is seen, and to arithmetic ---
+      const tbtBudget = chunks * (LARGE_MS - LONG_TASK_MS);
+      const tbtObserved = (large.totalBlockingMs ?? 0) - (base.totalBlockingMs ?? 0);
+      const ratio = tbtObserved / tbtBudget;
+      process.stdout.write(
+        `[selftest] large arm: predicted TBT ${tbtBudget}ms (= ${chunks} x (${LARGE_MS} - ${LONG_TASK_MS})), ` +
+          `observed ${Math.round(tbtObserved)}ms (${(100 * ratio).toFixed(1)}%)\n`
+      );
+      // The prediction is a LOWER bound, not an identity: each task is the
+      // handicap PLUS that chunk's real render cost, and only the part above
+      // 50 ms counts. On this laptop per-chunk render is under a millisecond
+      // and Chrome's millisecond flooring swallows it, which is why the first
+      // measurement landed at 99.8% — an agreement of two errors cancelling,
+      // not evidence of precision. On a runner three times slower the render
+      // cost stops being swallowed and the honest ratio exceeds 1.15, so a
+      // fixed upper band would red the build for being slow. The upper bound
+      // is therefore derived from this run's own measured per-chunk cost.
+      const baseRenderPerChunk = Math.max(0, (base.streamMs - chunks * 16) / chunks);
+      const upper = 1.15 + (chunks * baseRenderPerChunk) / tbtBudget;
+      if (ratio < 0.85 || ratio > upper) {
+        failures.push(
+          `blocking time came in at ${(100 * ratio).toFixed(0)}% of the arithmetic prediction ` +
+            `(${Math.round(tbtObserved)}ms vs ${tbtBudget}ms, band 85%-${(100 * upper).toFixed(0)}%) — ` +
+            'the long-task observer is mis-scoped'
+        );
+      }
+      if (large.longTasks < chunks * 0.8) {
+        failures.push(
+          `only ${large.longTasks} long tasks for ${chunks} handicapped chunks — ` +
+            'most of the injected work was not observed at all'
+        );
+      }
+      if (base.rafP95Ms !== null && large.rafP95Ms !== null && large.rafP95Ms <= base.rafP95Ms * 1.5) {
+        failures.push(
+          `frame p95 barely moved (${base.rafP95Ms.toFixed(1)}ms → ${large.rafP95Ms.toFixed(1)}ms) under a ` +
+            `${LARGE_MS}ms/chunk handicap — frame sampling is in the wrong window`
+        );
+      }
+
+      // --- ARM 3: the throughput scenario is actually CPU-bound ---
+      //
+      // This is the assertion that keeps the suite honest about what it can
+      // see. Two of the three pacings turned out to be bounded by a clock
+      // rather than by the renderer — timer pacing by its own schedule, frame
+      // pacing by the display's refresh rate — and neither could see a
+      // verified fourfold CPU slowdown. If `immediate` pacing ever regresses
+      // into waiting for something, every throughput number silently becomes a
+      // restatement of that something, and nothing else here would notice.
+      //
+      // Measured 2026-08-30 on `throughput-code`: 328 ms at 1x, 1457 ms at 4x
+      // — a ratio of 4.44. The band below is wide because the ratio includes
+      // fixed costs the throttle does not scale (page setup, the final paint),
+      // but a pacing bound would collapse it to ~1.0, which no honest band
+      // contains.
+      const cpuBound = await measureThrottled(browser, APP, THROUGHPUT_SCENARIO, 4);
+      const cpuFree = await measureThrottled(browser, APP, THROUGHPUT_SCENARIO, 1);
+      const ratio4x = cpuBound.streamMs / cpuFree.streamMs;
+      process.stdout.write(
+        `[selftest] throughput arm: ${THROUGHPUT_SCENARIO} ${Math.round(cpuFree.streamMs)}ms at 1x, ` +
+          `${Math.round(cpuBound.streamMs)}ms at 4x — ratio ${ratio4x.toFixed(2)}\n`
+      );
+      if (ratio4x < 2.5) {
+        failures.push(
+          `${THROUGHPUT_SCENARIO} only slowed ${ratio4x.toFixed(2)}x under a 4x CPU throttle — ` +
+            'it is bounded by a clock rather than by the renderer, so its numbers measure pacing, not throughput'
+        );
+      }
+
+      // --- ARM 4: the app is doing more than the control ---
+      //
+      // Arm 3 alone would pass with a renderer that renders NOTHING: the
+      // `immediate` loop is itself CPU-bound (1251 dispatches plus the
+      // scenario's own string slicing), so it throttles 4x on its own merits.
+      // What that arm proves is "the scenario is not clock-bound"; it says
+      // nothing about `streamMs` being the renderer's cost, which is what the
+      // README claims.
+      //
+      // The null app closes it. It runs the same harness over the same
+      // scenario into a `<pre>`, so its duration IS the harness floor. A real
+      // renderer must be meaningfully above it, and its node count must be
+      // meaningfully above one.
+      const nullServer = await resources.serve(NULL_APP, { cwd: ROOT });
+      let floor;
+      try {
+        floor = await measureThrottled(browser, NULL_APP, THROUGHPUT_SCENARIO, 1);
+      } finally {
+        await nullServer.stop();
+      }
+      const overFloor = cpuFree.streamMs / Math.max(floor.streamMs, 0.001);
+      process.stdout.write(
+        `[selftest] control arm: null renderer ${Math.round(floor.streamMs)}ms / ${floor.renderedNodes} nodes, ` +
+          `app ${Math.round(cpuFree.streamMs)}ms / ${cpuFree.renderedNodes} nodes — app is ${overFloor.toFixed(2)}x the floor\n`
+      );
+      if (!(cpuFree.renderedNodes > floor.renderedNodes)) {
+        failures.push(
+          `the app rendered ${cpuFree.renderedNodes} nodes against the control's ${floor.renderedNodes} — ` +
+            'it is not rendering more than a <pre>, so every timing below is measuring nothing'
+        );
+      }
+      if (overFloor < 1.2) {
+        failures.push(
+          `the app's throughput stream (${Math.round(cpuFree.streamMs)}ms) is within 20% of the harness floor ` +
+            `(${Math.round(floor.streamMs)}ms) — ` +
+            'the number is dominated by scenario overhead, not by rendering'
+        );
+      }
+
+      // --- ARM 5: anchor drift responds to content growing above ---
+      //
+      // Same shape as the handicap arms: introduce the thing the metric claims
+      // to detect and require it to be detected. A drift of 0 everywhere is
+      // otherwise ambiguous between "this renderer is well behaved" (which is
+      // the expected and desirable result) and "the tracking never armed",
+      // and this suite has already shipped one metric that reported a constant
+      // for a day.
+      //
+      // `?grow=up` delivers the document backwards, so every chunk prepends
+      // and everything on screen is pushed down. Drift must be large. The
+      // normal direction is asserted to stay small in the same breath, because
+      // a tracker that reported huge numbers for everything would also pass
+      // the first half.
+      const driftUp = await measureThrottled(browser, APP, ANCHOR_SCENARIO, 1, { grow: 'above' });
+      const driftDown = await measureThrottled(browser, APP, ANCHOR_SCENARIO, 1);
+      process.stdout.write(
+        `[selftest] anchor arm: ${ANCHOR_SCENARIO} drift ${driftDown.anchorDriftPx}px normal, ` +
+          `${driftUp.anchorDriftPx}px with content growing above\n`
+      );
+      if (driftDown.anchorDriftPx === null || driftUp.anchorDriftPx === null) {
+        failures.push(
+          `anchor tracking never armed (down=${driftDown.anchorDriftPx}, up=${driftUp.anchorDriftPx}) — ` +
+            'the drift column is null rather than measured, so a zero elsewhere would mean nothing'
+        );
+      } else if (driftUp.anchorDriftPx < 500) {
+        failures.push(
+          `content growing ABOVE the anchor moved it only ${driftUp.anchorDriftPx}px — ` +
+            'the drift metric is not observing what it claims to'
+        );
+      } else if (driftUp.anchorDriftPx < driftDown.anchorDriftPx * 4) {
+        failures.push(
+          `growing above (${driftUp.anchorDriftPx}px) is not clearly worse than normal ` +
+            `(${driftDown.anchorDriftPx}px) — the tracker is reporting noise rather than drift`
+        );
+      }
+
+      // --- control, both arms ---
+      for (const [name, arm] of [
+        ['small', small],
+        ['large', large],
+      ]) {
+        if (arm.renderedNodes !== base.renderedNodes) {
+          failures.push(
+            `${name} arm rendered a different document (${base.renderedNodes} → ${arm.renderedNodes} nodes) — ` +
+              'the handicap is supposed to add time, not content, so nothing compared above holds'
+          );
+        }
+      }
+      for (const [name, arm] of [
+        ['base', base],
+        ['small', small],
+        ['large', large],
+      ]) {
+        if (arm.outcome !== 'settled') failures.push(`${name} arm ended as ${arm.outcome} rather than settling`);
+      }
+    }
+
+    if (failures.length > 0) {
+      process.stderr.write('\n[selftest] FAILED\n');
+      for (const f of failures) process.stderr.write(`[selftest]   - ${f}\n`);
+      process.exitCode = 1;
+      return;
+    }
+    process.stdout.write('\n[selftest] PASS — every metric responds where it can, and stays flat where it should\n');
+  });
 }
 
 main().catch((e) => {

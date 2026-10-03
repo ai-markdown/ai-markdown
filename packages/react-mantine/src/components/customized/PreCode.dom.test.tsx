@@ -10,11 +10,13 @@
 // environment. jsdom resolves through vitest's optional peer, which the
 // workspace already installs.
 import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { act } from 'react';
 import { createHighlightJsAdapter, type CodeHighlightAdapter } from '@mantine/code-highlight';
 import hljs from 'highlight.js';
 import MantineAIMarkdown from '../../MantineAIMarkdown';
 import { MantineLanguageFormat } from '../../defs';
 import { createMountHarness, flushEffects, installMantineDomStubs } from './domTestHarness';
+import * as jsonFormatting from './formatJson';
 
 /** Module constant: the group is compared by value. */
 const SHIKI_FORMAT = { languageFormat: MantineLanguageFormat.Shiki };
@@ -23,7 +25,32 @@ const harness = createMountHarness();
 beforeAll(installMantineDomStubs);
 afterEach(async () => {
   await harness.cleanup();
+  vi.useRealTimers();
   vi.restoreAllMocks();
+});
+
+test('JSON formatting follows displayed frames; replacement and completion bypass throttling', async () => {
+  vi.useFakeTimers();
+  const format = vi.spyOn(jsonFormatting, 'prettyPrintJson');
+  const adapter: CodeHighlightAdapter = {
+    getHighlighter:
+      () =>
+      ({ code }) => ({ highlightedCode: code, isHighlighted: false }),
+  };
+  const codeBlock = { highlightIntervalMs: 100, formatJson: true };
+  const view = (body: string, streaming = true) => (
+    <MantineAIMarkdown content={'```json\n' + body + '\n```'} streaming={streaming} codeBlock={codeBlock} />
+  );
+  const container = await harness.mount(view('{"a":1}'), adapter);
+  const before = format.mock.calls.length;
+  for (let i = 1; i <= 10; i++) await harness.update(view('{"a":1}' + '\n'.repeat(i)));
+  expect(format.mock.calls.length).toBe(before);
+  await act(async () => vi.advanceTimersByTime(100));
+  expect(format.mock.calls.length).toBe(before + 1);
+  await harness.update(view('{"replacement":2}'));
+  expect(container.querySelector('code')?.textContent).toContain('"replacement": 2');
+  await harness.update(view('{"final":3}', false));
+  expect(container.querySelector('code')?.textContent).toContain('"final": 3');
 });
 
 /**

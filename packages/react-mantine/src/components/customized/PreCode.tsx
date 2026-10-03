@@ -246,15 +246,23 @@ const MantineAIMPreCode = memo(
 
     const isSpecialCodeBlock = SPECIAL_LANGUAGES.has(codeLanguage);
 
+    // Coalesce raw appends before scanning/formatting as well as highlighting.
+    // Copy still reads props.codeText, including bytes waiting for this frame.
+    const displayedCode = useCodeFrame(
+      isSpecialCodeBlock ? '' : props.codeText,
+      usedCodeLanguage,
+      streaming && !isSpecialCodeBlock,
+      highlightIntervalMs
+    );
     const [scanJson] = useState(createJsonCompletenessScanner);
     const jsonComplete = useMemo(
-      () => (codeLanguage === 'json' && formatJson && streaming ? scanJson(props.codeText) : false),
-      [codeLanguage, formatJson, streaming, scanJson, props.codeText]
+      () => (codeLanguage === 'json' && formatJson && streaming ? scanJson(displayedCode) : false),
+      [codeLanguage, formatJson, streaming, scanJson, displayedCode]
     );
 
     const normalCodeBlockContent = useMemo(() => {
       if (isSpecialCodeBlock) return null;
-      let usedCodeStr = props.codeText;
+      let usedCodeStr = displayedCode;
       // JSON pretty-print as soon as the block LOOKS complete: a streamed
       // prefix never parses, so trying to pretty-print every chunk of a
       // growing block was O(n²) work for nothing (pkg-small-06) — but a
@@ -268,13 +276,7 @@ const MantineAIMPreCode = memo(
         usedCodeStr = prettyPrintJson(usedCodeStr, expandNestedJson);
       }
       return usedCodeStr;
-    }, [isSpecialCodeBlock, props.codeText, codeLanguage, streaming, formatJson, expandNestedJson, jsonComplete]);
-    const displayedCode = useCodeFrame(
-      normalCodeBlockContent ?? '',
-      usedCodeLanguage,
-      streaming && !isSpecialCodeBlock,
-      highlightIntervalMs
-    );
+    }, [isSpecialCodeBlock, displayedCode, codeLanguage, streaming, formatJson, expandNestedJson, jsonComplete]);
 
     const specialCodeBlockContent = useMemo(() => {
       switch (codeLanguage) {
@@ -290,7 +292,7 @@ const MantineAIMPreCode = memo(
     ) : (
       <RawCodeContext.Provider value={props.codeText}>
         <OrdinaryCodeHighlight
-          code={displayedCode}
+          code={normalCodeBlockContent ?? ''}
           language={usedCodeLanguage}
           fileName={usedFileName}
           fontSize={fontSize}

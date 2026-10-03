@@ -4,7 +4,7 @@
 // per render, not what the controller publishes. Timers are faked so the
 // throttle is measured against a clock.
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
-import { act } from 'react';
+import { act, startTransition, StrictMode, Suspense } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useCodeFrame } from './useCodeFrame';
 
@@ -17,12 +17,15 @@ interface Props {
   language?: string;
   streaming: boolean;
   interval?: number;
+  suspend?: boolean;
 }
+const never = new Promise<void>(() => {});
 /** Every value the hook returned, in render order. */
 const seen: string[] = [];
-const Probe = ({ code, language = 'js', streaming, interval = 50 }: Props) => {
+const Probe = ({ code, language = 'js', streaming, interval = 50, suspend }: Props) => {
   const frame = useCodeFrame(code, language, streaming, interval);
   seen.push(frame);
+  if (suspend) throw never;
   return <output>{frame}</output>;
 };
 
@@ -65,9 +68,9 @@ test('outside streaming every update passes through at once, with no timer', asy
   expect(shown()).toBe('ab');
   await render({ code: 'x', streaming: false });
   expect(shown()).toBe('x');
-  // The controller publishes the frame it was told about, which is one
-  // more render with the same text, never an older one.
-  expect(seen).toEqual(['a', 'ab', 'ab', 'x', 'x']);
+  // Render-state reconciliation and timer publication may repeat a value;
+  // neither may expose an older frame during a static update.
+  expect(seen.filter((value, i) => i === 0 || value !== seen[i - 1])).toEqual(['a', 'ab', 'x']);
   expect(vi.getTimerCount()).toBe(0);
   // A zero interval while streaming is the same pass-through.
   await render({ code: 'xy', streaming: true, interval: 0 });
@@ -136,4 +139,40 @@ test('unmount cancels the pending frame and no update reaches the unmounted comp
   await tick(200);
   expect(seen.length).toBe(renders);
   expect(error).not.toHaveBeenCalled();
+});
+
+test('an abandoned replacement cannot change the committed append generation', async () => {
+  vi.useFakeTimers();
+  await render({ code: 'a', streaming: true });
+  const view = (code: string, suspend = false) => (
+    <Suspense fallback={<i>pending</i>}>
+      <Probe code={code} streaming suspend={suspend} />
+    </Suspense>
+  );
+  await act(async () => root!.render(view('a')));
+  await act(async () => root!.render(view('ab')));
+  await act(async () => startTransition(() => root!.render(view('replacement', true))));
+  expect(shown()).toBe('a');
+  await act(async () => root!.render(view('abc')));
+  expect(shown()).toBe('a');
+  await tick(50);
+  expect(shown()).toBe('abc');
+});
+
+test('Strict Mode replay preserves throttling and replacement visibility', async () => {
+  vi.useFakeTimers();
+  await render({ code: 'a', streaming: true });
+  const view = (code: string) => (
+    <StrictMode>
+      <Probe code={code} streaming />
+    </StrictMode>
+  );
+  await act(async () => root!.render(view('a')));
+  await act(async () => root!.render(view('ab')));
+  expect(shown()).toBe('a');
+  await tick(50);
+  expect(shown()).toBe('ab');
+  await act(async () => root!.render(view('axc')));
+  expect(shown()).toBe('axc');
+  expect(vi.getTimerCount()).toBe(0);
 });

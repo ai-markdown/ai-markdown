@@ -9,7 +9,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createApp, h, nextTick, reactive, type App } from 'vue';
 import type { SmoothStreamPacing } from '@ai-markdown/engine';
-import { AIMarkdownSmoothStream } from './smooth';
+import { AIMarkdownSmoothStream, useDocumentSmoothStream } from './smooth';
+import { AIMarkdownDocuments } from './documents';
 
 interface State {
   content: string;
@@ -80,6 +81,39 @@ function check(state: State, previous: string): string {
 const words = (count: number, from = 0) => Array.from({ length: count }, (_, i) => `word${from + i}`).join(' ');
 
 describe('AIMarkdownSmoothStream', () => {
+  it('content changes in an object-producing getter never release a waiting successor', async () => {
+    const state = reactive({
+      first: { content: '', streaming: true },
+      second: { content: '', streaming: true },
+    });
+    const Chunk = (key: 'first' | 'second') => ({
+      setup() {
+        const smooth = useDocumentSmoothStream(() => ({ ...state[key], documentId: 'shared' }));
+        return () => h('output', { id: key }, smooth.content.value);
+      },
+    });
+    const First = Chunk('first'),
+      Second = Chunk('second');
+    app = createApp({ render: () => h(AIMarkdownDocuments, null, { default: () => [h(First), h(Second)] }) });
+    app.mount(host);
+    await nextTick();
+    state.first = { content: words(20), streaming: true };
+    state.second = { content: 'ready successor', streaming: false };
+    await nextTick();
+    for (let i = 0; i < 100; i++) {
+      await frame();
+      expect(host.querySelector('#second')!.textContent).toBe('');
+    }
+    state.first = { ...state.first, streaming: false };
+    await nextTick();
+    for (let i = 0; i < 200; i++) {
+      await frame();
+      if (host.querySelector('#second')!.textContent) {
+        expect(host.querySelector('#first')!.textContent).toBe(state.first.content);
+      }
+    }
+    expect(host.querySelector('#second')!.textContent).toBe(state.second.content);
+  });
   it('reveals a monotone prefix of the source and drains once streaming ends', async () => {
     const state = reactive<State>({ content: 'seed', streaming: true, pacing: 'balanced' });
     mount(state);

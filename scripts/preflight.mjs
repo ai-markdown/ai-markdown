@@ -13,6 +13,7 @@ const steps = [
   ['typecheck'],
   ['check:public-api'],
   ['test:command-control'],
+  ['test:benchmark-control'],
   ['test:soak-control'],
   ['test:release-control'],
   ['test:unit'],
