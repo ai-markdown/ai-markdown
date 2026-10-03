@@ -94,9 +94,9 @@
   },
   "devDependencies": {
     "@ai-markdown/react": "workspace:*",
-    "@mantine/code-highlight": "^9.6.1",
-    "@mantine/core": "^9.6.1",
-    "@mantine/hooks": "^9.6.1",
+    "@mantine/code-highlight": "^9.6.3",
+    "@mantine/core": "^9.6.3",
+    "@mantine/hooks": "^9.6.3",
     "@types/node": "^25.9.6",
     "autoprefixer": "^10.5.6",
     "esbuild-sass-plugin": "^3.7.0",
