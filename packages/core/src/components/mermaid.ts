@@ -137,9 +137,13 @@ export const ensureMermaidInitialized = (mermaid: MermaidInitTarget, isDark: boo
     // only `fontFamily`: `default`, `base` and `dark` share the same font
     // default, so a value that differs is the host's and survives the switch
     // (a top-level `fontFamily` survives through the spread above either way).
+    // Mermaid's dark edge labels use #ccc text on #585858 (4.43:1).
+    // Give our default palette enough contrast; host-owned themes stay intact.
     const fontFamily: unknown = (site.themeVariables as { fontFamily?: unknown } | undefined)?.fontFamily;
     if (typeof fontFamily === 'string') {
-      next.themeVariables = { fontFamily };
+      next.themeVariables = { fontFamily, ...(isDark ? { edgeLabelBackground: '#444444' } : {}) };
+    } else if (isDark) {
+      next.themeVariables = { edgeLabelBackground: '#444444' };
     } else {
       delete next.themeVariables;
     }

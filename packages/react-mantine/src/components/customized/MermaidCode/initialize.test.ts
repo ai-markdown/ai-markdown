@@ -129,6 +129,7 @@ describe('ensureMermaidInitialized', () => {
     const mermaid = createMermaidStub({ themeVariables: { fontFamily: 'Inter', primaryColor: '#ececff' } });
     ensureMermaidInitialized(mermaid, true);
     expect(mermaid.site.theme).toBe('dark');
+    expect(mermaid.site.themeVariables.edgeLabelBackground).toBe('#444444');
     // The stub's "computed" dark variables carry a marker so a leak is visible.
     mermaid.site.themeVariables.primaryColor = '#1f2020';
     ensureMermaidInitialized(mermaid, false);

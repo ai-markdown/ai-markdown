@@ -1,4 +1,5 @@
 import React from 'react';
+import { expect, waitFor } from 'storybook/test';
 import { Button } from '@mantine/core';
 import MantineAIMarkdown from '../src/index';
 import 'katex/dist/katex.min.css';
@@ -35,6 +36,16 @@ const meta: MantineMeta = {
     },
   },
   render: (args) => <MantineAIMarkdown {...args} />,
+  // Rendering diagrams is asynchronous even after the Markdown has settled.
+  // Browser tests must check the finished SVGs, not the source fallback.
+  play: async ({ canvasElement, args }) => {
+    if (import.meta.env.MODE !== 'test') return;
+    const expected = (args.content?.match(/^```mermaid$/gm) ?? []).length;
+    await waitFor(
+      () => expect(canvasElement.querySelectorAll('.aim-mantine-mermaid-code > pre > svg')).toHaveLength(expected),
+      { timeout: 15000 }
+    );
+  },
 };
 
 export default meta;

@@ -206,7 +206,12 @@ try {
   );
   // Autoplay must leave the context example connected to the public Controls.
   const contextStory = 'customization-metadata--reactive-context';
-  await page.goto(`${base}?path=/story/vue_${contextStory}`);
+  // Keep the composed manager mounted while switching stories, as a visitor
+  // does. A composed-manager reload can leave Controls on its loading
+  // skeleton even after the preview has finished; direct reload is tested above.
+  await page.locator('#vue_customization-metadata').click();
+  await page.locator(`#vue_${contextStory}`).click();
+  await page.waitForURL(`${base}?path=/story/vue_${contextStory}`);
   const contextPreview = page.frameLocator('iframe[src*="/vue/iframe.html"]');
   await contextPreview.locator('[data-context-owner="slot"]').first().waitFor();
   const contextFrame = page.frames().find((frame) => frame.url().includes('/vue/iframe.html'));
