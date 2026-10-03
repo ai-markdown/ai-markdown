@@ -20,18 +20,19 @@ Run these commands from the repository root after `pnpm install --frozen-lockfil
 
 ## Focused validation
 
-| Command                       | What it validates                                                                                                                                                                                        |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm check:overrides`        | Workspace dependency override configuration.                                                                                                                                                             |
-| `pnpm check:public-api`       | Public declaration snapshots for engine, core, React, React plugins, Mantine and Vue, plus boundary rules. Requires a build; `node scripts/check-public-api.mjs --update` rewrites snapshots for review. |
-| `pnpm test:core-contracts`    | Standalone core gate: build its dependency closure, check types and run all core tests with protected sequence settings.                                                                                 |
-| `pnpm test:command-control`   | Preflight fail-fast behavior, build reuse and protected unit-test settings.                                                                                                                              |
-| `pnpm test:soak-control`      | Soak runner control logic and change-impact classification. Does not start soak.                                                                                                                         |
-| `pnpm test:release-control`   | Release authentication and publishing control logic. Does not publish packages.                                                                                                                          |
-| `pnpm packcheck`              | attw and publint checks for all public package distributions. Requires a build.                                                                                                                          |
-| `pnpm test:packed-consumers`  | Pack and install packages into an isolated consumer, then validate runtime and type entry points. Requires a build and dependency installation access.                                                   |
-| `pnpm test:document-lifetime` | React concurrent document ownership and garbage-collection regression in Chromium.                                                                                                                       |
-| `pnpm test:vue-browser`       | Vue SSR, hydration and browser adapter regressions in Chromium.                                                                                                                                          |
+| Command                         | What it validates                                                                                                                                                                                        |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm check:overrides`          | Workspace dependency override configuration.                                                                                                                                                             |
+| `pnpm check:public-api`         | Public declaration snapshots for engine, core, React, React plugins, Mantine and Vue, plus boundary rules. Requires a build; `node scripts/check-public-api.mjs --update` rewrites snapshots for review. |
+| `pnpm test:core-contracts`      | Standalone core gate: build its dependency closure, check types and run all core tests with protected sequence settings.                                                                                 |
+| `pnpm test:command-control`     | Preflight fail-fast behavior, build reuse and protected unit-test settings.                                                                                                                              |
+| `pnpm test:dependency-security` | Verify installed dependency security patches against attack cases and normal behavior; see [Security Policy](../../../../SECURITY.md#dependency-security-patches).                                       |
+| `pnpm test:soak-control`        | Soak runner control logic and change-impact classification. Does not start soak.                                                                                                                         |
+| `pnpm test:release-control`     | Release authentication and publishing control logic. Does not publish packages.                                                                                                                          |
+| `pnpm packcheck`                | attw and publint checks for all public package distributions. Requires a build.                                                                                                                          |
+| `pnpm test:packed-consumers`    | Pack and install packages into an isolated consumer, then validate runtime and type entry points. Requires a build and dependency installation access.                                                   |
+| `pnpm test:document-lifetime`   | React concurrent document ownership and garbage-collection regression in Chromium.                                                                                                                       |
+| `pnpm test:vue-browser`         | Vue SSR, hydration and browser adapter regressions in Chromium.                                                                                                                                          |
 
 Install the browser with `pnpm exec playwright install chromium` before browser checks. Adapter browser checks require built package dependencies; the Vue check also reads its generated CSS.
 

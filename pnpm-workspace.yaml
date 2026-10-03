@@ -55,9 +55,8 @@ minimumReleaseAgeExclude:
 #     exact older TS (react-doctor pins 5.6.1-rc). Narrowed to `typescript@>=7`
 #     below, which is what the intent was: keep TS 7 out, touch nothing else.
 overrides:
-  # Security floors. dompurify's is the surviving floor from alert #8
-  # (GHSA-h7mw-gpvr-xq4m, < 3.4.0).
-  dompurify: ^3.4.0
+  # Security floors, including the follow-up IN_PLACE sanitization fix.
+  dompurify: ^3.4.16
   uuid: ^11.1.1
   # Security fixes for comma parsing and attacker-controlled isBuffer.
   qs@<6.16.0: '>=6.16.0 <7'
@@ -68,13 +67,8 @@ overrides:
   # pulled 4.1.2, outside the `^3.0.1` that its only consumer (ajv 8.x)
   # declares.
   #
-  # Raised 2026-09-03 from `<3.1.5 -> >=3.1.5` to `<3.1.6 -> >=3.1.6`: four
-  # further advisories landed whose range is `< 3.1.6`, so the version the
-  # previous floor installed had itself become the vulnerable one. A floor
-  # that names an exact version ages into a no-op the moment the next
-  # advisory extends the range past it, and nothing here re-checks that on
-  # its own — the alert is the only signal.
-  fast-uri@>=3.0.0 <3.1.6: '>=3.1.6 <4'
+  # Include bracket-host validation and percent-encoded host normalization.
+  fast-uri@>=3.0.0 <3.1.8: '>=3.1.8 <4'
   # GHSA prototype-write / crash, vulnerable `<= 4.28.6`, patched 4.28.7.
   # Dev-only: babel's `helper-compilation-targets` (via stryker) and
   # `update-browserslist-db`. Every dependent declares `^4.24.0`, so this
@@ -89,8 +83,11 @@ overrides:
   browserslist@<4.28.7: '>=4.28.7 <5'
   # Selector deliberately bounded below as well, so minimatch's 1.x/2.x
   # instances are not caught by it.
-  # Include the follow-up fix for unbounded intermediate expansion arrays.
-  brace-expansion@>=3.0.0 <5.0.9: '>=5.0.9 <6'
+  # Include follow-up recursion and quadratic-expansion fixes.
+  brace-expansion@>=3.0.0 <5.0.12: '>=5.0.12 <6'
+  # Transitive security fixes within their existing major versions.
+  undici@>=8.0.0 <8.10.2: '>=8.10.2 <9'
+  devalue@>=5.0.0 <5.9.3: '>=5.9.3 <6'
   # Dependabot #18 (GHSA dev-server file read, fixed in 0.28.1): the only
   # in-range holdout is dormant tsup's `esbuild: ^0.27.0` dependency —
   # every other dependent allows 0.28 (vite peers ^0.27 || ^0.28). Verified
@@ -127,3 +124,7 @@ peerDependencyRules:
 # selection in sync until Stryker supports that separator upstream.
 patchedDependencies:
   '@stryker-mutator/vitest-runner@9.6.1': patches/@stryker-mutator__vitest-runner@9.6.1.patch
+  # Unreleased upstream fixes; provenance and audit limits are in SECURITY.md.
+  # pnpm test:dependency-security exercises the installed patches.
+  braces@3.0.3: patches/braces@3.0.3.patch
+  http-cache-semantics@4.2.0: patches/http-cache-semantics@4.2.0.patch

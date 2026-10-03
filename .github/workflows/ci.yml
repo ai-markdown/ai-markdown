@@ -209,6 +209,10 @@ jobs:
         if: matrix.task == 'test'
         run: pnpm test:command-control
 
+      - name: Dependency security regressions
+        if: matrix.task == 'test'
+        run: pnpm test:dependency-security
+
       - name: Benchmark resource cleanup
         if: matrix.task == 'test'
         run: pnpm test:benchmark-control

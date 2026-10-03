@@ -25,6 +25,7 @@
     "packcheck": "pnpm --filter './packages/*' -r exec attw --pack . && pnpm --filter './packages/*' -r exec publint",
     "test:unit": "node scripts/test-unit.mjs",
     "test:core-contracts": "node scripts/check-core-contracts.mjs",
+    "test:dependency-security": "node --test scripts/dependency-security.test.mjs",
     "test:command-control": "node --test scripts/development-commands.test.mjs",
     "test:soak-smoke": "node scripts/soak/smoke.mjs",
     "test:soak-control": "node --test scripts/soak/soak-control.test.mjs scripts/soak/impact.test.mjs",

@@ -6,6 +6,7 @@ import { URL, fileURLToPath } from 'node:url';
 // typecheck covers their declarations as well as adapters and Storybook.
 const steps = [
   ['check:overrides'],
+  ['test:dependency-security'],
   ['check:soak-coverage'],
   ['lint'],
   ['format:check'],

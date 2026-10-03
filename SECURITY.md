@@ -50,3 +50,16 @@ See the [migration guide](https://ai-markdown.github.io/docs/guides/framework-tr
 ## Public disclosure
 
 After a fix is shipped, we'll publish a GitHub Security Advisory with the CVE (if applicable), affected versions, and credit to the reporter (unless you'd prefer to stay anonymous).
+
+## Dependency security patches
+
+Security floors in `pnpm-workspace.yaml` keep resolved dependencies on patched releases. Run `pnpm audit` after changing the lockfile and `pnpm test:dependency-security` to verify the installed temporary patches. The regression suite also runs in preflight and CI.
+
+Two advisories have no published upstream fix as of 2026-10-03. This workspace applies the runtime changes from these upstream proposals through `patchedDependencies` (configured in `pnpm-workspace.yaml`):
+
+| Dependency                   | Advisory                                                                 | Patch provenance                                                                                                                                                                                       |
+| ---------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `braces@3.0.3`               | [GHSA-vfj7-8cjw-p6xm](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm) | [PR #72](https://github.com/micromatch/braces/pull/72), commit `28d440b5dd449dbf1fe6f3506cf94ecca4d02660`; bounds parsed and caller-supplied AST depth and rejects cyclic parent chains.               |
+| `http-cache-semantics@4.2.0` | [GHSA-ch52-4w7c-c8xp](https://github.com/advisories/GHSA-ch52-4w7c-c8xp) | [PR #58](https://github.com/kornelski/http-cache-semantics/pull/58), commit `14a8c2ad51740dc39bf3e8f1a11c845a5003f217`; prevents request cache directives from overriding response reuse restrictions. |
+
+These are workspace build/tooling dependencies, not dependencies bundled into the published Markdown packages. Package versions remain unchanged: the raw version-based audit still reports the two advisories because it cannot recognize local patches. No advisory ignore rules are configured. The tests exercise the original attack conditions and ordinary behavior against the dependencies resolved by their real consumers. Remove each patch only after adopting a published fix and verifying the regressions still pass.

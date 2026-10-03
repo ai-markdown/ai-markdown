@@ -24,18 +24,19 @@
 
 ## 专项验证
 
-| 命令                          | 验证内容                                                                                                                                                     |
-| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pnpm check:overrides`        | 工作区依赖覆盖（overrides）配置。                                                                                                                            |
-| `pnpm check:public-api`       | 检查 engine、core、React、React plugins、Mantine 和 Vue 的公开声明快照及边界规则。需先构建；用 `node scripts/check-public-api.mjs --update` 更新快照并审核。 |
-| `pnpm test:core-contracts`    | 独立的 core 验证门禁：构建其依赖闭包，检查类型并使用受保护的序列设置运行所有 core 测试。                                                                     |
-| `pnpm test:command-control`   | 预检快速失败行为、构建复用机制及受保护的单元测试设置。                                                                                                       |
-| `pnpm test:soak-control`      | 压测运行器控制逻辑与改动影响分类。不会启动实际压测。                                                                                                         |
-| `pnpm test:release-control`   | 发布认证与发布控制逻辑。不会发布相关包。                                                                                                                     |
-| `pnpm packcheck`              | 对所有公开相关包分发产物执行 attw 与 publint 检查。需要先完成构建。                                                                                          |
-| `pnpm test:packed-consumers`  | 打包并在隔离环境中安装相关包，验证运行时与类型入口点。需要构建产物及依赖安装网络访问权限。                                                                   |
-| `pnpm test:document-lifetime` | Chromium 下 React 并发文档所有权与垃圾回收回归测试。                                                                                                         |
-| `pnpm test:vue-browser`       | Chromium 下 Vue 服务端渲染、水合及浏览器适配器回归测试。                                                                                                     |
+| 命令                            | 验证内容                                                                                                                                                     |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pnpm check:overrides`          | 工作区依赖覆盖（overrides）配置。                                                                                                                            |
+| `pnpm check:public-api`         | 检查 engine、core、React、React plugins、Mantine 和 Vue 的公开声明快照及边界规则。需先构建；用 `node scripts/check-public-api.mjs --update` 更新快照并审核。 |
+| `pnpm test:core-contracts`      | 独立的 core 验证门禁：构建其依赖闭包，检查类型并使用受保护的序列设置运行所有 core 测试。                                                                     |
+| `pnpm test:command-control`     | 预检快速失败行为、构建复用机制及受保护的单元测试设置。                                                                                                       |
+| `pnpm test:dependency-security` | 验证已安装的依赖安全补丁，覆盖漏洞复现与正常行为；参见[安全策略](../../../../SECURITY.md#dependency-security-patches)。                                      |
+| `pnpm test:soak-control`        | 压测运行器控制逻辑与改动影响分类。不会启动实际压测。                                                                                                         |
+| `pnpm test:release-control`     | 发布认证与发布控制逻辑。不会发布相关包。                                                                                                                     |
+| `pnpm packcheck`                | 对所有公开相关包分发产物执行 attw 与 publint 检查。需要先完成构建。                                                                                          |
+| `pnpm test:packed-consumers`    | 打包并在隔离环境中安装相关包，验证运行时与类型入口点。需要构建产物及依赖安装网络访问权限。                                                                   |
+| `pnpm test:document-lifetime`   | Chromium 下 React 并发文档所有权与垃圾回收回归测试。                                                                                                         |
+| `pnpm test:vue-browser`         | Chromium 下 Vue 服务端渲染、水合及浏览器适配器回归测试。                                                                                                     |
 
 在运行浏览器检查前，请先使用 `pnpm exec playwright install chromium` 安装浏览器。适配器浏览器检查需要已构建的相关包依赖；Vue 检查还会读取其生成的 CSS 样式。
 
