@@ -67,12 +67,14 @@ export const Demo: ReactStory = {
           // the visual cadence steady anyway — that contrast is the demo.
           options={{ chunkSizeMin: 24, chunkSizeMax: 96, chunkDelayMin: 40, chunkDelayMax: 400 }}
           style={{ color: getStreamingTheme(colorScheme).text }}
+          drains={1}
           renderButton={(streaming, restart) => <ThemedReplayButton streaming={streaming} onRestart={restart} />}
         >
-          {(content, streaming) => (
+          {(content, streaming, onDrained) => (
             <AIMarkdownSmoothStream
               content={content}
               streaming={streaming}
+              onSmoothDrained={onDrained}
               colorScheme={colorScheme}
               streamingCursor={AIMarkdownStreamingCursor}
             />
@@ -84,54 +86,80 @@ export const Demo: ReactStory = {
 };
 
 /**
- * The preset demo as a real component: the drain counter needs state, and a
+ * The preset demo as real components: the drain counter needs state, and a
  * story `render` slot is a plain function.
  */
-const PacingPresetDemo = ({ pacing, colorScheme }: { pacing: SmoothStreamPacing; colorScheme: StoryColorScheme }) => {
+const PacingPresetBody = ({
+  pacing,
+  colorScheme,
+  content,
+  streaming,
+  onReplayDrained,
+}: {
+  pacing: SmoothStreamPacing;
+  colorScheme: StoryColorScheme;
+  content: string;
+  streaming: boolean;
+  onReplayDrained: () => void;
+}) => {
   const theme = getStreamingTheme(colorScheme);
   const [drains, setDrains] = useState(0);
-  // Stable across renders: `setDrains` is itself stable and the updater is a
-  // pure function of the previous count, so the empty dep list is honest.
+  // Stable across renders: `setDrains` and `onReplayDrained` are stable and
+  // the updater is a pure function of the previous count.
   // `onSmoothDrained` is read through a latest-ref internally, so an inline
   // arrow would still FIRE correctly — it would just break the shell's `memo`
   // on every parent render, which during a stream is every frame.
-  const onDrained = useCallback(() => setDrains((count) => count + 1), []);
+  const onDrained = useCallback(() => {
+    setDrains((count) => count + 1);
+    onReplayDrained();
+  }, [onReplayDrained]);
   return (
-    <StreamingReplay
-      key={pacing}
-      text={STREAMING_DEMO_CONTENT}
-      // Server-buffer-shaped arrivals: big clumps separated by irregular
-      // multi-hundred-millisecond gaps. This is the pattern the adaptive law
-      // exists to absorb, and the one where the presets differ visibly.
-      options={{ chunkSizeMin: 40, chunkSizeMax: 120, chunkDelayMin: 150, chunkDelayMax: 450 }}
-      style={{ color: theme.text }}
-      renderButton={(streaming, restart) => <ThemedReplayButton streaming={streaming} onRestart={restart} />}
-    >
-      {(content, streaming) => (
-        <div>
-          <div
-            style={{
-              color: theme.textMuted,
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-              fontSize: 12,
-              marginBottom: 12,
-            }}
-          >
-            pacing: {pacing} · source {streaming ? 'streaming' : 'ended'} · onSmoothDrained fired {drains}×
-          </div>
-          <AIMarkdownSmoothStream
-            content={content}
-            streaming={streaming}
-            smoothPacing={pacing}
-            onSmoothDrained={onDrained}
-            colorScheme={colorScheme}
-            streamingCursor={AIMarkdownStreamingCursor}
-          />
-        </div>
-      )}
-    </StreamingReplay>
+    <div>
+      <div
+        style={{
+          color: theme.textMuted,
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+          fontSize: 12,
+          marginBottom: 12,
+        }}
+      >
+        pacing: {pacing} · source {streaming ? 'streaming' : 'ended'} · onSmoothDrained fired {drains}×
+      </div>
+      <AIMarkdownSmoothStream
+        content={content}
+        streaming={streaming}
+        smoothPacing={pacing}
+        onSmoothDrained={onDrained}
+        colorScheme={colorScheme}
+        streamingCursor={AIMarkdownStreamingCursor}
+      />
+    </div>
   );
 };
+
+const PacingPresetDemo = ({ pacing, colorScheme }: { pacing: SmoothStreamPacing; colorScheme: StoryColorScheme }) => (
+  <StreamingReplay
+    key={pacing}
+    drains={1}
+    text={STREAMING_DEMO_CONTENT}
+    // Server-buffer-shaped arrivals: big clumps separated by irregular
+    // multi-hundred-millisecond gaps. This is the pattern the adaptive law
+    // exists to absorb, and the one where the presets differ visibly.
+    options={{ chunkSizeMin: 40, chunkSizeMax: 120, chunkDelayMin: 150, chunkDelayMax: 450 }}
+    style={{ color: getStreamingTheme(colorScheme).text }}
+    renderButton={(streaming, restart) => <ThemedReplayButton streaming={streaming} onRestart={restart} />}
+  >
+    {(content, streaming, onReplayDrained) => (
+      <PacingPresetBody
+        pacing={pacing}
+        colorScheme={colorScheme}
+        content={content}
+        streaming={streaming}
+        onReplayDrained={onReplayDrained}
+      />
+    )}
+  </StreamingReplay>
+);
 
 /**
  * One stream, one preset at a time — switch `pacing` in the controls and

@@ -7,7 +7,7 @@
  * there; this file stays presentation-free so it can be reused verbatim by
  * both packages' stories.
  */
-import { useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useReducer, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 
 export interface UseStreamedContentOptions {
   chunkSizeMin?: number;
@@ -99,11 +99,18 @@ export const useStreamedContent = (
  * what's shared is the hook wiring and the button-over-content layout, and,
  * because this is a real component (not a story `render` slot calling hooks
  * directly), consumers don't need a rules-of-hooks suppression.
+ *
+ * `data-story-streaming` is what the test preview waits on before it checks
+ * the settled page. It stays `true` while the source is streaming. A smooth
+ * stream keeps revealing after its source ends, so a story that renders one
+ * sets `drains` to the number of reveals it mounts and hands `onDrained` to
+ * each; the marker then stays `true` until every one has reported.
  */
 export const StreamingReplay = ({
   text,
   options,
   style,
+  drains = 0,
   renderButton,
   children,
 }: {
@@ -112,14 +119,22 @@ export const StreamingReplay = ({
   options?: UseStreamedContentOptions;
   /** Style for the wrapping div (e.g. theme text color). */
   style?: CSSProperties;
+  /** Number of smooth reveals that call `onDrained` once the source has ended. */
+  drains?: number;
   renderButton: (streaming: boolean, restart: () => void) => ReactNode;
-  children: (content: string, streaming: boolean) => ReactNode;
+  children: (content: string, streaming: boolean, onDrained: () => void) => ReactNode;
 }) => {
   const { content, streaming, restart } = useStreamedContent(text, options);
+  const [drained, setDrained] = useState(0);
+  const onDrained = useCallback(() => setDrained((count) => count + 1), []);
+  const replay = useCallback(() => {
+    setDrained(0);
+    restart();
+  }, [restart]);
   return (
-    <div style={style} data-story-streaming={streaming}>
-      {renderButton(streaming, restart)}
-      {children(content, streaming)}
+    <div style={style} data-story-streaming={streaming || drained < drains}>
+      {renderButton(streaming, replay)}
+      {children(content, streaming, onDrained)}
     </div>
   );
 };

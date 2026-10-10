@@ -203,13 +203,15 @@ const PresetLane = ({
   content,
   streaming,
   theme,
+  onDrained,
 }: {
   pacing: SmoothStreamPacing;
   content: string;
   streaming: boolean;
   theme: 'light' | 'dark';
+  onDrained?: () => void;
 }) => {
-  const smooth = useSmoothStream({ content, streaming, pacing });
+  const smooth = useSmoothStream({ content, streaming, pacing, onDrained });
   const lag = content.length - smooth.content.length;
   return (
     <div style={{ flex: 1, minWidth: 0 }}>
@@ -233,12 +235,20 @@ export const PacingCalibration: Story = {
           // gaps — the arrival pattern the pacing law exists to absorb.
           options={{ chunkSizeMin: 40, chunkSizeMax: 120, chunkDelayMin: 150, chunkDelayMax: 450 }}
           style={{ color: getStreamingTheme(colorScheme).text }}
+          drains={PACING_PRESETS.length}
           renderButton={(streaming, restart) => <ThemedReplayButton streaming={streaming} onRestart={restart} />}
         >
-          {(content, streaming) => (
+          {(content, streaming, onDrained) => (
             <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
               {PACING_PRESETS.map((pacing) => (
-                <PresetLane key={pacing} pacing={pacing} content={content} streaming={streaming} theme={colorScheme} />
+                <PresetLane
+                  key={pacing}
+                  pacing={pacing}
+                  content={content}
+                  streaming={streaming}
+                  theme={colorScheme}
+                  onDrained={onDrained}
+                />
               ))}
             </div>
           )}
@@ -262,12 +272,20 @@ export const PacingCalibrationCoarse: Story = {
           text={STREAMING_DEMO_CONTENT}
           options={{ chunkSizeMin: 300, chunkSizeMax: 400, chunkDelayMin: 1900, chunkDelayMax: 2400 }}
           style={{ color: getStreamingTheme(colorScheme).text }}
+          drains={PACING_PRESETS.length}
           renderButton={(streaming, restart) => <ThemedReplayButton streaming={streaming} onRestart={restart} />}
         >
-          {(content, streaming) => (
+          {(content, streaming, onDrained) => (
             <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
               {PACING_PRESETS.map((pacing) => (
-                <PresetLane key={pacing} pacing={pacing} content={content} streaming={streaming} theme={colorScheme} />
+                <PresetLane
+                  key={pacing}
+                  pacing={pacing}
+                  content={content}
+                  streaming={streaming}
+                  theme={colorScheme}
+                  onDrained={onDrained}
+                />
               ))}
             </div>
           )}
