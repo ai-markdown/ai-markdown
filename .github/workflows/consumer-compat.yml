@@ -7,8 +7,32 @@ permissions:
   contents: read
 
 jobs:
+  # The build toolchain needs a newer Node than the packages' declared lower
+  # bounds, so the packages are built once here and the matrix below only
+  # packs and consumes that output.
+  build:
+    name: Build packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/setup@v2
+        with:
+          runtime: node@22.23.2
+          cache: true
+          install: false
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      - uses: actions/upload-artifact@v7
+        with:
+          name: consumer-compat-dist
+          # Stored relative to `packages/`, the common parent of the matches.
+          path: packages/*/dist/
+          if-no-files-found: error
+          retention-days: 1
+
   consumers:
     name: Packed consumers (Node ${{ matrix.node }})
+    needs: build
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -24,5 +48,8 @@ jobs:
           cache: true
           install: false
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+      - uses: actions/download-artifact@v8
+        with:
+          name: consumer-compat-dist
+          path: packages
       - run: pnpm test:packed-consumers
