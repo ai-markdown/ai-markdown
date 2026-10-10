@@ -23,7 +23,7 @@ const offenders = readdirSync('dist', { recursive: true })
 if (offenders.length > 0) {
   console.error(
     `assert-dist-clean: process.env leaked into ${offenders.join(', ')} — ` +
-      'check that both tsup configs still set env: { NODE_ENV }.'
+      'check that every tsdown config still sets env: { NODE_ENV }.'
   );
   process.exit(1);
 }

@@ -8,7 +8,7 @@
  * build because nothing in its source reads the environment — this check
  * makes that an ENFORCED invariant rather than a happy accident: the first
  * dev-only gate added here must come with `env: { NODE_ENV }` folding in
- * tsup, or the build fails right here instead of in a consumer's browser.
+ * tsdown, or the build fails right here instead of in a consumer's browser.
  * Source maps are exempt: they embed original source text.
  */
 import { readdirSync, readFileSync } from 'node:fs';
@@ -21,7 +21,7 @@ const offenders = readdirSync('dist', { recursive: true })
 if (offenders.length > 0) {
   console.error(
     `assert-dist-clean: process.env leaked into ${offenders.join(', ')} — ` +
-      'this package has no NODE_ENV folding — add env: { NODE_ENV } dual builds to tsup before shipping a dev-only gate.'
+      'this package has no NODE_ENV folding — add env: { NODE_ENV } dual builds to tsdown before shipping a dev-only gate.'
   );
   process.exit(1);
 }

@@ -29,7 +29,7 @@ pnpm build
 
 You'll need:
 
-- The Node version pinned in CI (currently 22.23.2) for reproducible validation. Vitest 5 requires Node `^22.12.0 || ^24.0.0 || >=26.0.0`; the published packages' consumer support is separate.
+- The Node version pinned in CI (currently 22.23.2) for reproducible validation. Vitest 5 requires Node `^22.12.0 || ^24.0.0 || >=26.0.0`; the published packages' consumer support is separate. The package build (tsdown) needs Node `^22.18.0 || ^24.11.0 || >=26.0.0`; that is a requirement of the build host only, and the packed-consumer workflow still installs the built packages on Node 20.19.
 - pnpm 11.x (this repo pins the exact version via the `packageManager` field — Corepack, or pnpm itself, will fetch it)
 
 > pnpm settings live in `pnpm-workspace.yaml`, not in a `pnpm` field in `package.json` — pnpm 11 ignores that field. `pnpm check:overrides` fails the build if one reappears, or if the lockfile no longer matches the declared overrides.
@@ -206,8 +206,8 @@ the gate exactly where it matters (this bug shipped once; see the history note
 in `useReferenceFlipWarning.ts`).
 
 What makes the bare text safe everywhere: `process.env.NODE_ENV` is resolved at
-**build time**. Both entries of the React adapter's `tsup.config.ts` — and both entries of
-engine's, which repeats the arrangement for the same reason — carry
+**build time**. Every config in the React adapter's `tsdown.config.ts` — and every one in
+engine's, which repeats the arrangement for the same reason — carries
 `env: { NODE_ENV: ... }`. Those keys are **load-bearing**; removing any of them
 would ship a dist that evaluates `process.env` at import and crashes no-bundler
 consumers (browser native ESM/CDN, Deno). The build fails if that ever regresses:

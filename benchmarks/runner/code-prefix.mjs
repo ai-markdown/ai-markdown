@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import { Buffer } from 'node:buffer';
 import { performance } from 'node:perf_hooks';
 const require = createRequire(import.meta.url);
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const { outputFiles } = await build({
   entryPoints: ['packages/react-mantine/src/components/customized/jsonCompleteness.ts'],
   bundle: true,

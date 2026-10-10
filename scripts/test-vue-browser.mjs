@@ -22,7 +22,7 @@ const { AIMarkdown } = await import('../packages/vue/dist/index.js');
 const markup = await renderToString(
   createSSRApp({ render: () => h(AIMarkdown, { content: '# Hydration\n\n**bold** $x^2$\n\nlocal[^x]\n\n[^x]: body' }) })
 );
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const directory = await mkdtemp(join(tmpdir(), 'aimd-vue-browser-'));
 let browser, server;
 try {

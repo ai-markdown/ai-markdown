@@ -88,22 +88,11 @@ overrides:
   # Transitive security fixes within their existing major versions.
   undici@>=8.0.0 <8.10.2: '>=8.10.2 <9'
   devalue@>=5.0.0 <5.9.3: '>=5.9.3 <6'
-  # Dependabot #18 (GHSA dev-server file read, fixed in 0.28.1): the only
-  # in-range holdout is dormant tsup's `esbuild: ^0.27.0` dependency —
-  # every other dependent allows 0.28 (vite peers ^0.27 || ^0.28). Verified
-  # empirically against tsup 8.5.1: dist output, "use client" preservation
-  # and the full preflight are green under 0.28. Drop when tsup (or its
-  # successor) declares ^0.28 itself. Bounded above like the others: esbuild
-  # is 0.x (every minor is breaking) and an open range would let the next
-  # lockfile re-resolution swap the verified 0.28 for an untested 0.29.
-  esbuild@<0.28.1: '>=0.28.1 <0.29'
   # Keep the TS major out of 7: TS 7 has no programmatic JS API (arrives in
-  # 7.1), which typescript-eslint and tsup's dts worker both require. The
-  # exposure is autoInstallPeers grabbing the latest for tsup's optional peer
-  # on lockfile re-resolution (e.g. a dependabot PR). TS 6's baseUrl
-  # deprecation (TS5101, injected by tsup's dts worker) is waived via
-  # ignoreDeprecations in tsconfig.base.json. Mirrors the dependabot policy
-  # that locks typescript.
+  # 7.1), which typescript-eslint and tsdown's `tsc` declaration generator
+  # both require. The exposure is autoInstallPeers grabbing the latest for an
+  # optional `typescript` peer on lockfile re-resolution (e.g. a dependabot
+  # PR). Mirrors the dependabot policy that locks typescript.
   typescript@>=7: ^6.0.3
   # Upstream declares `react-doctor: "latest"` (via react-scan), which floated
   # to a build-breaking version once. These pins are long-term defense, not

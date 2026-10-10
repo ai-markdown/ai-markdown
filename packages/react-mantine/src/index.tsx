@@ -9,7 +9,7 @@
 
 // Every component here reads React context and runs effects, so the whole
 // package is a client module. The directive has to sit on the ENTRY file:
-// tsup/esbuild only keeps a directive from the entry, and the ones in
+// the bundler only keeps a directive from the entry, and the ones in
 // PreCode.tsx / MermaidCode/index.tsx were dropped from the bundle (3.0.2
 // review: dist/index.js shipped without it, and RSC consumers importing the
 // default export from a server component got the "hooks in a server

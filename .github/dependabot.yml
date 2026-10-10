@@ -52,6 +52,17 @@ updates:
       - dependency-name: 'typescript'
         update-types:
           - version-update:semver-minor
+      # tsdown is 0.x: a minor release renames or removes config options and
+      # changes the emitted files, and @tsdown/css peers on the exact tsdown
+      # version. Both are pinned exactly and upgraded by hand, together.
+      - dependency-name: 'tsdown'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
+      - dependency-name: '@tsdown/*'
+        update-types:
+          - version-update:semver-minor
+          - version-update:semver-patch
       # KaTeX renderer output and its stylesheet must move together.
       # Review minor updates manually, including engine/core peer ranges.
       - dependency-name: 'katex'

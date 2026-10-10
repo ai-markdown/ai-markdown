@@ -1,31 +1,31 @@
 // Generated from the built public declaration. Review changes before updating.
-import * as react from 'react';
-import { AIMarkdownProps, AIMarkdownTypographyProps, AIMarkdownExtraStylesComponent, AIMarkdownBehaviorProps } from '@ai-markdown/react';
-import { M as MantineAIMarkdownMetadata, a as MantineCodeBlockOptions } from './defs-chunk.js';
-export { b as MantineLanguageFormat, d as defaultMantineCodeBlockOptions } from './defs-chunk.js';
+import { MantineAIMarkdownMetadata, MantineCodeBlockOptions, MantineLanguageFormat, defaultMantineCodeBlockOptions } from "./defs-chunk.js";
+import "react";
+import { AIMarkdownBehaviorProps, AIMarkdownExtraStylesComponent, AIMarkdownProps, AIMarkdownTypographyProps } from "@ai-markdown/react";
+import "@ai-markdown/core/components";
 interface MantineAIMarkdownProps<TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata> extends AIMarkdownProps<TMetadata> {
     codeBlock?: Partial<MantineCodeBlockOptions>;
 }
-declare const MantineAIMarkdownComponent: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>({ Typography, ExtraStyles, customComponents, colorScheme, codeBlock, ...props }: MantineAIMarkdownProps<TMetadata>) => react.JSX.Element;
+declare const MantineAIMarkdownComponent: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>({ Typography, ExtraStyles, customComponents, colorScheme, codeBlock, ...props }: MantineAIMarkdownProps<TMetadata>) => import("react").JSX.Element;
 declare const _default: typeof MantineAIMarkdownComponent;
-declare const MantineAIMarkdownTypography: react.MemoExoticComponent<({ children, fontSize, style }: AIMarkdownTypographyProps) => react.JSX.Element>;
+declare const MantineAIMarkdownTypography: import("react").MemoExoticComponent<({ children, fontSize, style }: AIMarkdownTypographyProps) => import("react").JSX.Element>;
 declare const MantineAIMDefaultExtraStyles: AIMarkdownExtraStylesComponent;
-declare function useMantineCodeBlockOptions(overrides?: Partial<MantineCodeBlockOptions>): Required<MantineCodeBlockOptions>;
-declare function preloadMantineCodeAssets(): Promise<void>;
+export declare function useMantineCodeBlockOptions(overrides?: Partial<MantineCodeBlockOptions>): Required<MantineCodeBlockOptions>;
+export declare function preloadMantineCodeAssets(): Promise<void>;
 interface MantineBehaviorProps extends AIMarkdownBehaviorProps {
     codeBlock?: Partial<MantineCodeBlockOptions>;
 }
-declare function defineMantineBehaviors(values: MantineBehaviorProps): Readonly<MantineBehaviorProps>;
-declare const useMantineAIMarkdownMetadata: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>() => TMetadata | undefined;
-export { MantineAIMDefaultExtraStyles, MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, MantineCodeBlockOptions, _default as default, defineMantineBehaviors, preloadMantineCodeAssets, useMantineAIMarkdownMetadata, useMantineCodeBlockOptions };
+export declare function defineMantineBehaviors(values: MantineBehaviorProps): Readonly<MantineBehaviorProps>;
+export declare const useMantineAIMarkdownMetadata: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>() => TMetadata | undefined;
+export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, type MantineCodeBlockOptions, MantineLanguageFormat, _default as default, defaultMantineCodeBlockOptions };
 
 // Relative declaration: dist/defs-chunk.d.ts
-import { AIMarkdownMetadata } from '@ai-markdown/react';
-declare enum MantineLanguageFormat {
+import { AIMarkdownMetadata } from "@ai-markdown/react";
+export declare enum MantineLanguageFormat {
     HighlightJs = "highlight-js",
     Shiki = "shiki"
 }
-interface MantineCodeBlockOptions {
+export interface MantineCodeBlockOptions {
     defaultExpanded: boolean;
     autoDetectUnknownLanguage: boolean;
     languageFormat?: MantineLanguageFormat;
@@ -34,7 +34,6 @@ interface MantineCodeBlockOptions {
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
 }
-declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
-interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
+export declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
+export interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
 }
-export { type MantineAIMarkdownMetadata as M, type MantineCodeBlockOptions as a, MantineLanguageFormat as b, defaultMantineCodeBlockOptions as d };

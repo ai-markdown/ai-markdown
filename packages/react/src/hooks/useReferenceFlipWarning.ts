@@ -8,7 +8,7 @@
  *
  * In production builds the entire warning logic is dead-code-eliminated:
  * the dual dev/prod build resolves `process.env.NODE_ENV` at build time
- * (tsup `env`), so `__DEV__` folds to a constant and the body's
+ * (tsdown `env`), so `__DEV__` folds to a constant and the body's
  * `if (!__DEV__) return;` drops the rest. The single `useRef` allocation
  * remains (unconditional, by rules of hooks) but is harmless.
  *

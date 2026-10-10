@@ -1,10 +1,5 @@
 {
   "compilerOptions": {
-    // Not for our own flags (none are deprecated): tsup's dts worker injects
-    // `baseUrl` into the loaded tsconfig, which TypeScript 6 rejects with
-    // TS5101 unless this waiver is present. Remove once dts generation no
-    // longer goes through tsup (baseUrl stops functioning entirely in TS 7).
-    "ignoreDeprecations": "6.0",
     "target": "ESNext",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",

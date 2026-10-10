@@ -10,10 +10,18 @@ for (const mapFile of readdirSync('dist').filter((name) => /\.(?:js|cjs)\.map$/.
   for (const source of JSON.parse(readFileSync(`dist/${mapFile}`, 'utf8')).sources) {
     const file = resolve('dist', source);
     if (!file.includes('/node_modules/')) continue;
+    // The nearest manifest can be a nameless module-type marker inside a
+    // package's build output (`dist/esm/package.json`); the package root is
+    // the nearest one that carries a name.
     let root = dirname(file);
-    while (!existsSync(`${root}/package.json`) && dirname(root) !== root) root = dirname(root);
-    if (!root.includes('/node_modules/')) throw new Error(`Cannot identify bundled dependency: ${source}`);
-    const pkg = JSON.parse(readFileSync(`${root}/package.json`, 'utf8'));
+    let pkg;
+    for (; dirname(root) !== root; root = dirname(root)) {
+      if (!existsSync(`${root}/package.json`)) continue;
+      pkg = JSON.parse(readFileSync(`${root}/package.json`, 'utf8'));
+      if (pkg.name) break;
+    }
+    if (!pkg?.name || !root.includes('/node_modules/'))
+      throw new Error(`Cannot identify bundled dependency: ${source}`);
     packages.set(`${pkg.name}@${pkg.version}`, { root, pkg });
   }
 }

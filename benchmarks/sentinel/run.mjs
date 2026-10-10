@@ -19,7 +19,7 @@ const index = args.indexOf('--baseline');
 assert(index === 0 && args.length === 2, 'Usage: pnpm bench:sentinel --baseline <built repository>');
 const revisions = { baseline: realpathSync(args[1]), candidate: root };
 const require = createRequire(import.meta.url);
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const hash = (value) => createHash('sha256').update(value).digest('hex');
 const git = (cwd, ...args) => execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
 const output = resolve(root, `benchmarks/results/sentinel-${Date.now()}.json`);

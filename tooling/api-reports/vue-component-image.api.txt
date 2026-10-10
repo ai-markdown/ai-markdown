@@ -1,24 +1,21 @@
 // Generated from the built public declaration. Review changes before updating.
-import { DefineComponent, VNodeChild, Component } from 'vue';
-import { M as MarkdownComponentProps } from '../types-chunk.js';
-import { ImageIconName } from '@ai-markdown/core/components';
-export { ImageIconName } from '@ai-markdown/core/components';
-import 'hast';
-type MarkdownImageIcon = VNodeChild | Component;
-interface MarkdownImageOptions {
-    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
+import { MarkdownComponentProps } from "../types-chunk.js";
+import { Component, DefineComponent, VNodeChild } from "vue";
+import { ImageIconName, ImageIconName as ImageIconName$1 } from "@ai-markdown/core/components";
+export type MarkdownImageIcon = VNodeChild | Component;
+export interface MarkdownImageOptions {
+    icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
     group?: string | false;
     preview?: boolean;
 }
-declare function createMarkdownImage({ icons, group, preview: allowPreview, }?: MarkdownImageOptions): DefineComponent<MarkdownComponentProps>;
-declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
-export { MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, createMarkdownImage };
+export declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): DefineComponent<MarkdownComponentProps>;
+export declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
+export type { ImageIconName };
 
 // Relative declaration: dist/types-chunk.d.ts
-import { Element } from 'hast';
-interface MarkdownComponentProps {
+import { Element } from "hast";
+export interface MarkdownComponentProps {
     node?: Element;
     streaming?: boolean;
     metadata?: unknown;
 }
-export type { MarkdownComponentProps as M };

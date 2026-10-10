@@ -10,7 +10,7 @@
  * Production never runs this module. Its one production call site sits
  * inside a `process.env.NODE_ENV !== 'production'` gate, which the
  * production build folds to `if (false)` and tree-shakes together with this
- * import (tsup `treeshake`, see tsup.config.ts), so neither the counter nor
+ * import (see tsdown.config.ts), so neither the counter nor
  * the enumeration reaches `dist/index.js`; the development build keeps both.
  * Tests import the counter by this module path — no barrel re-exports it.
  */

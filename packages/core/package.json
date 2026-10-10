@@ -39,7 +39,7 @@
     }
   },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-boundary.mjs",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsdown && node ../../scripts/strip-declaration-map-comments.mjs && node scripts/assert-boundary.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest --run"
   },

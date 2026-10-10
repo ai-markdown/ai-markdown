@@ -1,0 +1,7 @@
+{
+  // Typechecks the build config. It sits outside `rootDir`, which
+  // tsconfig.json pins to `src`.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "rootDir": "." },
+  "include": ["tsdown.config.ts"]
+}

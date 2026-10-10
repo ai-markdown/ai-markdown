@@ -1,22 +1,20 @@
 // Generated from the built public declaration. Review changes before updating.
-import * as react from 'react';
-import { ComponentPropsWithoutRef, ReactNode, ComponentType } from 'react';
-import { Element } from 'hast';
-import { ImageIconName } from '@ai-markdown/core/components';
-export { ImageIconName } from '@ai-markdown/core/components';
-type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
+import { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
+import { ImageIconName, ImageIconName as ImageIconName$1 } from "@ai-markdown/core/components";
+import { Element } from "hast";
+export type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
     node?: Element;
 };
-interface ImageIconProps {
+export interface ImageIconProps {
     className?: string;
     'aria-hidden'?: boolean;
 }
-type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
-interface MarkdownImageOptions {
-    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
+export type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
+export interface MarkdownImageOptions {
+    icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
     group?: string | false;
     preview?: boolean;
 }
-declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
-declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
-export { type ImageIconProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, createMarkdownImage };
+export declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
+export declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
+export type { ImageIconName };

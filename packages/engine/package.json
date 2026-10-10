@@ -64,7 +64,7 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-dist-clean.mjs && node scripts/collect-bundled-licenses.mjs",
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsdown && node ../../scripts/strip-declaration-map-comments.mjs && node scripts/assert-dist-clean.mjs && node scripts/collect-bundled-licenses.mjs",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "fuzz:splice": "vitest --run src/components/incrementalParse/spliceFuzz.test.ts",

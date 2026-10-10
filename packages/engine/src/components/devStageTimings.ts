@@ -27,7 +27,7 @@
  *   bulk-clears the buffer between runs (see useRenderProfiler.reset).
  *
  * Production builds fold {@link ENABLED} to `false`: the dual dev/prod
- * build resolves `process.env.NODE_ENV` at build time (tsup `env`), so
+ * build resolves `process.env.NODE_ENV` at build time (tsdown `env`), so
  * the published dist carries no env read at all; in-repo src consumers
  * (storybook, vitest) run under Vite/Node where the text is substituted
  * or `process` exists. The whole thing costs one boolean check per stage.

@@ -1,9 +1,8 @@
 // Generated from the built public declaration. Review changes before updating.
-import * as vue from 'vue';
-import { Component, VNodeChild, DefineComponent } from 'vue';
-import { Element } from 'hast';
-import { AIMarkdownEnginePlugin, AIMDContentPreprocessor, SanitizeSchema, UrlTransform, SmoothStreamPacing } from '@ai-markdown/engine';
-export { AIMDContentPreprocessor, AIMarkdownEnginePlugin, SanitizeSchema, SmoothStreamPacing, UrlTransform, createRemendPreprocessor, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, highlight, pangu, preprocessLaTeX, removeComments, smartypants } from '@ai-markdown/engine';
+import { Component, DefineComponent, VNodeChild } from "vue";
+import { AIMDContentPreprocessor, AIMDContentPreprocessor as AIMDContentPreprocessor$1, AIMarkdownEnginePlugin, AIMarkdownEnginePlugin as AIMarkdownEnginePlugin$1, SanitizeSchema, SanitizeSchema as SanitizeSchema$1, SmoothStreamPacing, SmoothStreamPacing as SmoothStreamPacing$1, UrlTransform, UrlTransform as UrlTransform$1, createRemendPreprocessor, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, highlight, pangu, preprocessLaTeX, removeComments, smartypants } from "@ai-markdown/engine";
+import "@ai-markdown/core";
+import { Element } from "hast";
 interface MarkdownElementContext {
     node: Element;
     properties: Record<string, unknown>;
@@ -20,10 +19,10 @@ interface AIMarkdownProps {
     streaming?: boolean;
     incrementalParse?: boolean;
     preserveOrphanReferences?: boolean;
-    enginePlugins?: readonly AIMarkdownEnginePlugin[];
-    contentPreprocessors?: readonly AIMDContentPreprocessor[];
-    sanitizeSchema?: SanitizeSchema;
-    urlTransform?: UrlTransform;
+    enginePlugins?: readonly AIMarkdownEnginePlugin$1[];
+    contentPreprocessors?: readonly AIMDContentPreprocessor$1[];
+    sanitizeSchema?: SanitizeSchema$1;
+    urlTransform?: UrlTransform$1;
     components?: MarkdownComponents;
     metadata?: unknown;
     streamingCursor?: boolean;
@@ -31,33 +30,33 @@ interface AIMarkdownProps {
 interface AIMarkdownDocumentsProps {
     preserveOrphanReferences?: boolean;
 }
-declare const AIMarkdown: DefineComponent<AIMarkdownProps>;
-declare const AIMarkdownStreamingCursor: DefineComponent;
-declare const AIMarkdownDocuments: DefineComponent<AIMarkdownDocumentsProps>;
+export declare const AIMarkdown: DefineComponent<AIMarkdownProps>;
+export declare const AIMarkdownStreamingCursor: DefineComponent;
+export declare const AIMarkdownDocuments: DefineComponent<AIMarkdownDocumentsProps>;
 interface SmoothStreamInput {
     content: string;
     streaming?: boolean;
-    pacing?: SmoothStreamPacing;
+    pacing?: SmoothStreamPacing$1;
 }
-declare function useSmoothStream(input: () => SmoothStreamInput): {
-    content: vue.ComputedRef<string>;
-    streaming: vue.ComputedRef<boolean>;
+export declare function useSmoothStream(input: () => SmoothStreamInput): {
+    content: import("vue").ComputedRef<string>;
+    streaming: import("vue").ComputedRef<boolean>;
     flush: () => void | undefined;
 };
 interface DocumentSmoothStreamInput extends SmoothStreamInput {
     documentId?: string;
     coordinate?: boolean;
 }
-declare function useDocumentSmoothStream(input: () => DocumentSmoothStreamInput): {
-    pending: vue.ComputedRef<boolean>;
-    content: vue.ComputedRef<string>;
-    streaming: vue.ComputedRef<boolean>;
+export declare function useDocumentSmoothStream(input: () => DocumentSmoothStreamInput): {
+    pending: import("vue").ComputedRef<boolean>;
+    content: import("vue").ComputedRef<string>;
+    streaming: import("vue").ComputedRef<boolean>;
     flush: () => void | undefined;
 };
-declare const AIMarkdownSmoothStream: DefineComponent<AIMarkdownProps & {
-    pacing?: SmoothStreamPacing;
+export declare const AIMarkdownSmoothStream: DefineComponent<AIMarkdownProps & {
+    pacing?: SmoothStreamPacing$1;
     coordinate?: boolean;
 }, {
     flush: () => void;
 }>;
-export { AIMarkdown, AIMarkdownDocuments, type AIMarkdownDocumentsProps, type AIMarkdownProps, AIMarkdownSmoothStream, AIMarkdownStreamingCursor, type DocumentSmoothStreamInput, type MarkdownComponents, type MarkdownElementContext, type MarkdownElementSlot, type SmoothStreamInput, AIMarkdown as default, useDocumentSmoothStream, useSmoothStream };
+export { type AIMDContentPreprocessor, type AIMarkdownDocumentsProps, type AIMarkdownEnginePlugin, type AIMarkdownProps, type DocumentSmoothStreamInput, type MarkdownComponents, type MarkdownElementContext, type MarkdownElementSlot, type SanitizeSchema, type SmoothStreamInput, type SmoothStreamPacing, type UrlTransform, createRemendPreprocessor, AIMarkdown as default, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, highlight, pangu, preprocessLaTeX, removeComments, smartypants };

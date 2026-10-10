@@ -70,7 +70,7 @@
     }
   },
   "scripts": {
-    "build": "tsup && node scripts/assert-dist-clean.mjs",
+    "build": "tsdown && node ../../scripts/strip-declaration-map-comments.mjs && node scripts/assert-dist-clean.mjs",
     "test": "vitest --run",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
@@ -89,21 +89,21 @@
   },
   "dependencies": {
     "@ai-markdown/code-language-detector": "workspace:^",
-    "mermaid": "^11.17.2",
-    "@ai-markdown/core": "workspace:*"
+    "@ai-markdown/core": "workspace:*",
+    "mermaid": "^11.17.2"
   },
   "devDependencies": {
     "@ai-markdown/react": "workspace:*",
+    "@ai-markdown/storybook-kit": "workspace:*",
     "@mantine/code-highlight": "^9.6.1",
     "@mantine/core": "^9.6.1",
     "@mantine/hooks": "^9.6.1",
+    "@tsdown/css": "0.23.0",
     "@types/node": "^25.9.6",
     "autoprefixer": "^10.5.6",
-    "esbuild-sass-plugin": "^3.7.0",
     "highlight.js": "^11.11.2",
     "postcss": "^8.5.28",
-    "tsup": "^8.5.1",
-    "@ai-markdown/storybook-kit": "workspace:*"
+    "sass-embedded": "^1.98.0"
   },
   "typesVersions": {
     "*": {

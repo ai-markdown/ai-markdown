@@ -29,9 +29,10 @@
  * assignable across the package's two build entries (the root entry and
  * the `/plugins` subpath must stay mutually assignable whether or not the
  * build duplicates this declaration per entry; a `unique symbol` brand
- * would break the duplicated case. Current tsup output happens to share
- * one declaration chunk between the entries — an implementation detail
- * the seal deliberately does not lean on). A second, runtime gate
+ * would break the duplicated case. Current output happens to declare it
+ * once — both React entries re-export it from this package's single
+ * declaration file — an implementation detail the seal deliberately does
+ * not lean on). A second, runtime gate
  * (`getEnginePluginInternals`, enforced in `sanitizeEnginePlugins`)
  * additionally rejects any object that lacks EITHER the marker or the
  * internal stage metadata, so a type-level forge is dropped at runtime

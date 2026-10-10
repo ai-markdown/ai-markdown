@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { renameSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 const require = createRequire(import.meta.url);
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const consumer = resolve(process.argv[2]);
 const mermaid = join(consumer, 'node_modules/mermaid');
 const unavailable = join(consumer, 'node_modules/.mermaid-disabled');

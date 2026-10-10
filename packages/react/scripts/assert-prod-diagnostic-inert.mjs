@@ -4,10 +4,9 @@
  * Proves, by EXECUTION, that the provenance fallback diagnostic cannot fire
  * from the production artifact.
  *
- * Why not a string-absence check: `tsup.config.ts` deliberately disables
- * treeshaking (Rollup's pass strips the module-level "use client"
- * directive), so NODE_ENV folding leaves inert `if (false)` bodies — the
- * diagnostic string legitimately remains in `dist/index.js`. The contract
+ * Why not a string-absence check: the build removes the folded dev-only
+ * branch today, but whether dead code is dropped is the bundler's choice and
+ * the string may legitimately reappear in `dist/index.js`. The contract
  * this script enforces is "not executable in production", never "absent
  * from the bundle".
  *

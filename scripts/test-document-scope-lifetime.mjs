@@ -9,9 +9,9 @@ import { resolve, join } from 'node:path';
 import { createServer } from 'node:http';
 import { chromium } from 'playwright';
 
-// Use the same bundler installed by tsup, without a second esbuild version.
+// The root manifest pins the one esbuild version every script here uses.
 const require = createRequire(import.meta.url);
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const directory = await mkdtemp(join(tmpdir(), 'aimd-document-lifetime-'));
 const bundle = join(directory, 'bundle.js');
 let browser;

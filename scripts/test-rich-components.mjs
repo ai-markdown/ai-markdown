@@ -7,7 +7,7 @@ import { createRequire } from 'node:module';
 import { resolve, join } from 'node:path';
 import { chromium } from 'playwright';
 const require = createRequire(import.meta.url);
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const consumer = resolve(process.argv[2]);
 const fixture = readFileSync(new URL('./fixtures/rich-components.tsx', import.meta.url), 'utf8');
 const result = await build({

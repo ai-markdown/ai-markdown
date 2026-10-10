@@ -40,7 +40,7 @@ const isTestTool = (name) => TEST_TOOLS.has(name);
 const fullDevDependencies = (deps) =>
   Object.fromEntries(Object.entries(deps ?? {}).filter(([name]) => !isTestTool(name) && !isTypesPackage(name)));
 const TOOL_ROOTS = ['vitest', 'yaml'];
-const BUILD_ROOTS = ['typescript', 'tsup'];
+const BUILD_ROOTS = ['typescript', 'tsdown'];
 const CONTROL_FILES = new Set([
   'scripts/soak/impact.mjs',
   'scripts/soak/check-release.mjs',

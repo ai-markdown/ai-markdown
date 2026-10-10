@@ -33,7 +33,7 @@ import { chromium, firefox, webkit } from 'playwright';
 const browsers = process.argv.slice(2).filter((_arg, i, all) => all[i - 1] === '--browser');
 const targets = browsers.length ? browsers : ['chromium', 'firefox', 'webkit'];
 const require = createRequire(import.meta.url);
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const directory = await mkdtemp(join(tmpdir(), 'aimd-raw-depth-'));
 const guardSource = resolve('packages/engine/src/components/rehypeRawGuard.ts');
 let server;

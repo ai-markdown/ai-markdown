@@ -4,5 +4,5 @@
     "lib": ["ESNext"],
     "types": ["node", "vitest/globals"]
   },
-  "include": ["src"]
+  "include": ["src", "tsdown.config.ts"]
 }

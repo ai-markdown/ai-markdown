@@ -1,5 +1,5 @@
 // Generated from the built public declaration. Review changes before updating.
-declare enum CodeLanguage {
+export declare enum CodeLanguage {
     JavaScript = "javascript",
     TypeScript = "typescript",
     Jsx = "jsx",
@@ -49,14 +49,14 @@ interface LanguageDetectionResult {
     candidates: readonly CodeLanguage[];
     evidence: readonly string[];
 }
-declare function detectLanguage(code: string): LanguageDetectionResult;
+export declare function detectLanguage(code: string): LanguageDetectionResult;
 interface StreamingLanguageDetectorOptions {
     lockConfidence?: number;
     growthRatio?: number;
     minGrowthChars?: number;
     familySwitchMargin?: number;
 }
-declare class StreamingLanguageDetector {
+export declare class StreamingLanguageDetector {
     #private;
     constructor(options?: StreamingLanguageDetectorOptions);
     get current(): LanguageDetectionResult;
@@ -64,16 +64,16 @@ declare class StreamingLanguageDetector {
     finalize(code: string): LanguageDetectionResult;
     reset(): void;
 }
-declare class DetectionCache {
+export declare class DetectionCache {
     #private;
     constructor(limit?: number);
     get size(): number;
     detect(code: string): LanguageDetectionResult;
     clear(): void;
 }
-declare function normalizeCodeLanguage(name: string): CodeLanguage | null;
-declare function normalizeShikiLanguage(name: string): string;
-declare function normalizeHighlightJsLanguage(name: string): string;
-declare function toShikiLanguage(language: CodeLanguage): string;
-declare function toHighlightJsLanguage(language: CodeLanguage): string;
-export { CodeLanguage, DetectionCache, type LanguageDetectionResult, StreamingLanguageDetector, type StreamingLanguageDetectorOptions, detectLanguage, normalizeCodeLanguage, normalizeHighlightJsLanguage, normalizeShikiLanguage, toHighlightJsLanguage, toShikiLanguage };
+export declare function normalizeCodeLanguage(name: string): CodeLanguage | null;
+export declare function normalizeShikiLanguage(name: string): string;
+export declare function normalizeHighlightJsLanguage(name: string): string;
+export declare function toShikiLanguage(language: CodeLanguage): string;
+export declare function toHighlightJsLanguage(language: CodeLanguage): string;
+export type { LanguageDetectionResult, StreamingLanguageDetectorOptions };

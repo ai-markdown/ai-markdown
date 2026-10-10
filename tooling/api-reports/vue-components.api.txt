@@ -1,67 +1,55 @@
 // Generated from the built public declaration. Review changes before updating.
-export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code.js';
-export { MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, createMarkdownImage } from './image.js';
-export { MarkdownTable } from './table.js';
-export { M as MarkdownComponentProps } from '../types-chunk.js';
-export { CodeBlockOptions, CodeRendererInput, ImageIconName } from '@ai-markdown/core/components';
-export { MarkdownCodeBlockOptions } from './code/plain.js';
-import 'vue';
-import 'hast';
-
-// Relative declaration: dist/components/code.d.ts
-import * as vue from 'vue';
-import { M as MarkdownComponentProps } from '../types-chunk.js';
-import { MarkdownCodeBlockOptions } from './code/plain.js';
-export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
-import 'hast';
-declare function preloadCodeAssets(): Promise<void>;
-declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): vue.DefineComponent<MarkdownComponentProps>;
-declare const MarkdownCodeBlock: vue.DefineComponent<MarkdownComponentProps>;
-export { MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock, preloadCodeAssets };
+import { MarkdownComponentProps } from "../types-chunk.js";
+import { CodeBlockOptions, CodeRendererInput, MarkdownCodeBlockOptions } from "../code-plain-chunk.js";
+import { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from "../code-chunk.js";
+import { ImageIconName, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, createMarkdownImage } from "./image.js";
+import { MarkdownTable } from "./table.js";
+export { type CodeBlockOptions, type CodeRendererInput, type ImageIconName, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownComponentProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, MarkdownTable, createMarkdownCodeBlock, createMarkdownImage, preloadCodeAssets };
 
 // Relative declaration: dist/types-chunk.d.ts
-import { Element } from 'hast';
-interface MarkdownComponentProps {
+import { Element } from "hast";
+export interface MarkdownComponentProps {
     node?: Element;
     streaming?: boolean;
     metadata?: unknown;
 }
-export type { MarkdownComponentProps as M };
 
-// Relative declaration: dist/components/code/plain.d.ts
-import { Component, VNodeChild, DefineComponent } from 'vue';
-import { M as MarkdownComponentProps } from '../../types-chunk.js';
-import { CodeBlockOptions } from '@ai-markdown/core/components';
-export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
-import 'hast';
-interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+// Relative declaration: dist/code-plain-chunk.d.ts
+import { MarkdownComponentProps } from "./types-chunk.js";
+import { Component, DefineComponent, VNodeChild } from "vue";
+import { CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput } from "@ai-markdown/core/components";
+export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, Component | false>>;
     colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
     highlight?: (code: string, language: string) => VNodeChild;
 }
-declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
-declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
-export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, createMarkdownCodeBlock };
+export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
+export declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
+export type { CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput };
+
+// Relative declaration: dist/code-chunk.d.ts
+import { MarkdownComponentProps } from "./types-chunk.js";
+import { MarkdownCodeBlockOptions } from "./code-plain-chunk.js";
+import "vue";
+export declare function preloadCodeAssets(): Promise<void>;
+export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): import("vue").DefineComponent<MarkdownComponentProps>;
+export declare const MarkdownCodeBlock: import("vue").DefineComponent<MarkdownComponentProps>;
 
 // Relative declaration: dist/components/image.d.ts
-import { DefineComponent, VNodeChild, Component } from 'vue';
-import { M as MarkdownComponentProps } from '../types-chunk.js';
-import { ImageIconName } from '@ai-markdown/core/components';
-export { ImageIconName } from '@ai-markdown/core/components';
-import 'hast';
-type MarkdownImageIcon = VNodeChild | Component;
-interface MarkdownImageOptions {
-    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
+import { MarkdownComponentProps } from "../types-chunk.js";
+import { Component, DefineComponent, VNodeChild } from "vue";
+import { ImageIconName, ImageIconName as ImageIconName$1 } from "@ai-markdown/core/components";
+export type MarkdownImageIcon = VNodeChild | Component;
+export interface MarkdownImageOptions {
+    icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
     group?: string | false;
     preview?: boolean;
 }
-declare function createMarkdownImage({ icons, group, preview: allowPreview, }?: MarkdownImageOptions): DefineComponent<MarkdownComponentProps>;
-declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
-export { MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, createMarkdownImage };
+export declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): DefineComponent<MarkdownComponentProps>;
+export declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
+export type { ImageIconName };
 
 // Relative declaration: dist/components/table.d.ts
-import { DefineComponent } from 'vue';
-import { M as MarkdownComponentProps } from '../types-chunk.js';
-import 'hast';
-declare const MarkdownTable: DefineComponent<MarkdownComponentProps>;
-export { MarkdownTable };
+import { MarkdownComponentProps } from "../types-chunk.js";
+import { DefineComponent } from "vue";
+export declare const MarkdownTable: DefineComponent<MarkdownComponentProps>;

@@ -25,7 +25,7 @@ assert(Number.isSafeInteger(repeats) && repeats > 0 && repeats <= 20, 'repeats m
 assert(Number.isFinite(throttle) && throttle >= 1 && throttle <= 20, 'throttle must be 1–20');
 assert(sizes.length > 0 && sizes.every((n) => Number.isSafeInteger(n) && n > 0 && n <= 10000), 'invalid sizes');
 const require = createRequire(import.meta.url);
-const { build } = createRequire(require.resolve('tsup'))('esbuild');
+const { build } = require('esbuild');
 const percentile = (xs, fraction) =>
   [...xs].sort((a, b) => a - b)[Math.min(xs.length - 1, Math.floor(xs.length * fraction))];
 

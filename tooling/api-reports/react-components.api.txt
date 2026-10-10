@@ -1,68 +1,57 @@
 // Generated from the built public declaration. Review changes before updating.
-export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code.js';
-export { ImageIconProps, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImageProps, createMarkdownImage } from './image.js';
-export { MarkdownTable, MarkdownTableProps } from './table.js';
-export { CodeBlockOptions, CodeRendererInput, ImageIconName } from '@ai-markdown/core/components';
-export { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from './code/plain.js';
-import 'react';
-import 'hast';
+import { CodeBlockOptions, CodeRendererInput, MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from "../code-plain-chunk.js";
+import { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from "../code-chunk.js";
+import { ImageIconName, ImageIconProps, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImageProps, createMarkdownImage } from "./image.js";
+import { MarkdownTable, MarkdownTableProps } from "./table.js";
+export { type CodeBlockOptions, type CodeRendererInput, type ImageIconName, type ImageIconProps, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, MarkdownTable, type MarkdownTableProps, createMarkdownCodeBlock, createMarkdownImage, preloadCodeAssets };
 
-// Relative declaration: dist/components/code.d.ts
-import * as react from 'react';
-import { MarkdownCodeBlockProps, MarkdownCodeBlockOptions } from './code/plain.js';
-export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
-import 'hast';
-declare function preloadCodeAssets(): Promise<void>;
-declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
-declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
-export { MarkdownCodeBlock, MarkdownCodeBlockOptions, MarkdownCodeBlockProps, createMarkdownCodeBlock, preloadCodeAssets };
-
-// Relative declaration: dist/components/code/plain.d.ts
-import * as react from 'react';
-import { ComponentProps, ComponentType, ReactNode } from 'react';
-import { Element } from 'hast';
-import { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
-export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
-interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+// Relative declaration: dist/code-plain-chunk.d.ts
+import { ComponentProps, ComponentType, ReactNode } from "react";
+import { CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput, CodeRendererInput as CodeRendererInput$1 } from "@ai-markdown/core/components";
+import { Element } from "hast";
+export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, ComponentType<CodeRendererInput> | false>>;
     highlight?: (code: string, language: string) => ReactNode;
 }
-type MarkdownCodeBlockProps = ComponentProps<'pre'> & {
+export type MarkdownCodeBlockProps = ComponentProps<'pre'> & {
     node?: Element;
 };
-declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
-declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => react.JSX.Element;
-export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, createMarkdownCodeBlock };
+export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
+export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
+export type { CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput$1 as CodeRendererInput };
+
+// Relative declaration: dist/code-chunk.d.ts
+import { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from "./code-plain-chunk.js";
+import { CodeRendererInput } from "@ai-markdown/core/components";
+export declare function preloadCodeAssets(): Promise<void>;
+export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
+export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
 
 // Relative declaration: dist/components/image.d.ts
-import * as react from 'react';
-import { ComponentPropsWithoutRef, ReactNode, ComponentType } from 'react';
-import { Element } from 'hast';
-import { ImageIconName } from '@ai-markdown/core/components';
-export { ImageIconName } from '@ai-markdown/core/components';
-type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
+import { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
+import { ImageIconName, ImageIconName as ImageIconName$1 } from "@ai-markdown/core/components";
+import { Element } from "hast";
+export type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
     node?: Element;
 };
-interface ImageIconProps {
+export interface ImageIconProps {
     className?: string;
     'aria-hidden'?: boolean;
 }
-type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
-interface MarkdownImageOptions {
-    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
+export type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
+export interface MarkdownImageOptions {
+    icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
     group?: string | false;
     preview?: boolean;
 }
-declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
-declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => react.JSX.Element;
-export { type ImageIconProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, createMarkdownImage };
+export declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
+export declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
+export type { ImageIconName };
 
 // Relative declaration: dist/components/table.d.ts
-import * as react from 'react';
-import { ComponentProps } from 'react';
-import { Element } from 'hast';
-type MarkdownTableProps = ComponentProps<'table'> & {
+import { ComponentProps } from "react";
+import { Element } from "hast";
+export type MarkdownTableProps = ComponentProps<'table'> & {
     node?: Element;
 };
-declare function MarkdownTable({ node, children, ...props }: MarkdownTableProps): react.JSX.Element;
-export { MarkdownTable, type MarkdownTableProps };
+export declare function MarkdownTable({ node, children, ...props }: MarkdownTableProps): import("react").JSX.Element;

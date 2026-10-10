@@ -46,7 +46,7 @@ test('algorithm, plugin, build and verification changes require soak', () => {
   for (const p of [
     'packages/engine/src/x.ts',
     'packages/remark-mark-highlight/src/index.ts',
-    'packages/engine/tsup.config.ts',
+    'packages/engine/tsdown.config.ts',
     'scripts/soak/profiles/release.json',
     'pnpm-workspace.yaml',
   ])
@@ -457,7 +457,7 @@ test('shared tool/runtime dependencies and build tools retain full priority', ()
   next.packages['runner@1'].resolution.integrity = 'changed-bytes';
   const result = assess('pnpm-lock.yaml', JSON.stringify(data), JSON.stringify(next));
   assert(result.required && result.smokeRequired);
-  for (const name of ['tsup', 'typescript']) {
+  for (const name of ['tsdown', 'typescript']) {
     const old = JSON.parse(toolLock());
     old.importers['.'].devDependencies[name] = { version: '1' };
     old.snapshots[`${name}@1`] = {};

@@ -1,23 +1,24 @@
 // Generated from the built public declaration. Review changes before updating.
-import { Component, VNodeChild, DefineComponent } from 'vue';
-import { M as MarkdownComponentProps } from '../../types-chunk.js';
-import { CodeBlockOptions } from '@ai-markdown/core/components';
-export { CodeBlockOptions, CodeRendererInput } from '@ai-markdown/core/components';
-import 'hast';
-interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+import { CodeBlockOptions, CodeRendererInput, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock } from "../../code-plain-chunk.js";
+export { type CodeBlockOptions, type CodeRendererInput, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock };
+
+// Relative declaration: dist/code-plain-chunk.d.ts
+import { MarkdownComponentProps } from "./types-chunk.js";
+import { Component, DefineComponent, VNodeChild } from "vue";
+import { CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput } from "@ai-markdown/core/components";
+export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, Component | false>>;
     colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
     highlight?: (code: string, language: string) => VNodeChild;
 }
-declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
-declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
-export { MarkdownCodeBlock, type MarkdownCodeBlockOptions, createMarkdownCodeBlock };
+export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
+export declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
+export type { CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput };
 
 // Relative declaration: dist/types-chunk.d.ts
-import { Element } from 'hast';
-interface MarkdownComponentProps {
+import { Element } from "hast";
+export interface MarkdownComponentProps {
     node?: Element;
     streaming?: boolean;
     metadata?: unknown;
 }
-export type { MarkdownComponentProps as M };

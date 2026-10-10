@@ -153,7 +153,7 @@
     "./components/styles.css": "./dist/components/styles.css"
   },
   "scripts": {
-    "build:js": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsup && node scripts/assert-dist-clean.mjs && node scripts/assert-prod-diagnostic-inert.mjs",
+    "build:js": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsdown && node ../../scripts/strip-declaration-map-comments.mjs && node scripts/assert-dist-clean.mjs && node scripts/assert-prod-diagnostic-inert.mjs",
     "build:css": "sass src/components/typography/variants/:dist/typography/ && postcss dist/typography/*.css --replace",
     "build": "pnpm run build:js && pnpm run build:css && node ../../scripts/copy-component-styles.mjs",
     "test": "vitest --run",
