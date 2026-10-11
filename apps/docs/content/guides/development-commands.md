@@ -69,6 +69,7 @@ Preflight requires installed Chromium, free Storybook ports and an idle checkout
 | `pnpm check:soak-coverage`                         | Validate the soak coverage map.                                                                                     |
 | `pnpm check:soak-impact`                           | Report whether changes since the preceding train tag require soak; accepts `--base` and `--head` for custom audits. |
 | `pnpm check:release-soak --evidence <run-dir>...`  | Validate the clean release candidate and, when required, local release-profile evidence.                            |
+| `pnpm check:reused-versions [ref]`                 | Fail when an independently versioned package changed since the version already on npm; `ref` defaults to `HEAD`.    |
 | `pnpm --filter @ai-markdown/engine soak`           | Start the engine soak runner.                                                                                       |
 | `pnpm --filter @ai-markdown/engine soak:watch`     | Read soak progress.                                                                                                 |
 | `pnpm --filter @ai-markdown/engine soak:aggregate` | Aggregate and validate run results.                                                                                 |

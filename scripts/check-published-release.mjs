@@ -85,6 +85,49 @@ async function get(url, binary = false) {
   assert(response.ok, `${url}: HTTP ${response.status}`);
   return binary ? Buffer.from(await response.arrayBuffer()) : response.json();
 }
+// The provenance source of a published version, after checking its tarball.
+async function provenanceSource(manifest) {
+  const bytes = await get(manifest.dist.tarball, true);
+  assert.equal(manifest.dist.integrity, 'sha512-' + createHash('sha512').update(bytes).digest('base64'));
+  const attestations = await get(manifest.dist.attestations.url);
+  const provenance = attestations.attestations.find((a) => a.predicateType === 'https://slsa.dev/provenance/v1');
+  assert(provenance, 'Missing provenance');
+  const statement = JSON.parse(Buffer.from(provenance.bundle.dsseEnvelope.payload, 'base64').toString());
+  return verifyStatement(statement, bytes);
+}
+async function publishedSource(name, version) {
+  const url = `https://registry.npmjs.org/${name.replace('/', '%2f')}/${version}`;
+  const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
+  if (response.status === 404) return null;
+  assert(response.ok, `${url}: HTTP ${response.status}`);
+  return provenanceSource(await response.json());
+}
+// Before publication. A train tag reuses an independent package's version when
+// it is already on npm, and the audit below then requires the package files to
+// match the commit that version was published from. That audit runs after the
+// train packages are uploaded, so the same comparison runs here first.
+export async function verifyReusedVersions(target, { cwd = root, published = publishedSource } = {}) {
+  for (const directory of INDEPENDENT) {
+    const { name, version } = JSON.parse(
+      execFileSync('git', ['show', `${target}:packages/${directory}/package.json`], { cwd, encoding: 'utf8' })
+    );
+    const source = await published(name, version);
+    if (!source) {
+      console.log(`${name}@${version}: not on npm; this version will be published`);
+      continue;
+    }
+    try {
+      verifyPackageSources(directory, source.commit, target, cwd);
+    } catch (cause) {
+      throw new Error(
+        `${name}@${version} is already published from ${source.commit}, and packages/${directory} has changed ` +
+          'since outside README.md and devDependencies. Give the package a new version before tagging a release.',
+        { cause }
+      );
+    }
+    console.log(`${name}@${version}: unchanged since publication`);
+  }
+}
 async function audit(tag, reportDirectory) {
   assert(RELEASE_TAG_PATTERN.test(tag ?? ''), 'Usage: check-published-release.mjs <release-tag> [report-directory]');
   const target = git(['rev-parse', '--verify', `${tag}^{commit}`]);
@@ -144,15 +187,7 @@ async function audit(tag, reportDirectory) {
             const detector = JSON.parse(git(['show', `${target}:packages/code-language-detector/package.json`]));
             assert.equal(manifest.dependencies['@ai-markdown/code-language-detector'], `^${detector.version}`);
           }
-          const bytes = await get(manifest.dist.tarball, true);
-          assert.equal(manifest.dist.integrity, 'sha512-' + createHash('sha512').update(bytes).digest('base64'));
-          const attestations = await get(manifest.dist.attestations.url);
-          const provenance = attestations.attestations.find(
-            (a) => a.predicateType === 'https://slsa.dev/provenance/v1'
-          );
-          assert(provenance, 'Missing provenance');
-          const statement = JSON.parse(Buffer.from(provenance.bundle.dsseEnvelope.payload, 'base64').toString());
-          const source = verifyStatement(statement, bytes);
+          const source = await provenanceSource(manifest);
           assert.equal(
             git(['rev-parse', '--verify', `${source.ref}^{commit}`]),
             source.commit,
@@ -200,5 +235,7 @@ async function audit(tag, reportDirectory) {
     writeFileSync(join(reportDirectory, 'published-release.json'), JSON.stringify(report, null, 2) + '\n');
   }
 }
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href)
-  await audit(process.argv[2], resolve(process.argv[3] ?? '.local-notes/published-release'));
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (process.argv[2] === '--reused-versions') await verifyReusedVersions(process.argv[3] ?? 'HEAD');
+  else await audit(process.argv[2], resolve(process.argv[3] ?? '.local-notes/published-release'));
+}

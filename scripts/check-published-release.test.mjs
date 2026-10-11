@@ -6,7 +6,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { channel, verifyStatement, verifyPackageSources } from './check-published-release.mjs';
+import { channel, verifyStatement, verifyPackageSources, verifyReusedVersions } from './check-published-release.mjs';
 
 const bytes = Buffer.from('actual downloaded tarball');
 const statement = () => ({
@@ -157,3 +157,52 @@ for (const [directory, file, allowed] of [
     else assert.throws(verify);
   });
 }
+
+test('a reused independent version must match its published sources before publication', async (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), 'reused-version-test-'));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  const run = (...args) =>
+    execFileSync('git', ['-c', 'user.name=Release test', '-c', 'user.email=test@example.com', ...args], {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+      .toString()
+      .trim();
+  run('init');
+  const versions = { 'remark-mark-highlight': '1.0.2', 'code-language-detector': '1.1.0' };
+  const write = (directory, file, content) => {
+    mkdirSync(join(cwd, 'packages', directory), { recursive: true });
+    writeFileSync(join(cwd, 'packages', directory, file), content);
+  };
+  const manifests = () => {
+    for (const [directory, version] of Object.entries(versions))
+      write(directory, 'package.json', JSON.stringify({ name: `@ai-markdown/${directory}`, version }));
+  };
+  manifests();
+  write('remark-mark-highlight', 'tsup.config.ts', 'export default {};');
+  run('add', '.');
+  run('commit', '-m', 'Published');
+  const commit = run('rev-parse', 'HEAD');
+  const asked = [];
+  const published = async (name, version) => {
+    asked.push(`${name}@${version}`);
+    return version === '1.0.2' || version === '1.1.0' ? { commit } : null;
+  };
+  await verifyReusedVersions('HEAD', { cwd, published });
+  assert.deepEqual(asked, ['@ai-markdown/remark-mark-highlight@1.0.2', '@ai-markdown/code-language-detector@1.1.0']);
+
+  // The 3.3.0 case: a build file changed under a version that is already on npm.
+  write('remark-mark-highlight', 'tsdown.config.ts', 'export default {};');
+  run('add', '.');
+  run('commit', '-m', 'Change build configuration');
+  await assert.rejects(
+    verifyReusedVersions('HEAD', { cwd, published }),
+    /remark-mark-highlight@1\.0\.2 is already published.*new version/s
+  );
+
+  versions['remark-mark-highlight'] = '1.0.3';
+  manifests();
+  run('add', '.');
+  run('commit', '-m', 'Bump');
+  await verifyReusedVersions('HEAD', { cwd, published });
+});

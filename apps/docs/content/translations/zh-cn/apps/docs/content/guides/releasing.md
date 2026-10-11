@@ -23,7 +23,7 @@ pnpm install
 
 1. 在最终源码上运行 `pnpm preflight`。它覆盖了构建、Lint、代码格式化、类型声明、单元与控制测试、tarball 打包、使用端集成、Storybook 以及浏览器/生命周期检查。
 2. 确保 CI 测试全部通过，包括打包使用端的 Node 矩阵测试与 core 契约任务。
-3. 提交干净的候选版本并运行 `pnpm check:soak-impact`。当引擎变动影响需要进行压测时，请遵循[压测覆盖与审批](soak-coverage.md)，并使用 `pnpm check:release-soak --evidence .soak-logs/<run-id>` 验证其测试证据。当前发布配置覆盖全部六个测试分支与 84 项逻辑任务。
+3. 提交干净的候选版本并运行 `pnpm check:soak-impact`。当引擎变动影响需要进行压测时，请遵循[压测覆盖与审批](soak-coverage.md)，并使用 `pnpm check:release-soak --evidence .soak-logs/<run-id>` 验证其测试证据。当前发布配置覆盖全部六个测试分支与 84 项逻辑任务。同时运行 `pnpm check:reused-versions`：独立版本的包自其已发布版本以来，只要 `README.md` 和 `devDependencies` 之外的文件有改动，就必须在同一个候选版本中升级版本号。发布工作流在发布任何包之前会重复这项检查。
 4. 为验证通过的版本打上 Git 标签。发布工作流必须通过自动化验证，并在需要时通过人工 `soak-approval` 审查。妥善留存已审查的测试证据。
 5. 对现有相关包采用 Trusted Publishing。预发布版本推送到对应的 `beta` 或 `rc` 渠道；稳定发布版本推送到 `latest`。`scripts/release-packages.mjs` 中列出的独立版本包（`remark-mark-highlight`、`code-language-detector`）遵循各自的版本号与分发渠道；统一版本标签会先发布它们，再发布 engine、core、react、react-mantine 与 vue。尚未在 npm 上存在的包，首个版本通过 `FIRST_PUBLISH_NPM_TOKEN` 引导发布（代码语言探测器对应 `code-language-detector-v1.0.0`），发布完成后再为其配置 Trusted Publisher。对于现有包，保持引导认证（bootstrap authentication）处于关闭状态。
 6. 发布完成后必须执行注册表与使用端验证。工作流在创建 GitHub Release 之前会归档其验证报告；只读验证工作流可对现有发布重新执行检查。

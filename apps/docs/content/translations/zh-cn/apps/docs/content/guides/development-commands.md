@@ -79,6 +79,7 @@ pnpm preflight
 | `pnpm check:soak-coverage`                         | 验证压测覆盖映射表。                                                                       |
 | `pnpm check:soak-impact`                           | 报告自前一个版本标签以来的改动是否需要压测；支持 `--base` 和 `--head` 参数用于自定义审计。 |
 | `pnpm check:release-soak --evidence <run-dir>...`  | 验证干净的发布候选版本，并在需要时验证本地发布的测试证据。                                 |
+| `pnpm check:reused-versions [ref]`                 | 独立版本的包自 npm 上已有版本以来发生改动时报错；`ref` 默认为 `HEAD`。                     |
 | `pnpm --filter @ai-markdown/engine soak`           | 启动引擎压测运行器。                                                                       |
 | `pnpm --filter @ai-markdown/engine soak:watch`     | 读取压测执行进度。                                                                         |
 | `pnpm --filter @ai-markdown/engine soak:aggregate` | 聚合并验证运行结果。                                                                       |

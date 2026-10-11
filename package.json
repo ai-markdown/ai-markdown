@@ -33,6 +33,7 @@
     "test:document-lifetime": "node scripts/test-document-scope-lifetime.mjs",
     "test:vue-browser": "node scripts/test-vue-browser.mjs",
     "test:published-release": "node scripts/check-published-release.mjs",
+    "check:reused-versions": "node scripts/check-published-release.mjs --reused-versions",
     "test:packed-consumers": "node scripts/check-packed-consumers.mjs",
     "test:storybook": "pnpm test:storybook:react && pnpm test:storybook:vue",
     "test:storybook:react": "vitest run --project=storybook-react",
