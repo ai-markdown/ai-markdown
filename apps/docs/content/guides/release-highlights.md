@@ -6,6 +6,24 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.3.1 — Independent packages rebuilt with tsdown
+
+### 3.3.1
+
+This patch release aligns engine, core, React, Mantine and Vue at `3.3.1`, with no source changes since `3.3.0`. `@ai-markdown/code-language-detector` moves to `1.1.1` and the highlight plugin to `1.0.3`; `@ai-markdown/react-mantine`, `@ai-markdown/react` and `@ai-markdown/vue` now depend on detector `^1.1.1`, and `@ai-markdown/engine` on plugin `^1.0.3`.
+
+#### Build
+
+- **The two independently versioned packages are published from the tsdown build.** `3.3.0` moved their build configuration to tsdown without changing their versions, so npm still served the `1.1.0` and `1.0.2` files built with tsup. `1.1.1` and `1.0.3` contain the same sources built by tsdown 0.23.0, with the same entry points, export names and declarations.
+
+#### Release
+
+- **`3.3.0` has no GitHub release.** Its five packages were published with provenance and are installable, but the post-publish check stopped because the two independent packages had changed build files under an unchanged version, and the release record was not created. The registry, integrity, provenance and published-consumer checks for `3.3.0` were run separately and passed.
+
+#### Verification
+
+No engine source changed since `3.3.0`, and the soak impact check does not require a campaign or a smoke run for this range. The build, package export checks, public declaration snapshots and packed-consumer tests pass on the candidate.
+
 ## 3.3.0 — Direct Markdown components and tsdown builds
 
 ### 3.3.0

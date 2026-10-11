@@ -1,6 +1,6 @@
 {
   "name": "@ai-markdown/remark-mark-highlight",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "remark plugin for ==mark== highlight syntax \u2014 first-party successor to remark-mark-highlight, with dual ESM/CJS output.",
   "publishConfig": {
     "access": "public"
