@@ -64,11 +64,20 @@ const Bubble = ({ label, children }: { label: string; children: React.ReactNode 
 };
 
 /** One chat message, revealed through the document-level smooth stream. */
-const Message = ({ phase, colorScheme }: { phase: Phase; colorScheme: 'light' | 'dark' }) => {
+const Message = ({
+  phase,
+  colorScheme,
+  onDrained,
+}: {
+  phase: Phase;
+  colorScheme: 'light' | 'dark';
+  onDrained: () => void;
+}) => {
   const smooth = useDocumentSmoothStream({
     documentId: 'turn-taking-demo',
     content: phase.content,
     streaming: phase.streaming,
+    onDrained,
   });
   return (
     <AIMarkdown
@@ -84,12 +93,15 @@ const TurnTakingChat = () => {
   const colorScheme = useStoryColorScheme();
   const [phases, setPhases] = useState<Phase[]>(INITIAL);
   const [run, setRun] = useState(0);
+  const [drained, setDrained] = useState(0);
   const timers = useRef<number[]>([]);
 
   const restart = useCallback(() => {
     setPhases(INITIAL);
+    setDrained(0);
     setRun((n) => n + 1);
   }, []);
+  const onDrained = useCallback(() => setDrained((n) => n + 1), []);
 
   useEffect(() => {
     timers.current = SCRIPT.map(([at, index, phase]) =>
@@ -102,16 +114,19 @@ const TurnTakingChat = () => {
   const sourcesDone = phases.every((p) => !p.streaming);
 
   return (
-    <div>
+    // The test preview waits on this marker before it checks the settled
+    // page. Each message keeps revealing after its source ends, so the marker
+    // stays set until both reveals have drained.
+    <div data-story-streaming={!sourcesDone || drained < INITIAL.length}>
       <ThemedReplayButton streaming={!sourcesDone} onRestart={restart} />
       {/* Remounting on replay resets the coordinator queue along with the
           messages — a fresh run rather than a rewind of a half-finished one. */}
       <AIMarkdownDocuments key={run}>
         <Bubble label="message 1 — source streaming">
-          <Message phase={phases[0]} colorScheme={colorScheme} />
+          <Message phase={phases[0]} colorScheme={colorScheme} onDrained={onDrained} />
         </Bubble>
         <Bubble label="message 2 — source finishes early, reveal waits its turn">
-          <Message phase={phases[1]} colorScheme={colorScheme} />
+          <Message phase={phases[1]} colorScheme={colorScheme} onDrained={onDrained} />
         </Bubble>
       </AIMarkdownDocuments>
     </div>
