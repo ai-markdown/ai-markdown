@@ -5,6 +5,24 @@ import { startStorybookServer } from './storybook-static-server.mjs';
 import { chromium } from 'playwright';
 
 const { server, origin, base } = await startStorybookServer();
+// Storybook 10.6 can drop a composed catalog's index while the manager loads
+// (see the note in tooling/storybook-kit/common/manager.ts). The manager
+// config restores it, but a Controls panel drawn in the meantime stays empty
+// until its tab is selected again, so select it a second time when needed.
+async function openControls(page, storyEntry, control) {
+  // The panel belongs to the story the manager has loaded, which can follow
+  // the preview by a moment.
+  await page.locator(storyEntry).waitFor();
+  const controls = page.getByRole('tab', { name: /^Controls/ });
+  await controls.click();
+  try {
+    await page.locator(control).waitFor({ timeout: 5000 });
+  } catch {
+    await page.getByRole('tab', { name: /^Actions/ }).click();
+    await controls.click();
+  }
+  return page.locator(control);
+}
 const browser = await chromium.launch({ headless: true });
 try {
   const page = await browser.newPage();
@@ -155,8 +173,7 @@ try {
       // Addon selection persists independently from the rendered story. Exercise
       // a non-Controls starting state instead of relying on the default panel.
       await page.getByRole('tab', { name: /^Interactions/ }).click();
-      await page.getByRole('tab', { name: /^Controls/ }).click();
-      await page.locator('#control-content').fill(sample);
+      await (await openControls(page, `#vue_${entry.id}`, '#control-content')).fill(sample);
       const preview = page.frameLocator('iframe[src*="/vue/iframe.html"]');
       await preview.locator('#storybook-root table').waitFor({ state: 'detached' });
       await preview.locator('#storybook-root blockquote').first().waitFor();
@@ -195,8 +212,7 @@ try {
     .split('### block-thematic-breaks\n')[0]
     .trim();
   assert(comparisonSource.length > 0);
-  await page.getByRole('tab', { name: /^Controls/ }).click();
-  await page.locator('#control-content').fill(comparisonSource);
+  await (await openControls(page, `#vue_${pluginStory}`, '#control-content')).fill(comparisonSource);
   await pluginFrame.waitForFunction(() =>
     ['enabled', 'disabled'].every(
       (panel) =>
