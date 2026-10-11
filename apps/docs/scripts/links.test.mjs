@@ -164,6 +164,14 @@ test('Chinese links keep their locale while explicit English and Storybook links
       `${base}zh-cn/docs/`
     );
     assert.equal(
+      rewriteUrl('https://ai-markdown.github.io/zh-cn/docs/', source, entries, base, '', 'zh-cn'),
+      `${base}zh-cn/docs/`
+    );
+    assert.equal(
+      rewriteUrl('https://ai-markdown.github.io/zh-cn/', source, entries, base, '', 'zh-cn'),
+      `${base}zh-cn/`
+    );
+    assert.equal(
       rewriteUrl('english:docs/guides/next/', source, entries, base, '', 'zh-cn'),
       `${base}docs/guides/next/`
     );

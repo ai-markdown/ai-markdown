@@ -12,8 +12,12 @@ export function rewriteUrl(url, source, entries, base = '/', storybook = '', loc
   const localizedBase = `${normalizeBase(base)}${locale ? `${locale}/` : ''}`;
   if (url.startsWith('english:')) return `${normalizeBase(base)}${url.slice('english:'.length)}`;
   const publicSite = 'https://ai-markdown.github.io/';
-  if (url === publicSite || url.startsWith(`${publicSite}docs/`) || url.startsWith(`${publicSite}examples/`))
-    return `${localizedBase}${url.slice(publicSite.length)}`;
+  // A translation may link to its own locale on the public site; that is the
+  // same page the unprefixed URL localizes to.
+  const localizedSite = locale ? `${publicSite}${locale}/` : publicSite;
+  const site = url.startsWith(localizedSite) ? localizedSite : publicSite;
+  if (url === site || url.startsWith(`${site}docs/`) || url.startsWith(`${site}examples/`))
+    return `${localizedBase}${url.slice(site.length)}`;
   if (url === 'examples:') return `${localizedBase}examples/`;
   if (url.startsWith('storybook:')) {
     if (!storybook) return `${localizedBase}docs/guides/storybook/`;
