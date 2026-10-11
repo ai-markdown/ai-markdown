@@ -6,6 +6,44 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.3.0 — Direct Markdown components and tsdown builds
+
+### 3.3.0
+
+This minor release aligns engine, core, React, Mantine and Vue at `3.3.0`. `@ai-markdown/code-language-detector` remains at `1.1.0` and the highlight plugin at `1.0.2`; neither has source changes and neither is republished.
+
+#### Code, image and table components
+
+- **New optional entries register directly on Markdown.** `@ai-markdown/react/components` and `@ai-markdown/vue/components` export `MarkdownCodeBlock`, `MarkdownImage` and `MarkdownTable`. React passes them through `customComponents`, Vue through `components`; no AST wrapper or extra provider is involved. `@ai-markdown/react-mantine/components` exports the same three names on top of Mantine's existing code block. Base Markdown rendering does not import any of them. See [code blocks, diagrams, images and tables](rich-components.md).
+- **Code blocks.** `createMarkdownCodeBlock` takes a per-language renderer map, an optional `highlight(code, language)` callback, and JSON formatting options. Mermaid is a built-in renderer selected by an explicit `mermaid` fence and loaded on the client. `mermaid@^11.17.2` is an optional peer of React and Vue, needed only by the default code entry; `components/code/plain`, `components/image` and `components/table` resolve without it. Copy always uses the latest raw source.
+- **Images.** Server-rendered images stay visible before JavaScript loads. After hydration the component shows loading and error states and opens a keyboard-operable fullscreen preview with flip, rotate and zoom. Loaded images in one Markdown root form a gallery by default. `createMarkdownImage` configures the thumbnail and toolbar icons, the grouping boundary (`group`) and whether a preview is offered (`preview`).
+- **Tables.** The wrapper adds keyboard-focusable horizontal scrolling, Copy table (TSV) and Download CSV. Export reads the committed sanitized table and follows Markdown semantics for links, inline code, images and math. Tables with merged cells stay visible with export disabled.
+- **Styles.** `@ai-markdown/react/components/styles.css` and `@ai-markdown/vue/components/styles.css` provide an optional neutral skin scoped to `aimd-*` classes. The framework-neutral option types and export helpers live in `@ai-markdown/core/components`.
+
+#### Rendering
+
+- **Task list checkboxes have accessible names.** Each disabled task checkbox now carries an `aria-label` taken from its own list item, excluding nested lists. This adds one attribute to rendered task list HTML in React and Vue.
+- **React: a document smooth-stream queue survives scope eviction.** `useDocumentSmoothStream` now observes the coordinator scope through `useSyncExternalStore`, so a chunk can no longer stay registered in a queue that was evicted between its render and its effects.
+- **Vue: less work per streamed update.** The renderer caches the VNodes of unchanged blocks for the current frame, and the smooth-stream composable no longer re-registers when a getter returns an equal options object.
+
+#### Build
+
+- **All packages are built with tsdown 0.23.0** in place of tsup. File names, export maps and runtime export names are unchanged. Declarations were compared with the TypeScript checker: the export sets are identical and 780 of 786 exports are mutually assignable, the other six differing only by an alias name. CommonJS builds now share code through chunk files next to the entries, as the ESM builds already did; import the documented entry points, not files inside `dist`.
+- Building the repository needs Node `^22.18.0 || ^24.11.0 || >=26`. The packages' own `engines` ranges are unchanged, and packed consumers are tested on Node 20.19.0, 22.12.0 and 24.20.0.
+
+#### Tooling
+
+- Vitest 5.0.1, with its persistent module cache shared by unit, evidence and soak runs.
+- The soak impact check separates engine changes, which need a full campaign, from test-toolchain changes, which need the bounded six-leg smoke. Evidence must list every expected test identity.
+- CI gates bounded React and Vue renderer benchmarks, runs Storybook accessibility checks in both themes, and compares 20 screenshots against committed baselines.
+- Development-only advisories in `braces` and `http-cache-semantics` are closed with patches taken from the upstream fixes. Neither package is a dependency of a published package.
+
+#### Verification
+
+All 3,131 unit tests pass (one todo), together with the React (118) and Vue (46) Storybook suites and the 20 visual baselines. Packed-consumer tests pass on the three Node versions above, and the Vue browser tests pass in Chromium, Firefox and WebKit.
+
+The engine build configuration changed, so the release required a full soak. The release-profile campaign at `6e0bc87` with seed base `202610100` passed all six legs, 84 of 84 shards, in 2 h 52 min. The renderer sentinel benchmark, run against a tsup build of the same sources, stayed within 3 ms on all eight React and Vue scenarios.
+
 ## 3.2.2 — Language auto-detection on by default
 
 ### 3.2.2

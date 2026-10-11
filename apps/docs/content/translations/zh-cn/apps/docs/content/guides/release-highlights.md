@@ -6,6 +6,44 @@
 
 验证测试数量属于对应候选版本报告的历史数据，并非针对本次文档修订重新执行的测试。同样，零缺陷的模糊测试（fuzz）或压测轮次仅能证明其受测输入族与配置下的表现；后续条目将说明在扩展这些输入族时发现的其他缺陷。
 
+## 3.3.0 — 直接注册的 Markdown 组件与 tsdown 构建
+
+### 3.3.0
+
+本次次版本将 engine、core、React、Mantine 和 Vue 同步升级至 `3.3.0`。`@ai-markdown/code-language-detector` 仍为 `1.1.0`，高亮插件仍为 `1.0.2`；两者源码没有改动，不会重新发布。
+
+#### 代码、图片与表格组件
+
+- **新增可选入口，直接注册到 Markdown 上。** `@ai-markdown/react/components` 与 `@ai-markdown/vue/components` 导出 `MarkdownCodeBlock`、`MarkdownImage` 和 `MarkdownTable`。React 通过 `customComponents` 传入，Vue 通过 `components` 传入，不需要 AST 包装层或额外的 provider。`@ai-markdown/react-mantine/components` 在 Mantine 现有代码块之上导出同样三个名称。基础 Markdown 渲染不会引入其中任何一个。详见[代码块、图表、图片与表格](rich-components.md)。
+- **代码块。** `createMarkdownCodeBlock` 接受按语言划分的渲染器映射、可选的 `highlight(code, language)` 回调以及 JSON 格式化选项。Mermaid 是内置渲染器，由显式的 `mermaid` 围栏选中，并在客户端加载。`mermaid@^11.17.2` 是 React 和 Vue 的可选 peer 依赖，只有默认代码入口需要；`components/code/plain`、`components/image` 和 `components/table` 不依赖它。复制始终使用最新的原始源码。
+- **图片。** 服务端渲染的图片在 JavaScript 加载前保持可见。水合之后组件显示加载和错误状态，并提供可用键盘操作的全屏预览，支持翻转、旋转和缩放。同一个 Markdown 根节点内已加载的图片默认组成图集。`createMarkdownImage` 可配置缩略图和工具栏图标、分组边界（`group`）以及是否提供预览（`preview`）。
+- **表格。** 包装层增加可用键盘聚焦的横向滚动、复制表格（TSV）和下载 CSV。导出读取已提交的、经过净化的表格，并按 Markdown 语义处理链接、行内代码、图片和数学公式。含合并单元格的表格仍然显示，但导出被禁用。
+- **样式。** `@ai-markdown/react/components/styles.css` 与 `@ai-markdown/vue/components/styles.css` 提供可选的中性皮肤，作用范围限于 `aimd-*` 类名。与框架无关的选项类型和导出辅助函数位于 `@ai-markdown/core/components`。
+
+#### 渲染
+
+- **任务列表复选框有了无障碍名称。** 每个禁用的任务复选框现在带有 `aria-label`，取自它所在的列表项，不含嵌套列表。React 和 Vue 渲染出的任务列表 HTML 因此多出一个属性。
+- **React：文档级平滑流队列在作用域被回收后保持一致。** `useDocumentSmoothStream` 现在通过 `useSyncExternalStore` 观察协调器作用域，分块不会再停留在渲染与副作用之间被回收的队列里。
+- **Vue：每次流式更新的工作量减少。** 渲染器为当前帧缓存未变化块的 VNode；当 getter 返回相等的选项对象时，平滑流组合式函数不再重新注册。
+
+#### 构建
+
+- **所有包改用 tsdown 0.23.0 构建**，替换 tsup。文件名、导出映射和运行时导出名称不变。声明文件用 TypeScript 检查器做过比对：导出集合完全一致，786 个导出中有 780 个可以相互赋值，其余六个仅别名名称不同。CommonJS 构建现在和 ESM 构建一样，通过入口旁边的 chunk 文件共享代码；请从文档列出的入口导入，不要直接引用 `dist` 内的文件。
+- 构建本仓库需要 Node `^22.18.0 || ^24.11.0 || >=26`。各包自身的 `engines` 范围不变，打包后的消费者测试在 Node 20.19.0、22.12.0 和 24.20.0 上运行。
+
+#### 工具链
+
+- 升级到 Vitest 5.0.1，其持久化模块缓存由单元测试、证据测试和压测共用。
+- 压测影响检查区分了引擎改动（需要完整压测）和测试工具链改动（需要有界的六路冒烟）。证据必须列出每一个预期的测试标识。
+- CI 增加了有界的 React 和 Vue 渲染器基准门禁，在两种主题下运行 Storybook 无障碍检查，并将 20 张截图与已提交的基线比对。
+- `braces` 和 `http-cache-semantics` 中仅影响开发环境的安全公告已用取自上游修复的补丁关闭。这两个包都不是任何已发布包的依赖。
+
+#### 验证
+
+全部 3,131 项单元测试通过（一项 todo），React（118 项）和 Vue（46 项）Storybook 套件以及 20 张视觉基线也全部通过。打包后的消费者测试在上述三个 Node 版本上通过，Vue 浏览器测试在 Chromium、Firefox 和 WebKit 中通过。
+
+引擎的构建配置发生了变化，因此本次发布需要完整压测。在 `6e0bc87` 上以种子基数 `202610100` 运行的发布档位压测六路全部通过，84 个分片全部通过，耗时 2 小时 52 分。渲染器哨兵基准与同一份源码的 tsup 构建对比，React 和 Vue 的八个场景差异都在 3 毫秒以内。
+
 ## 3.2.2 — 语言自动检测默认开启
 
 ### 3.2.2
