@@ -6,6 +6,32 @@
 
 验证测试数量属于对应候选版本报告的历史数据，并非针对本次文档修订重新执行的测试。同样，零缺陷的模糊测试（fuzz）或压测轮次仅能证明其受测输入族与配置下的表现；后续条目将说明在扩展这些输入族时发现的其他缺陷。
 
+## 3.4.1 — 图片预览的开合动画、选项与回调
+
+### 3.4.1
+
+本次发布将 engine、core、React、Mantine 和 Vue 同步升级至 `3.4.1`。`@ai-markdown/code-language-detector` 仍为 `1.1.1`，高亮插件仍为 `1.0.3`；两者没有改动，不重新发布。它为 `3.4.0` 引入的图片预览增加了选项，没有破坏性变更。虽然新增了 API，但经维护者决定使用补丁版本号。
+
+#### 图片预览
+
+- **预览从缩略图位置打开，并缩回缩略图位置关闭。** `3.4.0` 中它从视口中心放大出来，关闭时只是淡出。现在它从被点击的缩略图位置放大出来；关闭时缩回当时显示的那张图片的缩略图位置，在图片组里切换过之后那是另一张缩略图。缩略图已脱离页面、被隐藏或不在视口内时不朝它缩放，改为以视口中心为准。用户设置了“减少动画”时没有动画。
+- **`preview` 可以是一个对象。** `createMarkdownImage({ preview })` 原来只接受布尔值，现在也接受 `{ scaleStep, minScale, maxScale, movable, wheel }`：缩放步长（默认 0.5，即 1.5 倍）、缩放范围（1 到 50），以及拖拽和双指缩放的开关、滚轮缩放的开关。范围不包含 1 倍时，图片从允许范围内最接近的倍数开始。React、Vue 和 Mantine 接受同样的对象。
+- **回调。** 同一个对象还接受 `onOpenChange(open, { current, item })`、`afterOpenChange(open)`、`onChange(current, previous)` 和 `onTransform({ transform, action })`。拖拽或连续滚轮每帧只报告一次。`afterOpenChange` 报告完整结束的一次打开或关闭，被打断的过程不报告。每个回调都在它描述的状态发布之后执行，所以监听函数里可以再调用预览；监听函数抛出异常也不会让预览停在半开或半关的状态。
+- **背后的页面无法滚动。** 滚动锁原来只作用于 body。现在根元素也一起锁定（两者都可能是页面的滚动容器），对话框还会取消图片没有用到的滚轮和触摸移动事件，所以手指落在遮罩上不会带动页面。
+
+#### `@ai-markdown/core/components`
+
+- **新增。** `createImagePreviewController` 的选项增加了 `scaleStep`、`minScale`、`maxScale`、`movable`、`wheel` 和四个回调，宿主可以提供可选的 `anchor(id)`，状态里新增 `origin` 和 `movable`。`zoomImage`、`imageWheelRatio` 和 `reboundImage` 在末尾增加了可选参数，分别是缩放范围、步长和最小倍数。`ImagePreviewAction` 类型列出了 `onTransform` 会报告的动作。`@ai-markdown/react/components`、`@ai-markdown/vue/components` 和 `@ai-markdown/react-mantine/components` 导出 `MarkdownImagePreviewOptions`。
+- 没有移除或重命名任何东西；除上面说明的开合动画之外，默认行为不变。
+
+#### 验证
+
+本地 preflight 的 23 个步骤通过 22 个；最后一步在 Firefox 通过之后停在 WebKit，因为构建主机缺少 WebKit 需要的系统库。全部 3,283 项单元测试通过（一项 todo），React（118 项）和 Vue（46 项）Storybook 套件、静态与开发模式的 Storybook 验收检查、文档生命周期检查、打包后的消费者测试，以及 Chromium 和 Firefox 上的 Vue 浏览器测试也全部通过。公共类型声明快照、core 契约检查和 20 项视觉基线通过。WebKit 和打包消费者的 Node 版本矩阵交由 CI 验证。
+
+组件的打包浏览器验收在 Chromium 上通过全部 101 项检查。其中 6 项是新增的：预览从缩略图位置打开并缩回缩略图位置，以及滚轮或滚动按键不会带动背后的页面，React 和 Vue 各一组。对根元素的滚动锁在 Chromium 上没有可观察到的差别，那里只锁 body 时页面也不滚动；它针对的是其他浏览器和触摸操作，这两者没有在这里测试。
+
+自 `3.4.0` 以来引擎源码没有改动，压测影响检查判定此区间无需压测，也无需冒烟。复用版本检查报告两个独立版本的包自发布以来没有变化。
+
 ## 3.4.0 — 代码处理逻辑统一到 core、无头的图片预览和可配置的文案
 
 ### 3.4.0

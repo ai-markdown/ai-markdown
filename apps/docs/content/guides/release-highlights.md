@@ -6,6 +6,32 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.4.1 — Image preview transitions, options and callbacks
+
+### 3.4.1
+
+This release aligns engine, core, React, Mantine and Vue at `3.4.1`. `@ai-markdown/code-language-detector` remains at `1.1.1` and the highlight plugin at `1.0.3`; neither has changes and neither is republished. It adds options to the image preview that `3.4.0` introduced and has no breaking changes. It carries a patch number by maintainer decision although it adds API.
+
+#### Image preview
+
+- **The preview opens from its thumbnail and closes back into it.** In `3.4.0` it scaled in from the centre of the viewport and only faded out. It now grows out of the thumbnail that was activated, and when it closes it shrinks into the thumbnail of the image then shown, which after navigating a gallery is another one. A thumbnail that is detached, hidden or out of view is not aimed at; the preview then scales about the centre. Nothing animates when the user prefers reduced motion.
+- **`preview` takes an object.** `createMarkdownImage({ preview })` accepted a boolean. It also accepts `{ scaleStep, minScale, maxScale, movable, wheel }`: the zoom step (default 0.5, so 1.5x), the zoom range (1 to 50), and switches for dragging and pinching and for wheel zoom. With a range that excludes 1x, an image starts at the nearest allowed scale. React, Vue and Mantine take the same object.
+- **Callbacks.** The same object takes `onOpenChange(open, { current, item })`, `afterOpenChange(open)`, `onChange(current, previous)` and `onTransform({ transform, action })`. A drag or a wheel burst reports once per frame. `afterOpenChange` reports an opening or a closing that ran to its end; one that is interrupted reports nothing. Each callback runs after the state it describes has been published, so a listener may call back into the preview, and one that throws does not leave the preview half open or half closed.
+- **The page behind cannot scroll.** The scroll lock covered the body only. The root element is locked as well, since either can be the page's scroller, and the dialog cancels a wheel or a touch move that the image did not use, so a touch on the mask does not move the page.
+
+#### `@ai-markdown/core/components`
+
+- **Added.** `createImagePreviewController` takes `scaleStep`, `minScale`, `maxScale`, `movable`, `wheel` and the four callbacks as options, an optional `anchor(id)` on its host, and publishes `origin` and `movable` in its state. `zoomImage`, `imageWheelRatio` and `reboundImage` take the limits, the step and the smallest scale as optional trailing arguments. The `ImagePreviewAction` type names what `onTransform` reports. `@ai-markdown/react/components`, `@ai-markdown/vue/components` and `@ai-markdown/react-mantine/components` export `MarkdownImagePreviewOptions`.
+- Nothing is removed or renamed, and defaults are unchanged apart from the opening and closing transition described above.
+
+#### Verification
+
+Local preflight passes 22 of 23 steps; the last one stops at the WebKit leg because the build host lacks WebKit's system libraries, after the Firefox leg passes. All 3,283 unit tests pass (one todo), together with the React (118) and Vue (46) Storybook suites, the static and development Storybook acceptance checks, the document lifetime check, the packed-consumer tests and the Vue browser tests in Chromium and Firefox. The public declaration snapshots, the core contract checks and the 20 visual baselines pass. WebKit and the packed-consumer Node matrix are left to CI.
+
+The packed browser acceptance for the components passes its 101 checks in Chromium. Six are new: the preview opens from and closes into its thumbnail, and the page behind it does not move under a wheel or a scroll key, each for React and for Vue. The scroll lock on the root element makes no observable difference in Chromium, where the page did not scroll with the body lock alone; it is there for other browsers and for touch, neither of which was tested here.
+
+No engine source changed since `3.4.0`, and the soak impact check does not require a campaign or a smoke run for this range. The reused-version check reports both independent packages unchanged since publication.
+
 ## 3.4.0 — Shared code pipeline, headless image preview and configurable text
 
 ### 3.4.0
