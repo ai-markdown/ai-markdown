@@ -15,7 +15,7 @@
     "@mantine/code-highlight": "^9.6.3",
     "@mantine/core": "^9.6.3",
     "highlight.js": "^11.11.2",
-    "katex": "^0.18.2",
+    "katex": "^0.17.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
