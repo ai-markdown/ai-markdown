@@ -1,13 +1,19 @@
 import { waitFor } from 'storybook/test';
 import { docsComponents } from '@ai-markdown/storybook-kit/react/docsComponents';
 import type { Preview } from '@storybook/react-vite';
-import { getUserPreferredColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
+import {
+  colorThemeGlobalTypes,
+  colorThemeInitialGlobals,
+  syncColorTheme,
+} from '@ai-markdown/storybook-kit/common/colorThemeGlobals';
 // React-only decorators are shared with Mantine through the private kit.
 import { armReactScan, withReactScan } from '@ai-markdown/storybook-kit/react/reactScan';
 import { withColorScheme } from '@ai-markdown/storybook-kit/react/withColorScheme';
 import { AimDocsContainer } from '@ai-markdown/storybook-kit/react/AimDocsContainer';
 
 armReactScan();
+
+syncColorTheme();
 
 const preview: Preview = {
   // In automated tests, runs before the addon's finalizer. Check settled content rather than
@@ -83,25 +89,14 @@ const preview: Preview = {
     },
   },
   initialGlobals: {
-    theme: getUserPreferredColorTheme(),
+    ...colorThemeInitialGlobals(),
     reactScan: 'off',
     // Benchmark harnesses stream on mount here, but stay idle under vitest —
     // see the `initialGlobals` override in vitest.config.ts.
     autoStart: 'on',
   },
   globalTypes: {
-    theme: {
-      description: 'Global theme for components',
-      toolbar: {
-        title: 'Theme',
-        icon: 'mirror',
-        items: [
-          { value: 'light', icon: 'sun', title: 'Light' },
-          { value: 'dark', icon: 'moon', title: 'Dark' },
-        ],
-        dynamicTitle: true,
-      },
-    },
+    ...colorThemeGlobalTypes('Global theme for components'),
     reactScan: {
       description: 'Toggle react-scan render visualisation (outlines render only in standalone iframe view)',
       toolbar: {

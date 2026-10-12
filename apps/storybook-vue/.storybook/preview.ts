@@ -7,9 +7,15 @@ import { storyPresentation } from '@ai-markdown/storybook-kit/common/storyPresen
 import '@ai-markdown/storybook-kit/common/preview.css';
 // Storybook's docs UI uses React even when the component renderer is Vue.
 import { AimDocsContainer } from '@ai-markdown/storybook-kit/react/AimDocsContainer';
-import { getUserPreferredColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
+import {
+  colorThemeGlobalTypes,
+  colorThemeInitialGlobals,
+  syncColorTheme,
+} from '@ai-markdown/storybook-kit/common/colorThemeGlobals';
 import '@ai-markdown/vue/styles.css';
 import 'katex/dist/katex.min.css';
+syncColorTheme();
+
 const preview: Preview = {
   parameters: {
     docs: { container: AimDocsContainer, components: docsComponents },
@@ -52,20 +58,9 @@ const preview: Preview = {
       },
     },
   },
-  initialGlobals: { theme: getUserPreferredColorTheme(), autoStart: 'off' },
+  initialGlobals: { ...colorThemeInitialGlobals(), autoStart: 'off' },
   globalTypes: {
-    theme: {
-      description: 'Preview color scheme',
-      toolbar: {
-        title: 'Theme',
-        icon: 'mirror',
-        items: [
-          { value: 'light', icon: 'sun', title: 'Light' },
-          { value: 'dark', icon: 'moon', title: 'Dark' },
-        ],
-        dynamicTitle: true,
-      },
-    },
+    ...colorThemeGlobalTypes('Preview color scheme'),
   },
   decorators: [
     (story, context) => {

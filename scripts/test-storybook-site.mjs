@@ -94,6 +94,47 @@ try {
     (await docs.locator('.aim-story').first().boundingBox()).height < 600,
     'Embedded samples should fit their content'
   );
+  // The Theme toolbar offers System next to Light and Dark. On System the preview follows the system setting;
+  // on a fixed scheme it does not.
+  const vueFrame = () => page.frames().find((f) => f.url().includes('/vue/iframe.html'));
+  const previewScheme = (scheme) =>
+    vueFrame().waitForFunction(
+      (expected) => document.querySelector('.aim-docs')?.style.colorScheme === expected,
+      scheme
+    );
+  const pickTheme = async (name) => {
+    await page.getByRole('button', { name: /Preview color scheme/ }).click();
+    await page.getByRole('option', { name, exact: true }).click();
+  };
+  const savedMode = () => page.evaluate(() => localStorage.getItem('aim-storybook-color-scheme-mode'));
+  assert.equal(await savedMode(), 'light', 'a fixed scheme is remembered');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.waitForTimeout(300);
+  await previewScheme('light');
+  await pickTheme('System');
+  await previewScheme('dark');
+  assert.equal(await savedMode(), null, 'System is the absence of a saved scheme');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await previewScheme('light');
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await previewScheme('dark');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await previewScheme('light');
+  // Embedded in the documentation site, System means that page's theme, whatever the operating system says.
+  const story = `${base}vue/iframe.html?id=customization-rich-components--direct-registration&viewMode=story`;
+  await page.route(`${base}embedding-page.html`, (route) =>
+    route.fulfill({
+      contentType: 'text/html',
+      body: `<!doctype html><html data-theme="dark"><body><iframe id="embedded-catalog" src="${story}" style="width:900px;height:600px"></iframe></body></html>`,
+    })
+  );
+  await page.goto(`${base}embedding-page.html`);
+  const embedded = page.frameLocator('#embedded-catalog');
+  await embedded.locator('.aimd-code[data-color-scheme="dark"]').first().waitFor();
+  await page.evaluate(() => {
+    document.documentElement.dataset.theme = 'light';
+  });
+  await embedded.locator('.aimd-code[data-color-scheme="light"]').first().waitFor();
   const react = await (await fetch(base + 'react/index.json')).json();
   const vue = await (await fetch(base + 'vue/index.json')).json();
   // Common capabilities must remain discoverable under identical chapter names.

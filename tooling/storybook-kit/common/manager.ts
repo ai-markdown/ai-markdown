@@ -1,6 +1,11 @@
 import { addons } from 'storybook/manager-api';
 import { CATALOG_THEMES } from './catalogTheme';
-import { getUserPreferredColorTheme, setUserPreferredColorTheme } from '@ai-markdown/storybook-kit/common/sb-theme';
+import {
+  getColorThemeMode,
+  getUserPreferredColorTheme,
+  watchSystemColorTheme,
+  type ColorTheme,
+} from '@ai-markdown/storybook-kit/common/sb-theme';
 import {
   CURRENT_STORY_WAS_SET,
   DOCS_PREPARED,
@@ -23,9 +28,8 @@ addons.setConfig({
 addons.register('theme-switcher', (api) => {
   let currTheme: string | undefined = undefined;
 
-  function updateTheme() {
-    const theme = getUserPreferredColorTheme();
-    if (theme && currTheme !== theme) {
+  function updateTheme(theme: ColorTheme = getUserPreferredColorTheme()) {
+    if (currTheme !== theme) {
       currTheme = theme;
       api.setOptions({
         theme: managerThemes[theme],
@@ -33,16 +37,15 @@ addons.register('theme-switcher', (api) => {
     }
   }
 
+  // `theme` is the concrete scheme the preview shows; the preview derives it from the Theme toolbar.
   api.on(GLOBALS_UPDATED, ({ globals }) => {
-    if (globals.theme) {
-      setUserPreferredColorTheme(globals.theme);
-      updateTheme();
-    }
+    if (globals.theme === 'light' || globals.theme === 'dark') updateTheme(globals.theme);
   });
 
-  const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-  mediaQuery.addEventListener('change', () => {
-    updateTheme();
+  // While the toolbar says System, the previews follow the system, or the documentation page around the
+  // catalog, and report back through GLOBALS_UPDATED. This covers the chrome when no preview does.
+  watchSystemColorTheme((theme) => {
+    if (getColorThemeMode() === 'system') updateTheme(theme);
   });
 });
 
