@@ -60,7 +60,7 @@ const AppCode = createMarkdownCodeBlock({
 
 Vue exposes the same factory from `@ai-markdown/vue/components/code`; renderer values are Vue components declaring the input props. Renderer keys are trimmed and lowercased. Custom entries replace built-ins, `false` disables one, and unknown languages display ordinary code. Automatic language detection only informs highlighting and formatting; it never selects a specialized renderer.
 
-A renderer receives `code`, `language`, document-level `streaming`, `colorScheme`, `active`, and an opaque `resetKey`. Source append preserves its instance; replacement changes the generation. Stop or invalidate asynchronous work when `active` becomes false, `resetKey` changes, or the component unmounts. Rendering errors fall back to source, but arbitrary promises started by custom renderers must handle their own errors. If two business documents have identical input, use a different Markdown key to force a new lifecycle. React also observes its document context; Vue applications should key Markdown by their document identity when replacing it.
+A renderer receives `code`, `language`, document-level `streaming`, `colorScheme`, `active`, and an opaque `resetKey`. Source append preserves its instance; replacement changes the generation. Stop or invalidate asynchronous work when `active` becomes false, `resetKey` changes, or the component unmounts. Rendering errors fall back to source, but arbitrary promises started by custom renderers must handle their own errors. The supplied code blocks also start a new generation when the `documentId` changes, so another document at the same position is never taken for an append. If two documents have the same id and identical input, use a different Markdown key to force a new lifecycle.
 
 Default neutral options are `defaultExpanded: true`, `autoDetectUnknownLanguage: true`, `highlightIntervalMs: 50`, `mermaidIntervalMs: 300`, `formatJson: false`, and `expandNestedJson: false`. React factory values override the existing `codeBlock` behavior group, which overrides these defaults. Group transport still replaces whole groups. Vue accepts options through the factory; its `colorScheme` option accepts `'light'`, `'dark'`, or a reactive getter. Changing CSS colors alone does not change Mermaid's theme.
 
@@ -157,6 +157,7 @@ A `pre` override owns ordinary fenced code. A separate `code` override still app
 | -------------------------------- | ----------------------------------------------------------------------------------------- |
 | Read a `pre` node                | `extractCode`, `normalizeRenderers`                                                       |
 | Tell an append from a rewrite    | `extendsCode`                                                                             |
+| Build a code block               | `createCodeBlockSession`                                                                  |
 | Throttle displayed code          | `nextCodeFrame`, `createCodeFrame`                                                        |
 | Detect an unlabelled language    | `createCodeLanguageTracker`                                                               |
 | Format JSON                      | `createJsonCompletenessScanner`, `jsonLooksComplete`, `prettyPrintJson`                   |
@@ -179,29 +180,41 @@ extendsCode('ax\n', 'ab\n'); // false: rewritten
 
 Use it whenever a renderer keeps work between updates, such as an incremental parser or a timer. The supplied code block already uses it to decide `resetKey`, so a renderer that only needs to know when to start over can watch `resetKey`.
 
-### Displayed code and language
+### A code block of your own
 
-`createCodeFrame` is a trailing throttle for the text handed to a highlighter. Appends inside one interval replace a single pending frame without moving its deadline; a rewrite, a non-streaming update and the end of the stream are published at once. `nextCodeFrame` carries the append lineage between updates.
+`createCodeBlockSession` is what the supplied code blocks are built on. One session per block turns the block's source into what to show: the text for the highlighter, the language, and a generation that changes when the block is rewritten.
 
 ```ts
-import { createCodeFrame, createCodeLanguageTracker, nextCodeFrame } from '@ai-markdown/core/components';
+import { createCodeBlockSession } from '@ai-markdown/core/components';
 
-let current = nextCodeFrame(undefined, code, language);
-const frames = createCodeFrame(current, (frame) => show(frame.code));
-const tracker = createCodeLanguageTracker(() => rerender());
+const session = createCodeBlockSession(() => rerender());
 
-// On every update:
-current = nextCodeFrame(current, code, language);
-frames.update(current, streaming, 50);
-const detected = tracker.read(code, streaming); // synchronous, safe during server rendering
-tracker.observe(code, streaming); // once the text is on screen; starts the 300 ms settle timer
+// During render, server rendering included:
+const input = {
+  code, // from extractCode(node)
+  language, // the fence language, '' when there is none
+  streaming,
+  autoDetect: true,
+  formatJson: false,
+  expandNestedJson: false,
+  highlightIntervalMs: 50,
+};
+const { text, language: shownLanguage, generation } = session.read(input);
+
+// Once that render is on screen:
+session.commit(input);
 
 // On unmount:
-frames.dispose();
-tracker.dispose();
+session.dispose();
 ```
 
-`tracker.read` returns the detected language or `null`. It keeps one verdict while the text only grows and starts over when the text is rewritten. The callback passed to `createCodeLanguageTracker` runs when the text has settled; read again then. React applications can use the `useCodeFrame` and `useDetectedLanguage` hooks from `@ai-markdown/react/components/code/plain`, which wrap these two helpers.
+- `text` is the current source, with two exceptions. While the document streams, appends inside `highlightIntervalMs` share one frame, so `text` can be an earlier prefix; a rewrite, a language change and the end of the stream show the current source at once. A JSON block is pretty-printed when `formatJson` is set and the block is complete.
+- `language` is the fence language, or the detected one when the fence has none and `autoDetect` is set. A short block is labelled once its text has been still for 300 ms.
+- `generation` grows by one when the source is rewritten, when the fence language changes, or when the optional `identity` field changes. An append keeps it. Reset per-block state such as a "copied" message when it changes.
+- `read` gives an equal answer for equal input and does not record anything, so a render that is thrown away has no effect. `commit` records the source, lets the language detector look at it and starts the timers; the callback passed to `createCodeBlockSession` runs when a commit or a timer changes the answer. A host that never commits always reads the current source.
+- Copy the raw `code`, not `text`.
+
+React applications can call `useCodeBlock(input)` from `@ai-markdown/react/components/code/plain`, which returns the same three fields and does the commit and the cleanup. The parts the session is made of are exported too, for a host that needs only one of them: `nextCodeFrame` and `createCodeFrame` (the display throttle), `createCodeLanguageTracker` (detection and the settle timer), and `createJsonCompletenessScanner` with `prettyPrintJson`.
 
 ### A diagram renderer
 

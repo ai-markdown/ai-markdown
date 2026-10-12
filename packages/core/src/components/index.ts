@@ -3,6 +3,8 @@ export { extractCode, normalizeRenderers, projectTable, serializeTable } from '.
 export type { CodeSource, TableProjection } from './nodes';
 export { extendsCode } from './codeText';
 export { createCodeLanguageTracker } from './codeLanguage';
+export { createCodeBlockSession } from './codeBlock';
+export type { CodeBlockInput, CodeBlockSnapshot } from './codeBlock';
 export { createCodeFrame, nextCodeFrame } from './codeFrame';
 export type { CodeFrame } from './codeFrame';
 export { prettyPrintJson } from './formatJson';

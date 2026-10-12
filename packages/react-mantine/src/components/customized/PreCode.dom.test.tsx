@@ -16,13 +16,6 @@ import hljs from 'highlight.js';
 import MantineAIMarkdown from '../../MantineAIMarkdown';
 import { MantineLanguageFormat } from '../../defs';
 import { createMountHarness, flushEffects, installMantineDomStubs } from './domTestHarness';
-import { prettyPrintJson } from '@ai-markdown/core/components';
-
-// The formatter lives in the shared core; wrap it so the test can count calls.
-vi.mock('@ai-markdown/core/components', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@ai-markdown/core/components')>();
-  return { ...actual, prettyPrintJson: vi.fn(actual.prettyPrintJson) };
-});
 
 /** Module constant: the group is compared by value. */
 const SHIKI_FORMAT = { languageFormat: MantineLanguageFormat.Shiki };
@@ -37,7 +30,6 @@ afterEach(async () => {
 
 test('JSON formatting follows displayed frames; replacement and completion bypass throttling', async () => {
   vi.useFakeTimers();
-  const format = vi.mocked(prettyPrintJson);
   const adapter: CodeHighlightAdapter = {
     getHighlighter:
       () =>
@@ -47,12 +39,14 @@ test('JSON formatting follows displayed frames; replacement and completion bypas
   const view = (body: string, streaming = true) => (
     <MantineAIMarkdown content={'```json\n' + body + '\n```'} streaming={streaming} codeBlock={codeBlock} />
   );
-  const container = await harness.mount(view('{"a":1}'), adapter);
-  const before = format.mock.calls.length;
-  for (let i = 1; i <= 10; i++) await harness.update(view('{"a":1}' + '\n'.repeat(i)));
-  expect(format.mock.calls.length).toBe(before);
+  // The formatter runs inside core's session, so the test reads its effect from the rendered code.
+  const shown = () => container.querySelector('code')?.textContent;
+  const container = await harness.mount(view('{"a":1'), adapter);
+  for (const body of ['{"a":1,', '{"a":1,"b":2', '{"a":1,"b":2}']) await harness.update(view(body));
+  // Still the first frame: the completed value is waiting for the interval.
+  expect(shown()).toBe('{"a":1');
   await act(async () => vi.advanceTimersByTime(100));
-  expect(format.mock.calls.length).toBe(before + 1);
+  expect(shown()).toContain('"b": 2');
   await harness.update(view('{"replacement":2}'));
   expect(container.querySelector('code')?.textContent).toContain('"replacement": 2');
   await harness.update(view('{"final":3}', false));
@@ -159,6 +153,27 @@ describe('language auto-detection across a stream (client render)', () => {
 
 // hast code text ends with a newline, so a chunk that stops in the middle of a line is an append
 // only when that newline is ignored. A plain prefix test read it as a replacement and flushed.
+test('another document at the same position starts over, even when its text continues', async () => {
+  vi.useFakeTimers();
+  const adapter: CodeHighlightAdapter = {
+    getHighlighter:
+      () =>
+      ({ code }) => ({ highlightedCode: code, isHighlighted: false }),
+  };
+  const codeBlock = { highlightIntervalMs: 60_000 };
+  const view = (documentId: string, body: string) => (
+    <MantineAIMarkdown documentId={documentId} content={'```ts\n' + body} streaming codeBlock={codeBlock} />
+  );
+  const container = await harness.mount(view('first', 'const a = 1;'), adapter);
+  const shown = () => container.querySelector('code')?.textContent;
+  // The same document growing is throttled: the first frame stays up.
+  await harness.update(view('first', 'const a = 1;\nconst b = 2;'));
+  expect(shown()).not.toContain('const b');
+  // Another message is not an append to this one, so its text shows at once.
+  await harness.update(view('second', 'const a = 1;\nconst b = 2;\nconst c = 3;'));
+  expect(shown()).toContain('const c = 3;');
+});
+
 test('mid-line chunks are throttled like any other append', async () => {
   let calls = 0;
   const adapter: CodeHighlightAdapter = {

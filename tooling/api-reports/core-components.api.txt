@@ -22,6 +22,26 @@ export declare function createCodeLanguageTracker(onSettle: () => void): {
     observe(code: string, streaming: boolean): void;
     dispose: () => void;
 };
+interface CodeBlockInput {
+    code: string;
+    language: string;
+    identity?: string;
+    streaming: boolean;
+    autoDetect: boolean;
+    formatJson: boolean;
+    expandNestedJson: boolean;
+    highlightIntervalMs: number;
+}
+interface CodeBlockSnapshot {
+    text: string;
+    language: string;
+    generation: number;
+}
+export declare function createCodeBlockSession(onChange: () => void): {
+    read(input: CodeBlockInput): CodeBlockSnapshot;
+    commit(input: CodeBlockInput): void;
+    dispose(): void;
+};
 interface CodeFrame {
     code: string;
     language: string;
@@ -171,4 +191,4 @@ export interface CodeBlockOptions {
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
 }
-export type { CodeFrame, CodeSource, DiagramEngine, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLoadStatus, ImageTransform, MermaidInitTarget, TableProjection };
+export type { CodeBlockInput, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLoadStatus, ImageTransform, MermaidInitTarget, TableProjection };

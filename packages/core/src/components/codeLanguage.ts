@@ -4,13 +4,22 @@ import { CODE_LANGUAGE_SETTLE_MS, codeBody, extendsCode } from './codeText';
 /**
  * Follows the language of one unlabelled code block.
  *
- * The detector is synchronous, so `read` can run during render, server
- * rendering included. It keeps one verdict for as long as the text only
- * grows: it looks again only when the text has grown enough to change the
- * evidence, never lowers its confidence, and charges a margin for a switch
- * across language families. A rewritten block starts over at once, so it
- * never shows the verdict of the text it replaced. The detector is fed the
- * text without hast's final newline, which makes every append a continuation.
+ * `read` answers during render, server rendering included, and changes
+ * nothing: a render that is thrown away cannot move the verdict. `observe` is
+ * called once the text is on screen, and only it feeds the detector that
+ * follows the block. That detector keeps one verdict for as long as the text
+ * only grows: it looks again only when the text has grown enough to change
+ * the evidence, never lowers its confidence, and charges a margin for a
+ * switch across language families. It is fed the text without hast's final
+ * newline, which makes every append a continuation.
+ *
+ * What `read` answers for a text:
+ * - the observed text, or one that extends it: the followed verdict as it
+ *   stands. `observe` then looks at the new text and returns true when the
+ *   verdict moved, so the host can read again;
+ * - anything else (a first or server render, a rewrite, an older text): the
+ *   verdict a fresh detector gives it, which is also what `observe` will
+ *   arrive at after starting over.
  *
  * While the document streams the detector does not look again before 80 more
  * characters, and the streaming flag describes the document, not this fence.
@@ -20,31 +29,40 @@ import { CODE_LANGUAGE_SETTLE_MS, codeBody, extendsCode } from './codeText';
  */
 export function createCodeLanguageTracker(onSettle: () => void) {
   const detector = new StreamingLanguageDetector();
-  let followed = '';
+  /** The text the detector follows; undefined until the first `observe`. */
+  let followed: string | undefined;
   let settled: string | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const cancel = () => {
     if (timer !== undefined) clearTimeout(timer);
     timer = undefined;
   };
+  const judge = (from: StreamingLanguageDetector, text: string, streaming: boolean) =>
+    (streaming && settled !== text ? from.update(text) : from.finalize(text)).language;
   return {
-    /** The verdict for `code`. The same input gives the same answer, so a repeated render is harmless. */
+    /** The verdict for `code`. Changes nothing, so a repeated or abandoned render is harmless. */
     read(code: string, streaming: boolean): CodeLanguage | null {
-      if (!extendsCode(code, followed)) detector.reset();
-      followed = code;
-      const text = codeBody(code);
-      return (streaming && settled !== text ? detector.update(text) : detector.finalize(text)).language;
+      if (followed !== undefined && extendsCode(code, followed)) return detector.current.language;
+      return judge(new StreamingLanguageDetector(), codeBody(code), streaming);
     },
-    /** Call once the text is on screen. Each call replaces the pending timer. */
-    observe(code: string, streaming: boolean): void {
+    /** Call once the text is on screen. Each call replaces the pending timer. True when the verdict `read` gave for `code` has moved. */
+    observe(code: string, streaming: boolean): boolean {
       cancel();
       const text = codeBody(code);
-      if (!streaming || settled === text) return;
-      timer = setTimeout(() => {
-        timer = undefined;
-        settled = text;
-        onSettle();
-      }, CODE_LANGUAGE_SETTLE_MS);
+      const starting = followed === undefined || !extendsCode(code, followed);
+      if (starting) detector.reset();
+      const before = detector.current.language;
+      followed = code;
+      const after = judge(detector, text, streaming);
+      if (streaming && settled !== text)
+        timer = setTimeout(() => {
+          timer = undefined;
+          settled = text;
+          detector.finalize(text);
+          onSettle();
+        }, CODE_LANGUAGE_SETTLE_MS);
+      // A text that starts over was read with a fresh detector, which is what this one now is.
+      return !starting && before !== after;
     },
     // Cancellation is reversible: a later observe starts a new timer.
     dispose: cancel,

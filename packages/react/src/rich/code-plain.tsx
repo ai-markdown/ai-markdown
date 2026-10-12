@@ -16,21 +16,17 @@ import {
   useAIMarkdownDocument,
 } from '@ai-markdown/react';
 import {
-  extendsCode,
   extractCode,
   normalizeRenderers,
-  prettyPrintJson,
-  createJsonCompletenessScanner,
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
 import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
-import { useCodeFrame } from './useCodeFrame';
-import { useDetectedLanguage } from './useDetectedLanguage';
+import { useCodeBlock } from './useCodeBlock';
 
-// The Mantine code block is built on the same two hooks.
-export { useCodeFrame } from './useCodeFrame';
-export { useDetectedLanguage } from './useDetectedLanguage';
+// The Mantine code block is built on the same hook.
+export { useCodeBlock } from './useCodeBlock';
+export type { CodeBlockInput, CodeBlockSnapshot } from '@ai-markdown/core/components';
 
 export type { CodeRendererInput, CodeBlockOptions } from '@ai-markdown/core/components';
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
@@ -67,37 +63,28 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
     const code = parsed?.code ?? '';
     const language = parsed?.language ?? '';
     const identity = `${document.documentId}:${node?.position?.start.offset ?? ''}:${language}`;
-    // React discards this state with an abandoned render. A non-append source
-    // gets a fresh renderer generation; append preserves the mounted renderer.
-    const [previous, setPrevious] = useState({ code, identity, generation: 0 });
-    const generation =
-      previous.generation + (identity !== previous.identity || !extendsCode(code, previous.code) ? 1 : 0);
+    const block = useCodeBlock({
+      code,
+      language,
+      identity,
+      streaming,
+      autoDetect: option('autoDetectUnknownLanguage', true),
+      formatJson: option('formatJson', false),
+      expandNestedJson: option('expandNestedJson', false),
+      highlightIntervalMs: interval(option('highlightIntervalMs', 50), 50),
+    });
+    const { generation, text: displayed, language: detected } = block;
     const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
     const [source, setSource] = useState(false);
     const [expanded, setExpanded] = useState(option('defaultExpanded', true));
     const [feedback, setFeedback] = useState('');
-    if (code !== previous.code || identity !== previous.identity) {
-      setPrevious({ code, identity, generation });
-      if (generation !== previous.generation) {
-        setSource(false);
-        setFeedback('');
-      }
+    // A rewritten block starts over: React discards this state with an abandoned render.
+    const [seen, setSeen] = useState(generation);
+    if (generation !== seen) {
+      setSeen(generation);
+      setSource(false);
+      setFeedback('');
     }
-    const frame = useCodeFrame(code, language, streaming, interval(option('highlightIntervalMs', 50), 50));
-    const autoDetect = option('autoDetectUnknownLanguage', true);
-    const detected = useDetectedLanguage(code, autoDetect && !language, streaming) ?? language;
-    const format = option('formatJson', false),
-      nested = option('expandNestedJson', false);
-    // One scanner per block: a growing JSON block is scanned once, not once per frame.
-    const [scanJson] = useState(createJsonCompletenessScanner);
-    const jsonComplete = useMemo(
-      () => (format && detected === 'json' && streaming ? scanJson(frame) : false),
-      [format, detected, streaming, scanJson, frame]
-    );
-    const displayed = useMemo(
-      () => (format && detected === 'json' && (!streaming || jsonComplete) ? prettyPrintJson(frame, nested) : frame),
-      [frame, detected, format, nested, streaming, jsonComplete]
-    );
     const Renderer = renderers[language];
     const highlighted = useMemo(() => {
       if (Renderer && mounted && !source) return displayed;

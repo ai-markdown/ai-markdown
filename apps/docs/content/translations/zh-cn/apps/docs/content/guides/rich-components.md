@@ -66,7 +66,7 @@ const AppCode = createMarkdownCodeBlock({
 
 Vue 从 `@ai-markdown/vue/components/code` 导出同名工厂，语言渲染器是声明相应输入 props 的 Vue 组件。语言键会去除首尾空格并转小写；自定义项覆盖内置项，`false` 禁用指定语言渲染器，未知语言回退普通代码。自动语言检测只用于高亮和格式化，绝不会把未标注的代码提升为图表。
 
-渲染器接收 `code`、`language`、文档级 `streaming`、`colorScheme`、`active` 和不透明的 `resetKey`。追加源码保留组件实例，替换源码会切换代次。自定义异步渲染器需要在停用、代次变化和卸载时取消或使旧任务失效；组件渲染异常会回退源码，但自行启动的 Promise 仍需自行处理错误。两个业务文档内容完全相同时，请用不同的 Markdown key 重建生命周期。React 还会读取文档上下文；Vue 应用替换文档时建议按文档身份设置 key。
+渲染器接收 `code`、`language`、文档级 `streaming`、`colorScheme`、`active` 和不透明的 `resetKey`。追加源码保留组件实例，替换源码会切换代次。自定义异步渲染器需要在停用、代次变化和卸载时取消或使旧任务失效；组件渲染异常会回退源码，但自行启动的 Promise 仍需自行处理错误。`documentId` 变化时，自带的代码块也会开始新的代次，所以同一位置上的另一篇文档不会被当成追加。两篇文档的 id 和内容都完全相同时，请用不同的 Markdown key 重建生命周期。
 
 中性组件默认配置为 `defaultExpanded: true`、`autoDetectUnknownLanguage: true`、`highlightIntervalMs: 50`、`mermaidIntervalMs: 300`、`formatJson: false`、`expandNestedJson: false`。React 的优先级是工厂显式选项、既有 `codeBlock` behavior group、默认值；group 传输仍按整组替换。Vue 通过工厂配置，`colorScheme` 接受 `'light'`、`'dark'` 或响应式 getter。仅修改 CSS 不会自动改变 Mermaid 图表主题。
 
@@ -171,6 +171,7 @@ React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/component
 | -------------------------- | ----------------------------------------------------------------------------------------- |
 | 读取 `pre` 节点            | `extractCode`、`normalizeRenderers`                                                       |
 | 区分追加和替换             | `extendsCode`                                                                             |
+| 编写代码块                 | `createCodeBlockSession`                                                                  |
 | 对显示的代码节流           | `nextCodeFrame`、`createCodeFrame`                                                        |
 | 检测未标注的语言           | `createCodeLanguageTracker`                                                               |
 | 格式化 JSON                | `createJsonCompletenessScanner`、`jsonLooksComplete`、`prettyPrintJson`                   |
@@ -195,31 +196,43 @@ extendsCode('ax\n', 'ab\n'); // false：替换
 
 渲染器在两次更新之间保留了工作成果（例如增量解析器或定时器）时，都应该用它来判断。自带的代码块已经用它决定 `resetKey`，只需要知道何时重新开始的渲染器观察 `resetKey` 即可。
 
-<span id="displayed-code-and-language"></span>
+<span id="a-code-block-of-your-own"></span>
 
-### 显示的代码和语言
+### 自己写代码块
 
-`createCodeFrame` 是交给高亮器的文本的尾部节流。同一个间隔内的多次追加只替换一个待发布的帧，不推迟它的截止时间；替换、非流式更新和流式结束会立即发布。`nextCodeFrame` 在两次更新之间传递追加关系。
+自带的代码块都建立在 `createCodeBlockSession` 之上。每个代码块一个会话，它把代码块的源码变成要显示的内容：交给高亮器的文本、语言，以及代码块被替换时会变化的代次。
 
 ```ts
-import { createCodeFrame, createCodeLanguageTracker, nextCodeFrame } from '@ai-markdown/core/components';
+import { createCodeBlockSession } from '@ai-markdown/core/components';
 
-let current = nextCodeFrame(undefined, code, language);
-const frames = createCodeFrame(current, (frame) => show(frame.code));
-const tracker = createCodeLanguageTracker(() => rerender());
+const session = createCodeBlockSession(() => rerender());
 
-// 每次更新：
-current = nextCodeFrame(current, code, language);
-frames.update(current, streaming, 50);
-const detected = tracker.read(code, streaming); // 同步执行，服务端渲染时也可以调用
-tracker.observe(code, streaming); // 文本显示之后调用；启动 300 毫秒的静止计时
+// 渲染时调用，服务端渲染也可以：
+const input = {
+  code, // 来自 extractCode(node)
+  language, // 围栏语言，没有时为 ''
+  streaming,
+  autoDetect: true,
+  formatJson: false,
+  expandNestedJson: false,
+  highlightIntervalMs: 50,
+};
+const { text, language: shownLanguage, generation } = session.read(input);
+
+// 这次渲染显示之后：
+session.commit(input);
 
 // 卸载时：
-frames.dispose();
-tracker.dispose();
+session.dispose();
 ```
 
-`tracker.read` 返回检测到的语言或 `null`。文本只增长时它保持同一个结论，文本被替换时重新开始。传给 `createCodeLanguageTracker` 的回调在文本静止后执行，此时应再读取一次。React 应用可以使用 `@ai-markdown/react/components/code/plain` 导出的 `useCodeFrame` 和 `useDetectedLanguage`，它们是这两个函数的封装。
+- `text` 是当前源码，有两种例外。文档流式输出期间，`highlightIntervalMs` 之内的多次追加共用一帧，所以 `text` 可能是较早的前缀；替换、语言变化和流式结束会立即显示当前源码。设置了 `formatJson` 且代码块完整时，JSON 会被格式化。
+- `language` 是围栏语言；围栏没有语言且设置了 `autoDetect` 时是检测到的语言。较短的代码块在文本连续 300 毫秒没有变化后得到语言。
+- 源码被替换、围栏语言变化，或可选的 `identity` 字段变化时，`generation` 加一；追加不改变它。它变化时应重置代码块自己的状态，例如“已复制”提示。
+- 相同的输入 `read` 给出相同的结果，并且不记录任何东西，所以被丢弃的渲染没有影响。`commit` 记录源码，让语言探测器查看它，并启动计时器；提交或计时器改变结果时，传给 `createCodeBlockSession` 的回调会执行。从不调用 `commit` 的宿主总是读到当前源码。
+- 复制时请使用原始的 `code`，不要用 `text`。
+
+React 应用可以调用 `@ai-markdown/react/components/code/plain` 导出的 `useCodeBlock(input)`，它返回同样的三个字段，并负责提交和清理。组成会话的零件也单独导出，供只需要其中一项的宿主使用：`nextCodeFrame` 和 `createCodeFrame`（显示节流）、`createCodeLanguageTracker`（检测和静止计时）、`createJsonCompletenessScanner` 和 `prettyPrintJson`。
 
 <span id="a-diagram-renderer"></span>
 

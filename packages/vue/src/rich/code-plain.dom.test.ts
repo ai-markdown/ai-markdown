@@ -65,6 +65,36 @@ describe('a code block that streams in mid-line chunks', () => {
     expect(resetKeys.size).toBe(1);
   });
 
+  test('another document at the same position is another block, even when its text continues', async () => {
+    let mounts = 0;
+    const Demo = defineComponent({
+      props: { code: String, resetKey: String },
+      setup(props) {
+        onMounted(() => mounts++);
+        return () => h('div', props.code);
+      },
+    });
+    const pre = createMarkdownCodeBlock({ renderers: { demo: Demo } });
+    const scope = (container = document.createElement('div'));
+    document.body.append(scope);
+    const state = ref({ documentId: 'first', content: '```demo\nimport a\n```' });
+    app = createApp({
+      render: () => h(AIMarkdown, { ...state.value, streamingCursor: false, components: { pre } }),
+    });
+    app.mount(scope);
+    await nextTick();
+    expect(mounts).toBe(1);
+    // The same document growing: one renderer.
+    state.value = { documentId: 'first', content: '```demo\nimport a\nimport b\n```' };
+    await nextTick();
+    expect(mounts).toBe(1);
+    // Another message whose block starts with the same text.
+    state.value = { documentId: 'second', content: '```demo\nimport a\nimport b\nimport c\n```' };
+    await nextTick();
+    await nextTick();
+    expect(mounts).toBe(2);
+  });
+
   test('throttles highlight to the configured interval', async () => {
     let calls = 0;
     const Block = createMarkdownCodeBlock({ highlightIntervalMs: 60_000, highlight: (code) => (calls++, code) });

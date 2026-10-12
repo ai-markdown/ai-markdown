@@ -1,5 +1,6 @@
 import type { DefineComponent } from 'vue';
 import type { MarkdownComponentProps } from './types';
+import { useOptionalAIMarkdownDocument } from '../documents';
 import {
   computed,
   defineComponent,
@@ -8,7 +9,6 @@ import {
   onErrorCaptured,
   onMounted,
   ref,
-  shallowRef,
   watch,
   type Component,
   type PropType,
@@ -18,11 +18,8 @@ import type { Element } from 'hast';
 import {
   extractCode,
   normalizeRenderers,
-  createCodeFrame,
-  createCodeLanguageTracker,
-  createJsonCompletenessScanner,
-  nextCodeFrame,
-  prettyPrintJson,
+  createCodeBlockSession,
+  type CodeBlockInput,
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
@@ -58,6 +55,7 @@ export function createMarkdownCodeBlock(
     inheritAttrs: false,
     props: { node: Object as PropType<Element>, streaming: Boolean, metadata: null },
     setup(props, { attrs, slots }) {
+      const markdownDocument = useOptionalAIMarkdownDocument();
       const parsed = computed(() => extractCode(props.node));
       const code = computed(() => parsed.value?.code ?? '');
       const language = computed(() => parsed.value?.language ?? '');
@@ -65,62 +63,48 @@ export function createMarkdownCodeBlock(
         source = ref(false),
         expanded = ref(options.defaultExpanded ?? true),
         feedback = ref('');
-      const generation = ref(0);
-      // `current` is the latest text and its lineage; `frame` is the throttled one on screen.
-      const current = shallowRef(nextCodeFrame(undefined, code.value, language.value));
-      const frame = shallowRef(current.value);
-      const controller = createCodeFrame(current.value, (value) => {
-        frame.value = value;
+      // The policy is core's session. `changes` makes the snapshot read again when a timer moves it.
+      const changes = ref(0);
+      const session = createCodeBlockSession(() => {
+        changes.value++;
       });
-      // The detection policy is core's tracker; a settle bumps `settles` so `detected` reads again.
-      const settles = ref(0);
-      const tracker = createCodeLanguageTracker(() => {
-        settles.value++;
+      const input = computed<CodeBlockInput>(() => ({
+        code: code.value,
+        language: language.value,
+        // Another document at the same position is another block, even when its text continues this one.
+        identity: `${markdownDocument?.documentId.value ?? ''}:${props.node?.position?.start.offset ?? ''}`,
+        streaming: Boolean(props.streaming),
+        autoDetect: options.autoDetectUnknownLanguage ?? true,
+        formatJson: options.formatJson ?? false,
+        expandNestedJson: options.expandNestedJson ?? false,
+        highlightIntervalMs: interval,
+      }));
+      const block = computed(() => {
+        void changes.value;
+        return session.read(input.value);
       });
-      const autoDetect = options.autoDetectUnknownLanguage ?? true;
-      // One scanner per block: a growing JSON block is scanned once, not once per frame.
-      const scanJson = createJsonCompletenessScanner();
       watch(
-        [code, language, () => props.streaming],
-        ([next, lang, streaming]) => {
-          const following = nextCodeFrame(current.value, next, lang);
-          if (following.generation !== current.value.generation) {
-            generation.value++;
-            source.value = false;
-            feedback.value = '';
-          }
-          current.value = following;
-          controller.update(following, Boolean(streaming), interval);
+        () => block.value.generation,
+        () => {
+          source.value = false;
+          feedback.value = '';
         },
         { flush: 'sync' }
       );
-      onBeforeUnmount(() => {
-        controller.dispose();
-        tracker.dispose();
-      });
+      // Committed after the render, and only on the client: a server render starts no timer.
+      watch(
+        [input, mounted],
+        ([next, onClient]) => {
+          if (onClient) session.commit(next);
+        },
+        { flush: 'post' }
+      );
+      onBeforeUnmount(() => session.dispose());
       onMounted(() => {
         mounted.value = true;
       });
-      const displayed = computed(() =>
-        !props.streaming || interval === 0 || current.value.generation !== frame.value.generation
-          ? code.value
-          : frame.value.code
-      );
-      // `mounted` keeps the settle timer off the server render.
-      watch([code, () => props.streaming, language, mounted], ([text, streaming, lang, onClient]) => {
-        if (autoDetect && !lang && onClient) tracker.observe(text, Boolean(streaming));
-        else tracker.dispose();
-      });
-      const detected = computed(() => {
-        if (language.value || !autoDetect) return language.value;
-        void settles.value;
-        return tracker.read(code.value, Boolean(props.streaming)) ?? '';
-      });
-      const formatted = computed(() =>
-        options.formatJson && detected.value === 'json' && (!props.streaming || scanJson(displayed.value))
-          ? prettyPrintJson(displayed.value, options.expandNestedJson ?? false)
-          : displayed.value
-      );
+      const detected = computed(() => block.value.language);
+      const formatted = computed(() => block.value.text);
       const highlighted = computed(() => {
         try {
           return options.highlight?.(formatted.value, normalizeHighlightJsLanguage(detected.value)) ?? formatted.value;
@@ -146,7 +130,7 @@ export function createMarkdownCodeBlock(
           h('pre', attrs, [
             h('code', { class: language.value ? `language-${language.value}` : undefined }, highlighted.value),
           ]);
-        const resetKey = `${props.node?.position?.start.offset ?? ''}:${language.value}:${generation.value}`;
+        const resetKey = `${props.node?.position?.start.offset ?? ''}:${language.value}:${block.value.generation}`;
         return h('section', { class: 'aimd-code', 'data-language': language.value, 'data-color-scheme': colorScheme }, [
           h('div', { class: 'aimd-toolbar', role: 'group', 'aria-label': 'Code block actions' }, [
             h('span', detected.value || 'text'),

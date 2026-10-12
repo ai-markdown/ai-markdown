@@ -7,11 +7,9 @@ export { type CodeBlockOptions, type CodeRendererInput, type ImageIconName, type
 
 // Relative declaration: dist/code-plain-chunk.d.ts
 import { ComponentProps, ComponentType, ReactNode } from "react";
-import { CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput, CodeRendererInput as CodeRendererInput$1 } from "@ai-markdown/core/components";
-import { CodeLanguage } from "@ai-markdown/code-language-detector";
+import { CodeBlockInput, CodeBlockInput as CodeBlockInput$1, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeBlockSnapshot, CodeBlockSnapshot as CodeBlockSnapshot$1, CodeRendererInput, CodeRendererInput as CodeRendererInput$1 } from "@ai-markdown/core/components";
 import { Element } from "hast";
-export declare function useCodeFrame(code: string, language: string, streaming: boolean, interval: number): string;
-export declare function useDetectedLanguage(code: string, enabled: boolean, streaming: boolean): CodeLanguage | null;
+export declare function useCodeBlock(input: CodeBlockInput): CodeBlockSnapshot;
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, ComponentType<CodeRendererInput> | false>>;
     highlight?: (code: string, language: string) => ReactNode;
@@ -21,7 +19,7 @@ export type MarkdownCodeBlockProps = ComponentProps<'pre'> & {
 };
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
 export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
-export type { CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput$1 as CodeRendererInput };
+export type { CodeBlockInput$1 as CodeBlockInput, CodeBlockOptions$1 as CodeBlockOptions, CodeBlockSnapshot$1 as CodeBlockSnapshot, CodeRendererInput$1 as CodeRendererInput };
 
 // Relative declaration: dist/code-chunk.d.ts
 import { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from "./code-plain-chunk.js";

@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 //
-// The `useCodeFrame` hook around `createCodeFrame`: what a component sees
-// per render, not what the controller publishes. Timers are faked so the
+// The `useCodeBlock` hook around core's code block session: what a component
+// sees per render, not what the session publishes. Timers are faked so the
 // throttle is measured against a clock.
 import { afterEach, beforeAll, expect, test, vi } from 'vitest';
 import { act, startTransition, StrictMode, Suspense } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
-import { useCodeFrame } from './useCodeFrame';
+import { useCodeBlock } from './useCodeBlock';
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -22,8 +22,19 @@ interface Props {
 const never = new Promise<void>(() => {});
 /** Every value the hook returned, in render order. */
 const seen: string[] = [];
+const generations: number[] = [];
 const Probe = ({ code, language = 'js', streaming, interval = 50, suspend }: Props) => {
-  const frame = useCodeFrame(code, language, streaming, interval);
+  const block = useCodeBlock({
+    code,
+    language,
+    streaming,
+    autoDetect: false,
+    formatJson: false,
+    expandNestedJson: false,
+    highlightIntervalMs: interval,
+  });
+  const frame = block.text;
+  generations.push(block.generation);
   seen.push(frame);
   if (suspend) throw never;
   return <output>{frame}</output>;
@@ -56,6 +67,7 @@ const tick = (ms: number) =>
 afterEach(async () => {
   await unmount();
   seen.length = 0;
+  generations.length = 0;
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -157,6 +169,9 @@ test('an abandoned replacement cannot change the committed append generation', a
   expect(shown()).toBe('a');
   await tick(50);
   expect(shown()).toBe('abc');
+  // The abandoned render read generation 1; every committed render stayed on 0.
+  expect(generations.at(-1)).toBe(0);
+  expect(generations).toContain(1);
 });
 
 test('Strict Mode replay preserves throttling and replacement visibility', async () => {

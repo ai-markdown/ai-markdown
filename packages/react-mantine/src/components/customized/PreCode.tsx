@@ -1,12 +1,11 @@
 'use client';
 
-import { createContext, HTMLAttributes, memo, useContext, useMemo, useState } from 'react';
+import { createContext, HTMLAttributes, memo, useContext, useMemo } from 'react';
 import { CodeHighlight, CodeHighlightTabs, CodeHighlightControl } from '@mantine/code-highlight';
-import { useAIMarkdownState, useAIMarkdownTheme } from '@ai-markdown/react';
+import { useAIMarkdownDocument, useAIMarkdownState, useAIMarkdownTheme } from '@ai-markdown/react';
 // The frame throttle, language detection and JSON helpers are the shared headless ones.
 // This file adds the Mantine presentation.
-import { useCodeFrame, useDetectedLanguage } from '@ai-markdown/react/components/code/plain';
-import { createJsonCompletenessScanner, prettyPrintJson } from '@ai-markdown/core/components';
+import { useCodeBlock } from '@ai-markdown/react/components/code/plain';
 import { normalizeHighlightJsLanguage, normalizeShikiLanguage } from '@ai-markdown/code-language-detector';
 import { useMantineCodeBlockOptions } from '../../hooks/useMantineCodeBlockOptions';
 import MantineAIMMermaidCode from './MermaidCode';
@@ -177,6 +176,7 @@ const MantineAIMPreCode = memo(
   ) => {
     const { fontSize } = useAIMarkdownTheme();
     const { streaming } = useAIMarkdownState();
+    const { documentId } = useAIMarkdownDocument();
     const {
       autoDetectUnknownLanguage,
       languageFormat,
@@ -186,17 +186,30 @@ const MantineAIMPreCode = memo(
       highlightIntervalMs,
     } = useMantineCodeBlockOptions(props.options);
 
-    const detectedLanguage = useDetectedLanguage(
-      props.codeText,
-      autoDetectUnknownLanguage && !props.existLanguage,
-      streaming
-    );
     // Lower-cased once for every decision below: fence languages arrive in
     // whatever case the model wrote (` ```Mermaid `, ` ```JSON `), and both
     // the special-language switch and the JSON branch must agree
     // (2026-08 project review, pkg-small-08 — the mermaid check was
     // case-sensitive while the JSON check was not).
-    const codeLanguage = props.existLanguage ? props.existLanguage.toLowerCase() : (detectedLanguage ?? '');
+    const fenceLanguage = props.existLanguage ? props.existLanguage.toLowerCase() : '';
+    const isSpecialCodeBlock = Boolean(fenceLanguage) && !props.disableSpecial && SPECIAL_LANGUAGES.has(fenceLanguage);
+
+    // Core's code block session: appended code is coalesced before it is
+    // scanned, formatted and highlighted, an unlabelled block is detected,
+    // and JSON is pretty-printed once the displayed text is a balanced value.
+    // Copy still reads props.codeText, including bytes waiting for the frame.
+    const block = useCodeBlock({
+      code: isSpecialCodeBlock ? '' : props.codeText,
+      language: fenceLanguage,
+      // The block is keyed by its position; another document there is another block.
+      identity: documentId,
+      streaming: streaming && !isSpecialCodeBlock,
+      autoDetect: autoDetectUnknownLanguage,
+      formatJson,
+      expandNestedJson,
+      highlightIntervalMs,
+    });
+    const codeLanguage = block.language;
 
     // The label keeps the language as the model wrote it, or the detected
     // language's own name; the highlighter gets the adapter's spelling of it:
@@ -212,41 +225,6 @@ const MantineAIMPreCode = memo(
       return [normalize(codeLanguage), codeLanguage];
     }, [codeLanguage, languageFormat]);
 
-    const isSpecialCodeBlock =
-      Boolean(props.existLanguage) && !props.disableSpecial && SPECIAL_LANGUAGES.has(codeLanguage);
-
-    // Coalesce raw appends before scanning/formatting as well as highlighting.
-    // Copy still reads props.codeText, including bytes waiting for this frame.
-    const displayedCode = useCodeFrame(
-      isSpecialCodeBlock ? '' : props.codeText,
-      usedCodeLanguage,
-      streaming && !isSpecialCodeBlock,
-      highlightIntervalMs
-    );
-    const [scanJson] = useState(createJsonCompletenessScanner);
-    const jsonComplete = useMemo(
-      () => (codeLanguage === 'json' && formatJson && streaming ? scanJson(displayedCode) : false),
-      [codeLanguage, formatJson, streaming, scanJson, displayedCode]
-    );
-
-    const normalCodeBlockContent = useMemo(() => {
-      if (isSpecialCodeBlock) return null;
-      let usedCodeStr = displayedCode;
-      // JSON pretty-print as soon as the block LOOKS complete: a streamed
-      // prefix never parses, so trying to pretty-print every chunk of a
-      // growing block was O(n²) work for nothing (pkg-small-06) — but a
-      // block that finished mid-document must not wait for the whole
-      // message to end. "Ends with a closing bracket" alone was not enough
-      // of a tell: pretty-printed JSON (the common LLM shape) ends a chunk
-      // on `}` / `]` at almost every nesting level, so the parse still ran
-      // on nearly every chunk (v2.4.1 review). Only a BALANCED bracket
-      // scan (strings skipped, one linear pass) admits the parse.
-      if (formatJson && usedCodeStr && codeLanguage === 'json' && (!streaming || jsonComplete)) {
-        usedCodeStr = prettyPrintJson(usedCodeStr, expandNestedJson);
-      }
-      return usedCodeStr;
-    }, [isSpecialCodeBlock, displayedCode, codeLanguage, streaming, formatJson, expandNestedJson, jsonComplete]);
-
     const specialCodeBlockContent = useMemo(() => {
       switch (codeLanguage) {
         case SpecialCodeLanguage.Mermaid:
@@ -261,7 +239,7 @@ const MantineAIMPreCode = memo(
     ) : (
       <RawCodeContext.Provider value={props.codeText}>
         <OrdinaryCodeHighlight
-          code={normalCodeBlockContent ?? ''}
+          code={block.text}
           language={usedCodeLanguage}
           fileName={usedFileName}
           fontSize={fontSize}
