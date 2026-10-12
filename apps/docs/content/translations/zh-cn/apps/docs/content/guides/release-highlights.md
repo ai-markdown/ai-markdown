@@ -6,6 +6,78 @@
 
 验证测试数量属于对应候选版本报告的历史数据，并非针对本次文档修订重新执行的测试。同样，零缺陷的模糊测试（fuzz）或压测轮次仅能证明其受测输入族与配置下的表现；后续条目将说明在扩展这些输入族时发现的其他缺陷。
 
+## 3.4.0 — 代码处理逻辑统一到 core、无头的图片预览和可配置的文案
+
+### 3.4.0
+
+本次次版本将 engine、core、React、Mantine 和 Vue 同步升级至 `3.4.0`。`@ai-markdown/code-language-detector` 仍为 `1.1.1`，高亮插件仍为 `1.0.3`；两者没有改动，不重新发布。`@ai-markdown/core` 现在依赖探测器（`^1.1.1`），`@ai-markdown/react` 不再依赖 `@rc-component/image`。
+
+#### 流式代码块
+
+- **落在一行中间的 chunk 现在按追加处理。** 代码块的文本末尾总有一个 Markdown 源码里没有的换行，所以 `ab\n` 之后出现 `abc\n` 时前缀判断失败，被当成了替换。在每次 4 个字符的流式输出里，506 次更新中有 446 次被这样归类。这些更新会让自定义语言渲染器重新挂载（116 帧中挂载 99 次，现在为 1 次），让 `highlightIntervalMs` 失效（285 帧中高亮 267 次，现在为 2 次），让 Mermaid 控制器重新计时，并重置“Show source”和复制反馈。React、Vue 和 Mantine 的代码块都受影响。
+- **语言检测在每个代码块上只保留一个探测器。** 出于同样的原因，探测器几乎每个 chunk 都被重建（507 帧中构造 447 次，现在每个代码块一次）。文本被替换时检测仍会重新开始。
+- **较短的未标注代码块在文档流式输出期间就会显示语言。** 文本连续 300 毫秒没有变化的代码块按已完成判定，大约在最后一个字符到达后 350 毫秒显示语言。Mantine 以前要等整个文档结束才给这类代码块标注语言。
+- **同一位置上的另一篇文档是另一个代码块。** Markdown 实例被复用来显示另一个 `documentId` 时，同一位置的代码块会重新开始，即使它的文本恰好是旧文本的延续。中性的 React 代码块原本就是这样，现在 Vue 和 Mantine 的代码块也一样。
+- **中性的 React 和 Vue 代码块对增长中的 JSON 只扫描一遍。** 每个代码块保留自己的增量扫描器（Mantine 原本就是这样），不再每帧完整扫描。
+
+#### Mermaid
+
+中性的 React 和 Vue 组件现在使用 Mantine 原有的状态机。Mantine 的行为没有变化。
+
+- 引擎模块下载失败时，先间隔 1.5 秒重试三次，之后才显示“Diagram engine could not load.”和重试按钮。以前第一次失败就报错。
+- 错误文字是 Mermaid 自己给出的信息，最长 500 个字符，不再是固定的一句话。
+- 已经渲染出图表后，后续 chunk 解析失败时保留图表，代码块不再显示忙碌状态。
+
+#### 图片
+
+- **同一文档的图片组成一个图片组。** 以前按最近的排版根元素分组，靠一个写着 React、Vue 和 Mantine 包类名的选择器来查找。现在按文档分组：单独使用的 Markdown 实例是一篇文档；在 `AIMarkdownDocuments` 内共用同一个显式 `documentId` 的实例也是一篇文档，所以协调输出的各个分段共用一个图片组。自定义 `Typography` 组件不需要任何标记，外层的 Mantine `Typography` 也不会再把无关的消息合并到一起。`group: false` 和 `group: '<选择器>'` 不变。
+- **`useAIMarkdownDocument()` 的返回值新增 `scope`**，它是标识文档的对象：同一协调文档的渲染器共享一个，其他渲染器各自拥有一个。Vue 新增 `useAIMarkdownDocument()`，`documentId` 和 `scope` 都是计算属性引用。图片组件用它划分图片组，你自己的组件也可以同样使用。
+- **预览只有一份实现，在 core 里。** React 的预览原来是 `@rc-component/image`，Vue 的预览在一个 Vue 组件里重新实现了同样的交互。现在 `createImagePreviewController` 以状态和规则的形式持有预览，不依赖框架和 DOM；React 和 Vue 都用它渲染同一个原生模态 `<dialog>`。交互规则改编自 `@rc-component/image` 1.10.0（MIT），声明在 core 包的 `LICENSE` 里。使用上的变化：
+  - 鼠标、手写笔和触摸统一走指针事件并捕获指针。手写笔可以使用，拖出窗口或 iframe 的拖拽也能正常结束。
+  - 沿单一方向的拖拽和其他拖拽一样会回弹。原版只有两个坐标都变了才回弹。
+  - 滚轮会处理按行和按页的增量（以前部分鼠标缩放幅度过小）；触控板捏合可以连续缩放。
+  - 预览隐藏滚动条时页面宽度保持不变。
+  - 焦点限制和 Escape 由浏览器负责，React 现在和 Vue 一样。获得焦点的按钮被禁用时焦点回到对话框，所以在图片组末尾方向键仍然有效。
+  - 打开和关闭是作用在 `data-phase` 属性上的 CSS 过渡，用户设置了“减少动画”时跳过。
+  - 同一帧内的多次更新会累加，并且只向页面提交一次。
+- **图片组不再在每次加载事件时重新排序。** `ImageGallery.items()` 在成员变化之前返回同一个数组，`size()` 不排序就能给出数量。同一个 Markdown 根元素里有 200 张图片时，jsdom 中的加载阶段从约 5.1 秒降到 0.2 至 0.35 秒。
+
+#### 文案
+
+- **每个组件的文字都是该组件自己的选项。** 工具栏文字、状态提示和无障碍名称以前是写死的英语。现在每个组件有自己的文案类型和英语默认值：`CodeBlockLabels`、`DiagramLabels`、`ImageLabels` 和 `TableLabels`。没有共用的字典，库也不内置任何翻译。React 和 Vue 中，`createMarkdownCodeBlock` 接受 `labels` 和 `diagramLabels`，`createMarkdownImage` 接受 `labels`，新增的 `createMarkdownTable` 接受 `labels`。值可以是部分对象，也可以是返回部分对象的函数，后者每次渲染都会被调用；在 React 中这个函数可以调用 hook，所以能读取 i18n 上下文。见[文案与翻译](rich-components.md#text-and-translation)。
+- **Mantine** 在 `codeBlock` 选项里接受 `labels` 和 `mermaidLabels`，类型为 `MantineCodeBlockLabels` 和 `MantineMermaidLabels`。
+- 自带组件配合 Mermaid 使用时默认输出没有变化：每个默认值都是原来的那句话。有两处只有其他调用方会遇到的兜底文字不同了：自定义 `DiagramEngine` 的 `parse` 返回假值时，现在显示“Mermaid could not render this diagram.”；表格投影意外失败时，显示“Table source is unavailable”。
+
+#### 依赖
+
+- **不再依赖 `@rc-component/image`。** 以前 `@ai-markdown/react` 会让每个应用都安装它。它的依赖 `@rc-component/motion`、`@rc-component/portal`、`@rc-component/util` 和 `clsx` 也随之去掉。
+- `@ai-markdown/core` 依赖 `@ai-markdown/code-language-detector`，后者自身没有任何依赖。
+
+#### `@ai-markdown/core/components`
+
+core 现在包含可选组件的逻辑。代码方面：追加判断、显示节流、语言检测、JSON 扫描器、Mermaid 状态机，以及把前四项组装成“一个代码块显示什么”的 `createCodeBlockSession`。图片方面：图片组和 `createImagePreviewController`。React、Vue 和 Mantine 的代码块都读取这个会话，自己只保留选项解析、高亮器语言名和标记结构；React 以 `useCodeBlock` 的形式提供它。Mantine 自己的副本已删除。新增的[自己写渲染器或适配器](rich-components.md#build-a-renderer-or-an-adapter)一节介绍了这个入口。
+
+- **次版本中的破坏性变更。** 这些变更经维护者决定随 `3.4.0` 发布，不等待主版本。只注册自带组件的应用会受到前两条影响。
+  - React 的图片预览改为原生 `<dialog>`，标记结构与 Vue 预览原有的相同，不再是 `@rc-component/image` 的元素。布局类名（`aimd-image-preview`、`-mask`、`-body`、`-img`、`-close`、`-switch`、`-footer`、`-progress`、`-actions`）不变。React 预览原来使用的两个类名已去掉：包在图片外面的 `aimd-image-preview-surface`，以及 `aimd-image-sr-only`（按钮现在通过 `aria-label` 命名）。React 和 Vue 的 `aimd-image-fade-*` 过渡类都由对话框上的 `data-phase="opening|open|closing"` 取代。针对旧过渡类或依赖 `z-index` 层叠写的样式需要检查：模态对话框位于浏览器的顶层。
+  - 图片按文档分组。同一协调文档的各个分段现在共用一个图片组，`data-aimd-image-scope` 属性不再起作用。`imageGroupSelector` 已移除。
+  - `TableProjection.reason` 从英语句子改为代码（`mergedCells`、`notRectangular`、`unsupportedStructure`、`unsupportedContent` 或 `unavailable`）。对应的句子在 `defaultTableLabels` 里。
+  - `imageActionLabels` 由 `defaultImageLabels` 取代，工具栏动作的列表由 `imageActionNames` 提供。
+  - `DiagramState` 现在是 `{ view, loadFailed }`，其中 `view` 为 `{ kind: 'source' }`、`{ kind: 'diagram', svg, chartType, bind? }` 或错误。错误带有 `reason`：`tooLarge` 附带 `length` 和 `limit`，`parse` / `render` 附带 Mermaid 的 `message`（可能为空）。`diagramErrorText(view, labels)` 把它变成文字。原来的 `status`、`svg` 和 `error` 字段已移除。
+  - `DiagramRequest` 不再有 `resetKey`。控制器根据 `streaming` 的变化和源码文本工作。
+  - `DiagramEngine.parse` 只接收源码一个参数，无法解析的源码应当拒绝（reject）或返回假值。
+  - `CodeFrame` 新增必填的 `generation`。请用 `nextCodeFrame` 构造帧。
+  - `createRenderQueue`、`MERMAID_DEFAULT_MAX_TEXT_SIZE` 和 `resetMermaidInitializationForTests` 不再导出。`mermaidRenderQueue` 和 `getMermaidMaxTextSize` 保留。
+  - `useMantineCodeBlockOptions()` 的返回类型从 `Required<MantineCodeBlockOptions>` 改为 `ResolvedMantineCodeBlockOptions`：字段相同，另外多了保持可选的 `labels` 和 `mermaidLabels`。
+- **新增。** `createImagePreviewController`、`createCodeBlockSession`、`extendsCode`、`nextCodeFrame`、`createCodeLanguageTracker`、`resolveLabels` 及四个文案类型和默认值、`diagramErrorText`、`DiagramView`、`DiagramError` 和 `TableExportReason` 类型、图表控制器的 `retry()` 以及 `ImageGallery.size()`。`imageWheelRatio` 新增滚轮增量模式和捏合两个参数，`lockImagePreviewScroll` 新增要补偿的滚动条宽度参数。`@ai-markdown/react/components/code/plain` 导出 `useCodeBlock` hook。
+
+#### 验证
+
+本地 preflight 的 23 个步骤通过 22 个；最后一步在 Firefox 通过之后停在 WebKit，因为构建主机缺少 WebKit 需要的系统库。全部 3,259 项单元测试通过（一项 todo），React（118 项）和 Vue（46 项）Storybook 套件、静态与开发模式的 Storybook 验收检查、文档生命周期检查、打包后的消费者测试，以及 Chromium 和 Firefox 上的 Vue 浏览器测试也全部通过。公共类型声明快照、core 契约检查和 20 项视觉基线通过。WebKit 和打包消费者的 Node 版本矩阵交由 CI 验证。
+
+组件的打包浏览器验收在 Chromium 上通过全部 95 项检查。它用打包出的 tarball 运行 React、Vue 和 Mantine 的预览，并使用真实的鼠标、滚轮、触摸和键盘操作。
+
+自 `3.3.1` 以来引擎源码没有改动，压测影响检查判定此区间无需压测，也无需冒烟。复用版本检查报告两个独立版本的包自发布以来没有变化。
+
 ## 3.3.1 — 独立版本的包改用 tsdown 构建后重新发布
 
 ### 3.3.1

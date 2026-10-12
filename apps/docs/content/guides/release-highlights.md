@@ -6,6 +6,78 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.4.0 — Shared code pipeline, headless image preview and configurable text
+
+### 3.4.0
+
+This minor release aligns engine, core, React, Mantine and Vue at `3.4.0`. `@ai-markdown/code-language-detector` remains at `1.1.1` and the highlight plugin at `1.0.3`; neither has changes and neither is republished. `@ai-markdown/core` now depends on the detector (`^1.1.1`), and `@ai-markdown/react` no longer depends on `@rc-component/image`.
+
+#### Streaming code blocks
+
+- **A chunk that lands in the middle of a line is treated as an append.** The text of a code block always ends with a newline that the Markdown source does not have, so `ab\n` followed by `abc\n` failed the prefix test and was handled as a replacement. In a stream of four-character chunks, 446 of 506 updates were classified that way. A custom language renderer was remounted on those updates (99 mounts in 116 frames, now 1), `highlightIntervalMs` was bypassed (267 highlight calls in 285 frames, now 2), the Mermaid controller restarted its timer, and "Show source" and copy feedback were reset. React, Vue and Mantine code blocks are all affected.
+- **Language detection keeps one detector per block.** The detector was rebuilt on nearly every chunk for the same reason (447 constructions in 507 frames, now one per block). A rewritten block still starts detection over.
+- **A short unlabelled block is labelled while the document streams.** A block whose text has not changed for 300 ms is judged as complete, about 350 ms after its last character. Mantine previously labelled such a block only when the whole document finished.
+- **Another document at the same position is another block.** When a Markdown instance is reused for a different `documentId`, a code block at the same position starts over even if its text happens to continue the old one. The neutral React block already did this; the Vue and Mantine blocks now do too.
+- **The neutral React and Vue code blocks scan a growing JSON block once.** Each block keeps its own incremental scanner, as Mantine already did, in place of a full scan per frame.
+
+#### Mermaid
+
+The neutral React and Vue components now run the state machine Mantine used. Mantine behaviour is unchanged.
+
+- A failed download of the engine module is retried three times, 1.5 seconds apart, before the component shows "Diagram engine could not load." with a Retry button. Previously the first failure was reported.
+- The error text is mermaid's own message, limited to 500 characters, in place of one fixed sentence.
+- When a chunk fails to parse after a diagram has rendered, the diagram stays and the block no longer shows a busy state.
+
+#### Images
+
+- **The images of one document form one gallery.** Grouping used to follow the nearest typography root, found through a selector that listed class names of the React, Vue and Mantine packages. It now follows the document: a standalone Markdown instance is one document, and instances that share an explicit `documentId` inside `AIMarkdownDocuments` are one document too, so the sections of a coordinated answer share a gallery. A custom `Typography` component needs no marker, and an outer Mantine `Typography` no longer merges unrelated messages. `group: false` and `group: '<selector>'` are unchanged.
+- **`useAIMarkdownDocument()` returns `scope`,** an object that identifies the document: shared by the renderers of one coordinated document, private to any other renderer. Vue gains `useAIMarkdownDocument()` with `documentId` and `scope` as computed refs. This is what the image component keys its gallery by, and a component of your own can use it the same way.
+- **One preview implementation, in core.** The React preview was `@rc-component/image`; the Vue one re-implemented the same interactions inside a Vue component. `createImagePreviewController` now holds the preview as state and rules with no framework and no DOM, and React and Vue render the same native modal `<dialog>` from it. The interaction rules are adapted from `@rc-component/image` 1.10.0 (MIT); the notice is in the core package's `LICENSE`. What changes in use:
+  - Mouse, pen and touch go through pointer events with capture. A pen works, and a drag that leaves the window or an iframe still ends.
+  - A drag along one axis rebounds like any other. Upstream skipped the rebound unless both coordinates had changed.
+  - The wheel accounts for line and page deltas, which made some mice zoom far too little; and a trackpad pinch zooms continuously.
+  - The page keeps its width when the preview hides its scrollbar.
+  - The browser contains focus and handles Escape, in React as it already did in Vue. Focus returns to the dialog when the focused button becomes disabled, so the arrow keys keep working at the end of a gallery.
+  - Opening and closing are CSS transitions on a `data-phase` attribute, and are skipped when the user prefers reduced motion.
+  - Several updates within one frame add up and reach the page once.
+- **A gallery no longer sorts its images on every load event.** `ImageGallery.items()` returns the same array until the membership changes, and `size()` reports the count without sorting. With 200 images in one Markdown root, the load phase in jsdom dropped from about 5.1 s to between 0.2 and 0.35 s.
+
+#### Text
+
+- **Every component's text is an option of that component.** Toolbar text, status messages and accessible names were English literals. Each component now has its own labels type and English defaults: `CodeBlockLabels`, `DiagramLabels`, `ImageLabels` and `TableLabels`. There is no shared dictionary, and no translations are bundled. `createMarkdownCodeBlock` takes `labels` and `diagramLabels`, `createMarkdownImage` takes `labels`, and the new `createMarkdownTable` takes `labels`, in React and Vue alike. A value is a partial object, or a function that returns one and is called on every render; in React that function may call hooks, so it can read an i18n context. See [text and translation](rich-components.md#text-and-translation).
+- **Mantine** takes `labels` and `mermaidLabels` in the `codeBlock` options, typed as `MantineCodeBlockLabels` and `MantineMermaidLabels`.
+- Default output is unchanged for the supplied components with mermaid: every default is the string that was there before. Two fallbacks that only other callers reach read differently: a custom `DiagramEngine` whose `parse` resolves to a falsy value now shows "Mermaid could not render this diagram.", and a table whose projection fails unexpectedly shows "Table source is unavailable".
+
+#### Dependencies
+
+- **`@rc-component/image` is no longer a dependency.** `@ai-markdown/react` installed it for every application. Its dependencies `@rc-component/motion`, `@rc-component/portal`, `@rc-component/util` and `clsx` go with it.
+- `@ai-markdown/core` depends on `@ai-markdown/code-language-detector`, which has no dependencies of its own.
+
+#### `@ai-markdown/core/components`
+
+Core now holds the logic of the optional components: for code, append detection, the display throttle, language detection, the JSON scanner, the Mermaid state machine, and `createCodeBlockSession`, which assembles the first four into what one code block shows; for images, the gallery and `createImagePreviewController`. The React, Vue and Mantine code blocks read that session and keep option resolution, highlighter language names and markup; React exposes it as `useCodeBlock`. Mantine's own copies are removed. The new [Build a renderer or an adapter](rich-components.md#build-a-renderer-or-an-adapter) section documents this entry.
+
+- **Breaking changes in a minor release.** They ship in `3.4.0` by maintainer decision rather than waiting for a major version. An application that only registers the supplied components is affected by the first two.
+  - The React image preview is a native `<dialog>` with the markup the Vue preview already had, in place of the `@rc-component/image` elements. The layout classes (`aimd-image-preview`, `-mask`, `-body`, `-img`, `-close`, `-switch`, `-footer`, `-progress`, `-actions`) are unchanged. Two classes the React preview used are gone: the `aimd-image-preview-surface` wrapper around the image, and `aimd-image-sr-only`, since the buttons are now named by `aria-label`. In React and Vue alike, the `aimd-image-fade-*` transition classes are replaced by `data-phase="opening|open|closing"` on the dialog. Styles written against the old transition classes or against `z-index` stacking need a look: a modal dialog is in the browser's top layer.
+  - Images group by document. The sections of one coordinated document now share a gallery, and the `data-aimd-image-scope` attribute has no effect. `imageGroupSelector` is removed.
+  - `TableProjection.reason` is a code (`mergedCells`, `notRectangular`, `unsupportedStructure`, `unsupportedContent` or `unavailable`) where it was an English sentence. The sentences are in `defaultTableLabels`.
+  - `imageActionLabels` is replaced by `defaultImageLabels`, with `imageActionNames` for the list of toolbar actions.
+  - `DiagramState` is now `{ view, loadFailed }`, where `view` is `{ kind: 'source' }`, `{ kind: 'diagram', svg, chartType, bind? }` or an error. An error carries a `reason`: `tooLarge` with `length` and `limit`, or `parse` / `render` with mermaid's `message`, which may be empty. `diagramErrorText(view, labels)` turns it into text. The `status`, `svg` and `error` fields are gone.
+  - `DiagramRequest` no longer has `resetKey`. The controller follows the `streaming` edges and the source text.
+  - `DiagramEngine.parse` is called with the source only, and a source that does not parse should reject or resolve to a falsy value.
+  - `CodeFrame` has a required `generation`. Build frames with `nextCodeFrame`.
+  - `createRenderQueue`, `MERMAID_DEFAULT_MAX_TEXT_SIZE` and `resetMermaidInitializationForTests` are no longer exported. `mermaidRenderQueue` and `getMermaidMaxTextSize` remain.
+  - `useMantineCodeBlockOptions()` returns `ResolvedMantineCodeBlockOptions` where it returned `Required<MantineCodeBlockOptions>`: the same fields, plus `labels` and `mermaidLabels`, which stay optional.
+- **Added.** `createImagePreviewController`, `createCodeBlockSession`, `extendsCode`, `nextCodeFrame`, `createCodeLanguageTracker`, `resolveLabels` with the four labels types and their defaults, `diagramErrorText`, the `DiagramView`, `DiagramError` and `TableExportReason` types, `retry()` on the diagram controller and `ImageGallery.size()`. `imageWheelRatio` takes the wheel's delta mode and a pinch flag, and `lockImagePreviewScroll` takes the scrollbar width to compensate for. `@ai-markdown/react/components/code/plain` exports the `useCodeBlock` hook.
+
+#### Verification
+
+Local preflight passes 22 of 23 steps; the last one stops at the WebKit leg because the build host lacks WebKit's system libraries, after the Firefox leg passes. All 3,259 unit tests pass (one todo), together with the React (118) and Vue (46) Storybook suites, the static and development Storybook acceptance checks, the document lifetime check, the packed-consumer tests and the Vue browser tests in Chromium and Firefox. The public declaration snapshots, the core contract checks and the 20 visual baselines pass. WebKit and the packed-consumer Node matrix are left to CI.
+
+The packed browser acceptance for the components passes its 95 checks in Chromium. It drives the React, Vue and Mantine previews from the packed tarballs with a real mouse, wheel, touch and keyboard.
+
+No engine source changed since `3.3.1`, and the soak impact check does not require a campaign or a smoke run for this range. The reused-version check reports both independent packages unchanged since publication.
+
 ## 3.3.1 — Independent packages rebuilt with tsdown
 
 ### 3.3.1
