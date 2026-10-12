@@ -204,9 +204,9 @@ The exported `AIMarkdownStreamingCursor` has no declared custom props. Its defau
 
 ## API and distribution
 
-The root exports `AIMarkdown` (also default), `AIMarkdownDocuments`, `AIMarkdownSmoothStream`, `AIMarkdownStreamingCursor`, `useSmoothStream` and `useDocumentSmoothStream`, plus their prop/context/input types. It re-exports the sealed plugin catalog, LaTeX/remend preprocessor factories, schema extension and default URL policy. See the [checked public declaration](../../../../tooling/api-reports/vue.api.txt) for exact names and signatures.
+The root exports `AIMarkdown` (also default), `AIMarkdownDocuments`, `AIMarkdownSmoothStream`, `AIMarkdownStreamingCursor`, `useSmoothStream`, `useDocumentSmoothStream` and `useAIMarkdownDocument`, plus their prop/context/input types. It re-exports the sealed plugin catalog, LaTeX/remend preprocessor factories, schema extension and default URL policy. See the [checked public declaration](../../../../tooling/api-reports/vue.api.txt) for exact names and signatures.
 
-ESM and CJS each have development and production entries, with matching declaration files. Vue, core and engine remain external. There is no React peer, React context or `use client` directive. The public package exposes only its root, stylesheet and `package.json`; lifecycle helpers and the HAST converter are implementation details. The adapter shares the core pipeline sessions and contribution preparation with React but not its block planner or per-block render cache: each frame's HAST is converted to VNodes whole and Vue's patcher diffs the result.
+ESM and CJS each have development and production entries, with matching declaration files. Vue, core and engine remain external. There is no React peer, React context or `use client` directive. The public package exposes its root, its stylesheet, the optional `components` entries (see [code blocks, diagrams, images and tables](../guides/rich-components.md)) and `package.json`; lifecycle helpers and the HAST converter are implementation details. The adapter shares the core pipeline sessions and contribution preparation with React but not its block planner or per-block render cache: each frame's HAST is converted to VNodes whole and Vue's patcher diffs the result.
 
 ## Verification and scope
 
@@ -222,7 +222,7 @@ pnpm test:packed-consumers
 
 Unit tests exercise SSR, sanitization, custom rendering and lifecycle publication/release. Browser tests cover three adapter integration paths: standalone hydration; cross-chunk references and document switching; customization, smooth waiting/drain and cursor layout. Packed consumers load ESM/CJS in both export conditions, compile installed declarations and resolve CSS outside the workspace.
 
-This implementation does not claim React/Mantine UI parity: Mantine remains React-only, and Vue has no built-in Mermaid/code-toolbar integration. Nuxt-specific packaging and KeepAlive/Suspense combinations require their own integration coverage before being advertised. Parsing correctness continues to use the repository's shared oracle and release soak gates.
+This implementation does not claim React/Mantine UI parity: Mantine remains React-only. Base Markdown rendering in Vue leaves code fences as code text; the optional `@ai-markdown/vue/components` entries add the code block with Mermaid, the image preview and the table. Nuxt-specific packaging and KeepAlive/Suspense combinations require their own integration coverage before being advertised. Parsing correctness continues to use the repository's shared oracle and release soak gates.
 
 ## Interactive examples
 

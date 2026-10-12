@@ -135,7 +135,7 @@ const codeBlock = {
 <MantineAIMarkdown content={content} codeBlock={codeBlock} />;
 ```
 
-- `labels` is a partial `MantineCodeBlockLabels`. The Mantine block uses `copy`, `copied`, `copyTooltip`, `copiedTooltip`, `expand` and `collapse`. The type extends the neutral `CodeBlockLabels`, and the remaining entries (`actions`, `plainText`, `showSource`, `showPreview`, `previewFailed`) label the source and copy shell that surrounds a custom language renderer.
+- `labels` is a partial `MantineCodeBlockLabels`. The Mantine block uses `copy`, `copied`, `copyTooltip`, `copiedTooltip`, `expand` and `collapse`. The type extends the neutral `CodeBlockLabels`, and the remaining entries (`actions`, `plainText`, `copyFailed`, `showSource`, `showPreview`, `previewFailed`) label the source and copy shell that surrounds a custom language renderer.
 - `mermaidLabels` is a partial `MantineMermaidLabels`. A button's tooltip and its accessible name are separate entries, for example `showCodeTooltip` and `showCode`; `expand` and `collapse` name the expand control of the source view. `renderFailed` and `tooLarge(length, limit)` are the two error texts the library writes; a parse error is mermaid's own message.
 - Either option can be a function that returns the partial object. It is called during every render at a fixed place, so it may call hooks such as your i18n library's.
 - `defaultMantineCodeBlockLabels` and `defaultMantineMermaidLabels` are exported from `@ai-markdown/react-mantine`.

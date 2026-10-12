@@ -137,7 +137,7 @@ const codeBlock = {
 <MantineAIMarkdown content={content} codeBlock={codeBlock} />;
 ```
 
-- `labels` 是部分的 `MantineCodeBlockLabels`。Mantine 代码块使用 `copy`、`copied`、`copyTooltip`、`copiedTooltip`、`expand` 和 `collapse`。这个类型扩展了中性的 `CodeBlockLabels`，其余条目（`actions`、`plainText`、`showSource`、`showPreview`、`previewFailed`）用于包在自定义语言渲染器外面的源码和复制外框。
+- `labels` 是部分的 `MantineCodeBlockLabels`。Mantine 代码块使用 `copy`、`copied`、`copyTooltip`、`copiedTooltip`、`expand` 和 `collapse`。这个类型扩展了中性的 `CodeBlockLabels`，其余条目（`actions`、`plainText`、`copyFailed`、`showSource`、`showPreview`、`previewFailed`）用于包在自定义语言渲染器外面的源码和复制外框。
 - `mermaidLabels` 是部分的 `MantineMermaidLabels`。按钮的提示文字和无障碍名称是两个条目，例如 `showCodeTooltip` 和 `showCode`；`expand` 和 `collapse` 是源码视图展开控件的名称。`renderFailed` 和 `tooLarge(length, limit)` 是库自己写的两种错误文字；解析错误是 Mermaid 自己的信息。
 - 两个选项都可以是返回部分对象的函数。它在每次渲染的固定位置被调用，所以可以调用 hook，例如你的 i18n 库提供的 hook。
 - `defaultMantineCodeBlockLabels` 和 `defaultMantineMermaidLabels` 从 `@ai-markdown/react-mantine` 导出。

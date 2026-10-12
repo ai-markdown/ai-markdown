@@ -6,7 +6,7 @@ React 19 应用程序适配器。Vue 3.5 应用请使用 [`@ai-markdown/vue`](vu
 
 `@ai-markdown/react` 负责在 React 中渲染累积的 Markdown 字符串。它集成了 GFM、KaTeX 数学公式、CJK 分隔符处理、可选排版变换，以及针对高频追加内容经过验证的增量解析路径。你可以直接配合内置 CSS 使用，也可以传入自己的排版与元素渲染组件。
 
-React 适配器负责管理 React 生命周期、上下文 Hooks、文档协调与元素缓存构建。其严格锁定版本的引擎依赖负责底层的语法处理。在 React 基础适配器中，代码围栏保持为代码纯文本展示；语法高亮、JSON 美化展示与 Mermaid 图表渲染由 Mantine 集成包或你的自定义 `pre` 组件提供。建议先完成安装与快速开始，再对照 API 列表明确各项配置。
+React 适配器负责管理 React 生命周期、上下文 Hooks、文档协调与元素缓存构建。其严格锁定版本的引擎依赖负责底层的语法处理。基础的 Markdown 渲染把代码围栏保持为代码纯文本；语法高亮、JSON 美化展示与 Mermaid 图表渲染由可选的 [`@ai-markdown/react/components`](../guides/rich-components.md) 入口、Mantine 集成包或你的自定义 `pre` 组件提供。建议先完成安装与快速开始，再对照 API 列表明确各项配置。
 
 > **从 1.x 升级？** v2.0.0 移除了 1.x 基于对象的 `config` 通道（以及集成层默认通道），改为平铺属性、密封的引擎插件目录以及五个窄订阅 Hook。关于新旧 API 的完整映射及代码对比，请参阅[迁移指南](https://ai-markdown.github.io/docs/guides/migrating-to-v2/)。
 

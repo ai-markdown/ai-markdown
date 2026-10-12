@@ -220,9 +220,9 @@ const finished = ref(false);
 
 ## API 与分发产物
 
-根入口导出 `AIMarkdown`（同时为默认导出）、`AIMarkdownDocuments`、`AIMarkdownSmoothStream`、`AIMarkdownStreamingCursor`、`useSmoothStream` 与 `useDocumentSmoothStream`，以及对应的属性、上下文和输入类型。同时重新导出了封闭的引擎插件目录、LaTeX 与 remend 预处理器工厂函数、schema 扩展工具与默认 URL 策略。具体类型签名请参阅公开类型声明文件。
+根入口导出 `AIMarkdown`（同时为默认导出）、`AIMarkdownDocuments`、`AIMarkdownSmoothStream`、`AIMarkdownStreamingCursor`、`useSmoothStream`、`useDocumentSmoothStream` 与 `useAIMarkdownDocument`，以及对应的属性、上下文和输入类型。同时重新导出了封闭的引擎插件目录、LaTeX 与 remend 预处理器工厂函数、schema 扩展工具与默认 URL 策略。具体类型签名请参阅公开类型声明文件。
 
-ESM 与 CJS 产物均提供开发版与生产版入口，并配有对应的 `.d.ts` 声明文件。Vue、core 与 engine 保持外部依赖。无 React peer 依赖、React 上下文或 `"use client"` 指令。公开包仅暴露根入口、样式表与 `package.json`；生命周期辅助函数与 HAST 转换器属于内部实现细节。适配器与 React 共享底层流水线会话与数据构建，但不共用 React 专属的块级规划器或块渲染缓存：每帧的 HAST 会全量转换为 VNode 树，由 Vue 自身的响应式与 patch 算法进行 diff 更新。
+ESM 与 CJS 产物均提供开发版与生产版入口，并配有对应的 `.d.ts` 声明文件。Vue、core 与 engine 保持外部依赖。无 React peer 依赖、React 上下文或 `"use client"` 指令。公开包暴露根入口、样式表、可选的 `components` 入口（见[代码块、图表、图片与表格](../guides/rich-components.md)）与 `package.json`；生命周期辅助函数与 HAST 转换器属于内部实现细节。适配器与 React 共享底层流水线会话与数据构建，但不共用 React 专属的块级规划器或块渲染缓存：每帧的 HAST 会全量转换为 VNode 树，由 Vue 自身的响应式与 patch 算法进行 diff 更新。
 
 <span id="verification-and-scope"></span>
 
@@ -240,7 +240,7 @@ pnpm test:packed-consumers
 
 单元测试覆盖了服务端渲染、内容清洗、自定义渲染以及生命周期注册与释放。浏览器测试覆盖了三种核心集成路径：独立组件水合；跨片段引用与文档切换；自定义渲染、平滑等待/排空与光标定位。打包使用测试在两种导出条件下加载 ESM/CJS，编译安装后的声明文件并在工作区外解析 CSS。
 
-本实现不声明与 React/Mantine 的 UI 表现完全对齐：Mantine 仅针对 React，Vue 未内置 Mermaid 或代码工具栏集成。Nuxt 专属打包以及与 KeepAlive / Suspense 的组合在宣传前需建立独立的集成测试覆盖。解析正确性继续由仓库共享的基准测试集与发布验证流程保障。
+本实现不声明与 React/Mantine 的 UI 表现完全对齐：Mantine 仅针对 React。Vue 的基础 Markdown 渲染把代码围栏保留为代码文本；可选的 `@ai-markdown/vue/components` 入口提供带 Mermaid 的代码块、图片预览和表格。Nuxt 专属打包以及与 KeepAlive / Suspense 的组合在宣传前需建立独立的集成测试覆盖。解析正确性继续由仓库共享的基准测试集与发布验证流程保障。
 
 ## 交互式示例
 

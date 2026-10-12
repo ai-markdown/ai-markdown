@@ -6,7 +6,7 @@ React 19 application adapter. For Vue 3.5, use [`@ai-markdown/vue`](vue.md). For
 
 `@ai-markdown/react` renders accumulated Markdown strings in React. It combines GFM, KaTeX math, CJK delimiter handling, optional typography transforms, and a verified incremental parsing path for append-heavy content. Use it with the built-in CSS or supply your own typography and element components.
 
-The React adapter owns the React lifecycle, context hooks, document coordination, and cached element construction. Its exact-version engine dependency owns syntax processing. Code fences remain code text in the React adapter; syntax highlighting, JSON presentation, and rendered Mermaid diagrams are supplied by the Mantine package or your custom `pre` component. Start with the installation and quick start, then use the API tables to make each customization explicit.
+The React adapter owns the React lifecycle, context hooks, document coordination, and cached element construction. Its exact-version engine dependency owns syntax processing. Base Markdown rendering leaves code fences as code text; syntax highlighting, JSON presentation, and rendered Mermaid diagrams come from the optional [`@ai-markdown/react/components`](../guides/rich-components.md) entries, the Mantine package, or your custom `pre` component. Start with the installation and quick start, then use the API tables to make each customization explicit.
 
 > **Upgrading from 1.x?** v2.0.0 removes the 1.x object-based `config` channel (and its integrator default channel) in favor of flat props, a sealed engine-plugin catalog, and five narrow hooks. See the [migration guide](https://ai-markdown.github.io/docs/guides/migrating-to-v2/) for the complete old → new mapping with before/after code.
 

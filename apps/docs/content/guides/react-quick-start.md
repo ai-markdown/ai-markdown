@@ -22,7 +22,7 @@ export function Answer() {
 
 Pass the complete current string as `content`, appending decoded transport text to your application state. `streaming` describes producer state; incremental parsing is enabled separately by default. In a React Server Components application, use a client boundary and import global CSS from the location permitted by your host framework.
 
-Code fences remain code text in this adapter. Syntax highlighting and Mermaid rendering require Mantine or your own component. React-specific CSS tokens and hooks are not Vue APIs.
+Base Markdown rendering leaves code fences as code text. Syntax highlighting and Mermaid rendering come from the optional [`@ai-markdown/react/components`](rich-components.md) entries, Mantine, or your own component. React-specific CSS tokens and hooks are not Vue APIs.
 
 ## Choose your next task
 
