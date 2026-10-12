@@ -1,11 +1,11 @@
 // Generated from the built public declaration. Review changes before updating.
-import { CodeBlockOptions, CodeRendererInput, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock } from "../../code-plain-chunk.js";
-export { type CodeBlockOptions, type CodeRendererInput, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock };
+import { CodeBlockLabels, CodeBlockOptions, CodeRendererInput, LabelsOption, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock } from "../../code-plain-chunk.js";
+export { type CodeBlockLabels, type CodeBlockOptions, type CodeRendererInput, type LabelsOption, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock };
 
 // Relative declaration: dist/code-plain-chunk.d.ts
 import { MarkdownComponentProps } from "./types-chunk.js";
 import { Component, DefineComponent, VNodeChild } from "vue";
-import { CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput } from "@ai-markdown/core/components";
+import { CodeBlockLabels, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, Component | false>>;
     colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
@@ -13,7 +13,7 @@ export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
 }
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
 export declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
-export type { CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput };
+export type { CodeBlockLabels, CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput, LabelsOption$1 as LabelsOption };
 
 // Relative declaration: dist/types-chunk.d.ts
 import { Element } from "hast";

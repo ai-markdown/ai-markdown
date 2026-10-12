@@ -19,12 +19,16 @@ import {
   extractCode,
   normalizeRenderers,
   createCodeBlockSession,
+  defaultCodeBlockLabels,
+  resolveLabels,
   type CodeBlockInput,
+  type CodeBlockLabels,
+  type LabelsOption,
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
 import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
-export type { CodeRendererInput, CodeBlockOptions } from '@ai-markdown/core/components';
+export type { CodeRendererInput, CodeBlockOptions, CodeBlockLabels, LabelsOption } from '@ai-markdown/core/components';
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
   renderers?: Readonly<Record<string, Component | false>>;
   colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
@@ -62,7 +66,7 @@ export function createMarkdownCodeBlock(
       const mounted = ref(false),
         source = ref(false),
         expanded = ref(options.defaultExpanded ?? true),
-        feedback = ref('');
+        feedback = ref<'' | 'copied' | 'copyFailed'>('');
       // The policy is core's session. `changes` makes the snapshot read again when a timer moves it.
       const changes = ref(0);
       const session = createCodeBlockSession(() => {
@@ -116,14 +120,15 @@ export function createMarkdownCodeBlock(
         const snapshot = code.value;
         try {
           await navigator.clipboard.writeText(snapshot);
-          feedback.value = 'Copied';
+          feedback.value = 'copied';
         } catch {
-          feedback.value = 'Copy failed';
+          feedback.value = 'copyFailed';
         }
       };
       return () => {
         if (!parsed.value) return h('pre', attrs, slots.default?.());
         const Renderer = renderers[language.value];
+        const labels = resolveLabels(defaultCodeBlockLabels, options.labels);
         const colorScheme =
           typeof options.colorScheme === 'function' ? options.colorScheme() : (options.colorScheme ?? 'light');
         const original = () =>
@@ -132,9 +137,9 @@ export function createMarkdownCodeBlock(
           ]);
         const resetKey = `${props.node?.position?.start.offset ?? ''}:${language.value}:${block.value.generation}`;
         return h('section', { class: 'aimd-code', 'data-language': language.value, 'data-color-scheme': colorScheme }, [
-          h('div', { class: 'aimd-toolbar', role: 'group', 'aria-label': 'Code block actions' }, [
-            h('span', detected.value || 'text'),
-            h('button', { type: 'button', onClick: copy }, 'Copy code'),
+          h('div', { class: 'aimd-toolbar', role: 'group', 'aria-label': labels.actions }, [
+            h('span', detected.value || labels.plainText),
+            h('button', { type: 'button', onClick: copy }, labels.copy),
             Renderer &&
               h(
                 'button',
@@ -145,7 +150,7 @@ export function createMarkdownCodeBlock(
                     source.value = !source.value;
                   },
                 },
-                source.value ? 'Show preview' : 'Show source'
+                source.value ? labels.showPreview : labels.showSource
               ),
             h(
               'button',
@@ -156,9 +161,9 @@ export function createMarkdownCodeBlock(
                   expanded.value = !expanded.value;
                 },
               },
-              expanded.value ? 'Collapse' : 'Expand'
+              expanded.value ? labels.collapse : labels.expand
             ),
-            h('span', { role: 'status' }, feedback.value),
+            h('span', { role: 'status' }, feedback.value && labels[feedback.value]),
           ]),
           h(
             'div',
@@ -185,10 +190,7 @@ export function createMarkdownCodeBlock(
                           active: !source.value && expanded.value,
                           resetKey,
                         } satisfies CodeRendererInput),
-                      fallback: () => [
-                        h('p', { role: 'alert' }, 'Preview failed. Source is available below.'),
-                        original(),
-                      ],
+                      fallback: () => [h('p', { role: 'alert' }, labels.previewFailed), original()],
                     }
                   ),
                 ]),

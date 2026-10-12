@@ -14,6 +14,7 @@ import { act } from 'react';
 import { createHighlightJsAdapter, type CodeHighlightAdapter } from '@mantine/code-highlight';
 import hljs from 'highlight.js';
 import MantineAIMarkdown from '../../MantineAIMarkdown';
+import { createMarkdownCodeBlock } from '../../rich/code';
 import { MantineLanguageFormat } from '../../defs';
 import { createMountHarness, flushEffects, installMantineDomStubs } from './domTestHarness';
 
@@ -112,6 +113,42 @@ describe('code fences and grammar-on-demand adapters (client render)', () => {
     expect(code?.querySelector('.hljs-keyword')?.textContent).toBe('const');
     expect(code?.textContent).toContain('const answer = 42;');
   });
+});
+
+/** Module constants: the group is compared by value, and a factory is created once. */
+const LABELLED = { labels: { copy: '复制代码', copyTooltip: '复制', collapse: '收起代码', showSource: '显示源码' } };
+const WithDemo = createMarkdownCodeBlock({ renderers: { demo: () => <output>preview</output> } });
+test('codeBlock.labels names the copy control', async () => {
+  const container = await harness.mount(
+    <MantineAIMarkdown content={'```typescript\nconst answer = 42;\n```'} codeBlock={LABELLED} />,
+    createHighlightJsAdapter(hljs)
+  );
+  await flushEffects();
+  expect(container.querySelector('[aria-label="复制代码"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Copy code"]')).toBeNull();
+  // Mantine's own expand control takes its name from the same labels.
+  expect(container.querySelector('[aria-label="收起代码"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Collapse code"]')).toBeNull();
+});
+
+test('without labels the Mantine controls keep the names they had', async () => {
+  const container = await harness.mount(
+    <MantineAIMarkdown content={'```typescript\nconst answer = 42;\n```'} />,
+    createHighlightJsAdapter(hljs)
+  );
+  await flushEffects();
+  expect(container.querySelector('[aria-label="Copy code"]')).not.toBeNull();
+  expect(container.querySelector('[aria-label="Collapse code"]')).not.toBeNull();
+});
+
+test('codeBlock.labels also reaches the shell around a custom language renderer', async () => {
+  const container = await harness.mount(
+    <MantineAIMarkdown content={'```demo\nx\n```'} codeBlock={LABELLED} customComponents={{ pre: WithDemo }} />,
+    createHighlightJsAdapter(hljs)
+  );
+  await flushEffects();
+  const buttons = [...container.querySelectorAll('.aimd-toolbar button')].map((button) => button.textContent);
+  expect(buttons).toEqual(['复制代码', '显示源码', '收起代码']);
 });
 
 const PYTHON = ['import os', 'import sys', '', 'def main(argv):', '    for path in argv:', '        print(path)'].join(

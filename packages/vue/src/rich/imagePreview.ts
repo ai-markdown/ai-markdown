@@ -12,7 +12,6 @@ import {
   type VNodeChild,
 } from 'vue';
 import {
-  imageActionLabels,
   imagePinchCenter,
   imageTransformStyle,
   imageWheelRatio,
@@ -24,6 +23,7 @@ import {
   type ImageGalleryItem,
   type ImageGeometry,
   type ImageIconName,
+  type ImageLabels,
   type ImageLoadStatus,
 } from '@ai-markdown/core/components';
 
@@ -34,6 +34,7 @@ export const ImagePreview = defineComponent({
     items: { type: Array as PropType<readonly ImageGalleryItem[]>, required: true },
     current: { type: Number, required: true },
     renderIcon: { type: Function as PropType<(name: ImageIconName) => VNodeChild>, required: true },
+    labels: { type: Object as PropType<ImageLabels>, required: true },
     onCurrentChange: { type: Function as PropType<(index: number) => void>, required: true },
     onClose: { type: Function as PropType<() => void>, required: true },
     afterClose: { type: Function as PropType<() => void>, required: true },
@@ -170,8 +171,8 @@ export const ImagePreview = defineComponent({
           type: 'button',
           class: [className, disabled && `${className.split(' ')[0]}-disabled`],
           disabled,
-          'aria-label': imageActionLabels[name],
-          title: imageActionLabels[name],
+          'aria-label': props.labels[name],
+          title: props.labels[name],
           onClick: () => action(name),
         },
         [props.renderIcon(name)]
@@ -209,7 +210,7 @@ export const ImagePreview = defineComponent({
                     {
                       ref: dialog,
                       class: [prefix, `${prefix}-movable`, moving.value && `${prefix}-moving`],
-                      'aria-label': item.alt || 'Image preview',
+                      'aria-label': item.alt || props.labels.preview,
                       'aria-modal': 'true',
                       role: 'dialog',
                       tabindex: -1,
@@ -315,7 +316,7 @@ export const ImagePreview = defineComponent({
                             { class: 'aimd-image-feedback', role: status.value === 'error' ? 'alert' : 'status' },
                             [
                               props.renderIcon(status.value === 'error' ? 'error' : 'placeholder'),
-                              h('span', status.value === 'error' ? 'Image could not be loaded.' : 'Loading image…'),
+                              h('span', status.value === 'error' ? props.labels.loadFailed : props.labels.loading),
                             ]
                           ),
                       ]),
@@ -337,7 +338,7 @@ export const ImagePreview = defineComponent({
                           ),
                         h(
                           'div',
-                          { class: `${prefix}-actions`, role: 'group', 'aria-label': 'Image preview actions' },
+                          { class: `${prefix}-actions`, role: 'group', 'aria-label': props.labels.actions },
                           (['flipY', 'flipX', 'rotateLeft', 'rotateRight', 'zoomOut', 'zoomIn'] as const).map((name) =>
                             button(
                               name,

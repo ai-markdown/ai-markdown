@@ -10,7 +10,13 @@ import { normalizeHighlightJsLanguage, normalizeShikiLanguage } from '@ai-markdo
 import { useMantineCodeBlockOptions } from '../../hooks/useMantineCodeBlockOptions';
 import MantineAIMMermaidCode from './MermaidCode';
 import { CopyButton } from '@mantine/core';
-import { MantineLanguageFormat, type MantineCodeBlockOptions } from '../../defs';
+import {
+  defaultMantineCodeBlockLabels,
+  MantineLanguageFormat,
+  type MantineCodeBlockLabels,
+  type MantineCodeBlockOptions,
+} from '../../defs';
+import { resolveLabels } from '@ai-markdown/core/components';
 
 /**
  * Loads mermaid ahead of time. It is otherwise loaded on demand by the
@@ -27,16 +33,18 @@ export function preloadMantineCodeAssets(): Promise<void> {
 }
 
 const RawCodeContext = createContext('');
+const LabelsContext = createContext<MantineCodeBlockLabels>(defaultMantineCodeBlockLabels);
 
 /** Context updates the copy control without re-running the highlighter. */
 function RawCodeCopy() {
   const code = useContext(RawCodeContext);
+  const labels = useContext(LabelsContext);
   return (
     <CopyButton value={code}>
       {({ copied, copy }) => (
         <CodeHighlightControl
-          tooltipLabel={copied ? 'Copied' : 'Copy'}
-          aria-label={copied ? 'Copied' : 'Copy code'}
+          tooltipLabel={copied ? labels.copiedTooltip : labels.copyTooltip}
+          aria-label={copied ? labels.copied : labels.copy}
           onClick={copy}
         >
           {copied ? (
@@ -63,7 +71,7 @@ function RawCodeCopy() {
 
 /**
  * Stable props keep intermediate streaming renders away from Mantine's
- * highlighter: the parent coalesces appended code through `useCodeFrame`,
+ * highlighter: the parent coalesces appended code through `useCodeBlock`,
  * and this memo boundary means an unchanged frame is not re-rendered at
  * all. Beyond that, no local caching: Mantine's `CodeHighlight` already
  * memoizes `highlight()` on code, language, color scheme and the
@@ -84,12 +92,16 @@ const OrdinaryCodeHighlight = memo(function OrdinaryCodeHighlight({
   fileName,
   fontSize,
   defaultExpanded,
+  expandLabel,
+  collapseLabel,
 }: {
   code: string;
   language: string;
   fileName: string;
   fontSize: number | string;
   defaultExpanded: boolean;
+  expandLabel: string;
+  collapseLabel: string;
 }) {
   return fileName === 'unknown' ? (
     <CodeHighlight
@@ -100,6 +112,8 @@ const OrdinaryCodeHighlight = memo(function OrdinaryCodeHighlight({
       withBorder
       withExpandButton
       defaultExpanded={defaultExpanded}
+      expandCodeLabel={expandLabel}
+      collapseCodeLabel={collapseLabel}
       maxCollapsedHeight="320px"
       withCopyButton={false}
       controls={[<RawCodeCopy key="copy" />]}
@@ -119,6 +133,8 @@ const OrdinaryCodeHighlight = memo(function OrdinaryCodeHighlight({
       withBorder
       withExpandButton
       defaultExpanded={defaultExpanded}
+      expandCodeLabel={expandLabel}
+      collapseCodeLabel={collapseLabel}
       maxCollapsedHeight="320px"
       withCopyButton={false}
       controls={[<RawCodeCopy key="copy" />]}
@@ -184,7 +200,9 @@ const MantineAIMPreCode = memo(
       formatJson,
       expandNestedJson,
       highlightIntervalMs,
+      labels: configuredLabels,
     } = useMantineCodeBlockOptions(props.options);
+    const labels = resolveLabels(defaultMantineCodeBlockLabels, configuredLabels);
 
     // Lower-cased once for every decision below: fence languages arrive in
     // whatever case the model wrote (` ```Mermaid `, ` ```JSON `), and both
@@ -238,13 +256,17 @@ const MantineAIMPreCode = memo(
       specialCodeBlockContent
     ) : (
       <RawCodeContext.Provider value={props.codeText}>
-        <OrdinaryCodeHighlight
-          code={block.text}
-          language={usedCodeLanguage}
-          fileName={usedFileName}
-          fontSize={fontSize}
-          defaultExpanded={defaultExpanded}
-        />
+        <LabelsContext.Provider value={labels}>
+          <OrdinaryCodeHighlight
+            code={block.text}
+            language={usedCodeLanguage}
+            fileName={usedFileName}
+            fontSize={fontSize}
+            defaultExpanded={defaultExpanded}
+            expandLabel={labels.expand}
+            collapseLabel={labels.collapse}
+          />
+        </LabelsContext.Provider>
       </RawCodeContext.Provider>
     );
   }

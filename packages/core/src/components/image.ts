@@ -97,14 +97,15 @@ export function getImageGallery(scope: object): ImageGallery {
   return gallery;
 }
 
-export const imageActionLabels: Record<ImageActionIconName, string> = {
-  close: 'Close preview',
-  prev: 'Previous image',
-  next: 'Next image',
-  rotateLeft: 'Rotate left',
-  rotateRight: 'Rotate right',
-  zoomIn: 'Zoom in',
-  zoomOut: 'Zoom out',
-  flipX: 'Flip horizontally',
-  flipY: 'Flip vertically',
-};
+/** The preview toolbar actions, in toolbar order. */
+export const imageActionNames: readonly ImageActionIconName[] = Object.freeze([
+  'close',
+  'prev',
+  'next',
+  'rotateLeft',
+  'rotateRight',
+  'zoomIn',
+  'zoomOut',
+  'flipX',
+  'flipY',
+]);

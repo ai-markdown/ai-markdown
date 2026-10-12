@@ -116,6 +116,32 @@ Features:
 
 The `mermaid` library is a direct dependency of this package -- no additional installation is needed.
 
+## Text and translation
+
+The Mantine code block and the Mermaid block take their text from the `codeBlock` options. The defaults are English and no translations are bundled.
+
+```tsx
+const codeBlock = {
+  labels: { copy: '复制代码', copied: '已复制', copyTooltip: '复制', copiedTooltip: '已复制' },
+  mermaidLabels: {
+    errorTitle: '图表渲染出错',
+    showCode: '显示图表源码',
+    showCodeTooltip: '显示源码',
+    copy: '复制图表源码',
+    copyTooltip: '复制',
+  },
+};
+
+<MantineAIMarkdown content={content} codeBlock={codeBlock} />;
+```
+
+- `labels` is a partial `MantineCodeBlockLabels`. The Mantine block uses `copy`, `copied`, `copyTooltip`, `copiedTooltip`, `expand` and `collapse`. The type extends the neutral `CodeBlockLabels`, and the remaining entries (`actions`, `plainText`, `showSource`, `showPreview`, `previewFailed`) label the source and copy shell that surrounds a custom language renderer.
+- `mermaidLabels` is a partial `MantineMermaidLabels`. A button's tooltip and its accessible name are separate entries, for example `showCodeTooltip` and `showCode`; `expand` and `collapse` name the expand control of the source view. `renderFailed` and `tooLarge(length, limit)` are the two error texts the library writes; a parse error is mermaid's own message.
+- Either option can be a function that returns the partial object. It is called during every render at a fixed place, so it may call hooks such as your i18n library's.
+- `defaultMantineCodeBlockLabels` and `defaultMantineMermaidLabels` are exported from `@ai-markdown/react-mantine`.
+
+Define the object outside the component or memoize it, as with every `codeBlock` value. The image and table components are the React ones and take their own `labels`; see [text and translation](rich-components.md#text-and-translation).
+
 ## Streaming code: source, display, and asynchronous work
 
 Ordinary code highlighting has separate source and display values. The latest source updates immediately for copying, while append-only streaming display updates can be coalesced over `highlightIntervalMs`. This is a bounded pending update: new appends do not keep postponing the same deadline indefinitely. Completion, replacement, language changes, and non-streaming updates bypass the interval so the final view catches up immediately.

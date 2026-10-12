@@ -28,14 +28,18 @@ import type { Element as HastElement } from 'hast';
 import {
   getImageGallery,
   imageIconPaths,
-  imageActionLabels,
+  defaultImageLabels,
+  imageActionNames,
+  resolveLabels,
   type ImageActionIconName,
   type ImageGallery,
   type ImageGalleryItem,
   type ImageIconName,
+  type ImageLabels,
+  type LabelsOption,
   type ImageLoadStatus,
 } from '@ai-markdown/core/components';
-export type { ImageIconName } from '@ai-markdown/core/components';
+export type { ImageIconName, ImageLabels, LabelsOption } from '@ai-markdown/core/components';
 export type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & { node?: HastElement };
 export interface ImageIconProps {
   className?: string;
@@ -47,6 +51,8 @@ export interface MarkdownImageOptions {
   /** Images of one document form a gallery. A selector groups by the nearest matching ancestor instead; false disables grouping. */
   group?: string | false;
   preview?: boolean;
+  /** Text of the thumbnail and the preview, as overrides of the English defaults. A function is called at a fixed place in every render, so it may call hooks. */
+  labels?: LabelsOption<ImageLabels>;
 }
 function ImageIcon({ name, icons }: { name: ImageIconName; icons?: MarkdownImageOptions['icons'] }) {
   const custom = icons?.[name];
@@ -88,10 +94,12 @@ function PreviewSurface({
   original,
   src,
   icons,
+  labels,
 }: {
   original: ReactElement;
   src: string;
   icons?: MarkdownImageOptions['icons'];
+  labels: ImageLabels;
 }) {
   const [status, setStatus] = useState<ImageLoadStatus>('loading');
   const surface = useCallback((node: HTMLSpanElement | null) => {
@@ -112,26 +120,32 @@ function PreviewSurface({
       {status !== 'ready' && (
         <span className="aimd-image-feedback" role={status === 'error' ? 'alert' : 'status'} data-source={src}>
           <ImageIcon name={status === 'error' ? 'error' : 'placeholder'} icons={icons} />
-          <span>{status === 'error' ? 'Image could not be loaded.' : 'Loading image…'}</span>
+          <span>{status === 'error' ? labels.loadFailed : labels.loading}</span>
         </span>
       )}
     </span>
   );
 }
-function actionIcon(name: ImageActionIconName, icons?: MarkdownImageOptions['icons']) {
+function actionIcon(name: ImageActionIconName, labels: ImageLabels, icons?: MarkdownImageOptions['icons']) {
   return (
     <>
       <ImageIcon name={name} icons={icons} />
-      <span className="aimd-image-sr-only">{imageActionLabels[name]}</span>
+      <span className="aimd-image-sr-only">{labels[name]}</span>
     </>
   );
 }
 /** Configure once, then register the result directly as customComponents.img. */
-export function createMarkdownImage({ icons, group, preview: allowPreview = true }: MarkdownImageOptions = {}) {
+export function createMarkdownImage({
+  icons,
+  group,
+  preview: allowPreview = true,
+  labels: configuredLabels,
+}: MarkdownImageOptions = {}) {
   return function MarkdownImage({ node: _node, ...props }: MarkdownImageProps) {
     const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
     const { colorScheme } = useAIMarkdownTheme();
     const { scope: documentScope } = useAIMarkdownDocument();
+    const labels = resolveLabels(defaultImageLabels, configuredLabels);
     const image = useRef<HTMLImageElement>(null),
       trigger = useRef<HTMLButtonElement>(null);
     const [enabled, setEnabled] = useState(false),
@@ -240,7 +254,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
       <span className="aimd-image-feedback" role={status === 'error' ? 'alert' : 'status'}>
         <ImageIcon name={status === 'error' ? 'error' : 'placeholder'} icons={icons} />
         <span>
-          {status === 'error' ? 'Image could not be loaded.' : 'Loading image…'}
+          {status === 'error' ? labels.loadFailed : labels.loading}
           {status === 'error' && props.alt ? ` ${props.alt}` : ''}
         </span>
       </span>
@@ -265,7 +279,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
               type="button"
               ref={trigger}
               disabled={status !== 'ready'}
-              aria-label={`Preview image${props.alt ? `: ${props.alt}` : ''}`}
+              aria-label={labels.open(props.alt ?? '')}
               onClick={() => {
                 const list = galleryRef.current?.items() ?? [];
                 setItems(list);
@@ -283,13 +297,11 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
           <RcImage.PreviewGroup
             previewPrefixCls="aimd-image-preview"
             items={items.map(({ src, alt }) => ({ src, alt }))}
-            icons={Object.fromEntries(
-              (Object.keys(imageActionLabels) as ImageActionIconName[]).map((name) => [name, actionIcon(name, icons)])
-            )}
+            icons={Object.fromEntries(imageActionNames.map((name) => [name, actionIcon(name, labels, icons)]))}
             preview={{
               open: Boolean(item),
               current: index >= 0 ? index : previewIndex,
-              alt: items[index >= 0 ? index : previewIndex]?.alt || 'Image preview',
+              alt: items[index >= 0 ? index : previewIndex]?.alt || labels.preview,
               motionName: 'aimd-image-fade',
               onOpenChange: (open) => {
                 if (!open) setSelected(null);
@@ -312,6 +324,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
                   original={original}
                   src={info.image.url}
                   icons={icons}
+                  labels={labels}
                 />
               ),
               actionsRender: (original) =>
@@ -322,8 +335,8 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
                     if (!isValidElement(child)) return child;
                     const label = (child.props as { 'aria-label'?: ImageActionIconName })['aria-label'];
                     return cloneElement(child as ReactElement<{ 'aria-label'?: string; title?: string }>, {
-                      'aria-label': label ? imageActionLabels[label] : undefined,
-                      title: label ? imageActionLabels[label] : undefined,
+                      'aria-label': label ? labels[label] : undefined,
+                      title: label ? labels[label] : undefined,
                     });
                   })
                 ),

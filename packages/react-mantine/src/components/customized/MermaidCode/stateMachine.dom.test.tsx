@@ -224,7 +224,32 @@ describe('error tab', () => {
     expect(mermaidMock.parses).toEqual([]);
     expect(mermaidMock.renders).toEqual([]);
   });
+
+  test('codeBlock.mermaidLabels replaces the tab title, the size message and the control names', async () => {
+    mermaidMock.maxTextSize = 20;
+    const oversized = 'graph TD;\nA-->B;\nB-->C;\nC-->D;';
+    const container = await harness.mount(
+      <MantineAIMarkdown content={fence(oversized)} codeBlock={LABELLED} />,
+      adapter
+    );
+    await settle();
+    expect(container.textContent).toContain('图表渲染出错');
+    expect(container.textContent).not.toContain('Mermaid Render Error');
+    expect(errorText(container)).toBe(`源码 ${src(oversized).length} 个字符，超过上限 20。`);
+    expect(container.querySelector('[aria-label="显示图表源码"]')).not.toBeNull();
+    // An entry that was not overridden keeps its default.
+    expect(container.querySelector('[aria-label="Open Mermaid diagram in a new window"]')).not.toBeNull();
+  });
 });
+
+/** Module constant: the group is compared by value. */
+const LABELLED = {
+  mermaidLabels: {
+    errorTitle: '图表渲染出错',
+    showCode: '显示图表源码',
+    tooLarge: (length: number, limit: number) => `源码 ${length} 个字符，超过上限 ${limit}。`,
+  },
+};
 
 describe('unmount', () => {
   test('a render that completes after unmount applies nothing and logs nothing', async () => {

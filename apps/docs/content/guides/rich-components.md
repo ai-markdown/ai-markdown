@@ -139,11 +139,61 @@ Tables retain their rendered children and custom `th`/`td` components. The wrapp
 
 Exported values follow Markdown semantics: link labels, inline code text, image alt text, line breaks, and TeX math annotations once. Extra buttons or UI inserted by a custom cell renderer are excluded. Text may already reflect configured typography transformations. Formula-like text is prefixed with an apostrophe for spreadsheet import; negative numbers remain numeric. Escaping embedded quotes, delimiters and newlines is separate from that text policy.
 
-Only rectangular tables without merged cells are exported. Unsupported structures remain visible and scrollable, with export disabled and a reason. This component does not sort, edit, paginate or virtualize data.
+Only rectangular tables without merged cells are exported. Unsupported structures remain visible and scrollable, with export disabled and a reason. `projectTable` reports the reason as a code (`mergedCells`, `notRectangular`, `unsupportedStructure`, `unsupportedContent` or `unavailable`); the table's labels hold the sentence for each. This component does not sort, edit, paginate or virtualize data.
+
+## Text and translation
+
+Every piece of text these components show is an option of the component that shows it. The defaults are English. No translations are bundled: pass your own strings, or a function that asks your i18n library.
+
+Each component has its own labels. There is no shared dictionary and no global setting:
+
+| Component        | Factory                   | Option          | Type and defaults                           |
+| ---------------- | ------------------------- | --------------- | ------------------------------------------- |
+| Code block       | `createMarkdownCodeBlock` | `labels`        | `CodeBlockLabels`, `defaultCodeBlockLabels` |
+| Mermaid renderer | `createMarkdownCodeBlock` | `diagramLabels` | `DiagramLabels`, `defaultDiagramLabels`     |
+| Image            | `createMarkdownImage`     | `labels`        | `ImageLabels`, `defaultImageLabels`         |
+| Table            | `createMarkdownTable`     | `labels`        | `TableLabels`, `defaultTableLabels`         |
+
+The types and defaults are exported from `@ai-markdown/core/components`; the types are also exported next to each factory. `diagramLabels` belongs to the default code entry, which has the Mermaid renderer; the plain entry does not take it. `createMarkdownTable` exists only to carry this option: `MarkdownTable` is `createMarkdownTable()`.
+
+An option is a partial object. Entries you leave out keep their default:
+
+```tsx
+import { createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable } from '@ai-markdown/react/components';
+
+const Code = createMarkdownCodeBlock({
+  labels: { copy: '复制代码', copied: '已复制', copyFailed: '复制失败', expand: '展开', collapse: '收起' },
+  diagramLabels: { waiting: '等待图表…', retry: '重试' },
+});
+const Image = createMarkdownImage({ labels: { loading: '图片加载中…', open: (alt) => `预览图片：${alt}` } });
+const Table = createMarkdownTable({ labels: { copy: '复制表格', download: '下载 CSV' } });
+```
+
+Most entries are strings. Two take arguments and are functions: `ImageLabels.open(alt)`, and `tooLarge(length, limit)` in the diagram labels.
+
+To follow a language that changes at run time, pass a function that returns the partial object. It is called during every render of the component.
+
+- In React it is called at a fixed place in the render, so it may call hooks. Read your i18n context in it and the component re-renders when the language changes, including blocks that the Markdown memo would otherwise leave alone:
+
+  ```tsx
+  function useCodeLabels() {
+    const { t } = useTranslation();
+    return { copy: t('markdown.copy'), copied: t('markdown.copied') };
+  }
+  const Code = createMarkdownCodeBlock({ labels: useCodeLabels });
+  ```
+
+- In Vue it is called inside the render function, so any reactive state it reads becomes a dependency:
+
+  ```ts
+  const Code = createMarkdownCodeBlock({ labels: () => ({ copy: t('markdown.copy'), copied: t('markdown.copied') }) });
+  ```
+
+Two texts come from elsewhere and are not labels. A Mermaid parse error is mermaid's own message, which names the failing line and is shown as written. The language name in a code block's toolbar is the fence language or the detected one; only the `plainText` fallback is a label.
 
 ## Mantine and styling
 
-`@ai-markdown/react-mantine/components` exports the same three registration components and its `createMarkdownCodeBlock` / `createMarkdownImage` factories. Its ordinary code and built-in Mermaid retain Mantine's existing highlighter provider, JSON defaults and diagram interactions. Explicit language extensions use the neutral source/copy shell. The image preview uses the same rc-image engine and skin as React; the table uses the shared React component; import `@ai-markdown/react/components/styles.css` for their neutral skin alongside the usual Mantine styles.
+`@ai-markdown/react-mantine/components` exports the same three registration components and its `createMarkdownCodeBlock` / `createMarkdownImage` / `createMarkdownTable` factories. Its code block and Mermaid block have their own labels, `labels` and `mermaidLabels` in the `codeBlock` options; see [Mantine code blocks](mantine-code-blocks.md#text-and-translation). Its ordinary code and built-in Mermaid retain Mantine's existing highlighter provider, JSON defaults and diagram interactions. Explicit language extensions use the neutral source/copy shell. The image preview uses the same rc-image engine and skin as React; the table uses the shared React component; import `@ai-markdown/react/components/styles.css` for their neutral skin alongside the usual Mantine styles.
 
 The neutral CSS is optional and scoped to `aimd-*` classes. Code, table and image feedback surfaces expose `--aimd-border`, `--aimd-surface`, and `--aimd-text`. React components follow the Markdown theme, including the resolved Mantine theme. Vue code follows its factory option; Vue tables and image feedback inherit a `[data-color-scheme="dark"]` or `[data-mantine-color-scheme="dark"]` ancestor. HTML controls remain usable without this CSS. Override the classes and variables in application styles rather than wrapping the components solely to restyle them.
 
@@ -221,7 +271,7 @@ React applications can call `useCodeBlock(input)` from `@ai-markdown/react/compo
 `createDiagramController` is the render policy described under [React](#react): no error while streaming, one corrective pass at the end, bounded download retries, and no repeated render for unchanged input. The host passes every change of its inputs to `update` and draws the state it receives.
 
 ```ts
-import { createDiagramController } from '@ai-markdown/core/components';
+import { createDiagramController, defaultDiagramLabels, diagramErrorText } from '@ai-markdown/core/components';
 
 const controller = createDiagramController(
   () => import('mermaid').then((module) => module.default),
@@ -230,7 +280,7 @@ const controller = createDiagramController(
       host.innerHTML = view.svg;
       view.bind?.(host);
     } else if (view.kind === 'error') {
-      showError(view.message); // plain text
+      showError(diagramErrorText(view, defaultDiagramLabels)); // plain text
     } else {
       showSource(); // nothing has rendered yet
     }
@@ -243,7 +293,7 @@ controller.retry(); // from a Retry button
 controller.dispose(); // on unmount
 ```
 
-`view.svg` is mermaid's output under the `strict` or `sandbox` security level and is meant to be inserted as HTML. `view.message` is text; insert it as a text node. `active: false` pauses attempts while the host shows something else. `loadFailed` is true once the download retries are spent, and `retry()` starts over with a new budget.
+`view.svg` is mermaid's output under the `strict` or `sandbox` security level and is meant to be inserted as HTML. An error view carries a `reason` and no sentence of the library's own: `tooLarge` has the `length` and the `limit`, while `parse` and `render` have mermaid's `message`, which can be empty. `diagramErrorText(view, labels)` turns it into text with your labels; insert the result as a text node. `active: false` pauses attempts while the host shows something else. `loadFailed` is true once the download retries are spent, and `retry()` starts over with a new budget.
 
 ### Calling Mermaid yourself
 

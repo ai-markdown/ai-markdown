@@ -16,17 +16,21 @@ import {
   useAIMarkdownDocument,
 } from '@ai-markdown/react';
 import {
+  defaultCodeBlockLabels,
   extractCode,
   normalizeRenderers,
+  resolveLabels,
+  type CodeBlockLabels,
   type CodeRendererInput,
   type CodeBlockOptions,
+  type LabelsOption,
 } from '@ai-markdown/core/components';
 import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
 import { useCodeBlock } from './useCodeBlock';
 
 // The Mantine code block is built on the same hook.
 export { useCodeBlock } from './useCodeBlock';
-export type { CodeBlockInput, CodeBlockSnapshot } from '@ai-markdown/core/components';
+export type { CodeBlockInput, CodeBlockSnapshot, CodeBlockLabels, LabelsOption } from '@ai-markdown/core/components';
 
 export type { CodeRendererInput, CodeBlockOptions } from '@ai-markdown/core/components';
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
@@ -77,7 +81,8 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
     const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
     const [source, setSource] = useState(false);
     const [expanded, setExpanded] = useState(option('defaultExpanded', true));
-    const [feedback, setFeedback] = useState('');
+    const [feedback, setFeedback] = useState<'' | 'copied' | 'copyFailed'>('');
+    const labels = resolveLabels(defaultCodeBlockLabels, options.labels ?? group?.labels);
     // A rewritten block starts over: React discards this state with an abandoned render.
     const [seen, setSeen] = useState(generation);
     if (generation !== seen) {
@@ -103,8 +108,8 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
     const resetKey = `${identity}:${generation}`;
     return (
       <section className="aimd-code" data-language={language} data-color-scheme={colorScheme}>
-        <div className="aimd-toolbar" role="group" aria-label="Code block actions">
-          <span>{detected || 'text'}</span>
+        <div className="aimd-toolbar" role="group" aria-label={labels.actions}>
+          <span>{detected || labels.plainText}</span>
           <button
             type="button"
             onClick={() => {
@@ -112,24 +117,24 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
               void (async () => {
                 try {
                   await navigator.clipboard.writeText(snapshot);
-                  setFeedback('Copied');
+                  setFeedback('copied');
                 } catch {
-                  setFeedback('Copy failed');
+                  setFeedback('copyFailed');
                 }
               })();
             }}
           >
-            Copy code
+            {labels.copy}
           </button>
           {Renderer && (
             <button type="button" aria-pressed={source} onClick={() => setSource((value) => !value)}>
-              {source ? 'Show preview' : 'Show source'}
+              {source ? labels.showPreview : labels.showSource}
             </button>
           )}
           <button type="button" aria-expanded={expanded} onClick={() => setExpanded((value) => !value)}>
-            {expanded ? 'Collapse' : 'Expand'}
+            {expanded ? labels.collapse : labels.expand}
           </button>
-          <span role="status">{feedback}</span>
+          <span role="status">{feedback && labels[feedback]}</span>
         </div>
         <div
           className="aimd-code-content"
@@ -143,7 +148,7 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
                 key={resetKey}
                 fallback={
                   <>
-                    <p role="alert">Preview failed. Source is available below.</p>
+                    <p role="alert">{labels.previewFailed}</p>
                     {original}
                   </>
                 }

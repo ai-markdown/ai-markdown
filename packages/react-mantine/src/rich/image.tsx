@@ -6,4 +6,5 @@ export type {
   MarkdownImageIcon,
   ImageIconProps,
   ImageIconName,
+  ImageLabels,
 } from '@ai-markdown/react/components/image';

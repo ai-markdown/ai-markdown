@@ -1,6 +1,67 @@
 // Generated from the built public declaration. Review changes before updating.
 import { CodeLanguage } from "@ai-markdown/code-language-detector";
 import { Element } from "hast";
+type ImageActionIconName = 'rotateLeft' | 'rotateRight' | 'zoomIn' | 'zoomOut' | 'close' | 'prev' | 'next' | 'flipX' | 'flipY';
+type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery' | ImageActionIconName;
+type ImageLoadStatus = 'loading' | 'ready' | 'error';
+export declare const imageIconPaths: Record<ImageIconName, readonly string[]>;
+interface ImageGalleryItem {
+    id: object;
+    src: string;
+    alt: string;
+    precedes: (other: object) => boolean;
+}
+interface ImageGallery {
+    items: () => readonly ImageGalleryItem[];
+    size: () => number;
+    subscribe: (listener: () => void) => () => void;
+    set: (item: ImageGalleryItem) => void;
+    remove: (id: object) => void;
+}
+export declare function getImageGallery(scope: object): ImageGallery;
+export declare const imageActionNames: readonly ImageActionIconName[];
+type LabelsOption<T> = Partial<T> | (() => Partial<T>);
+export declare function resolveLabels<T extends object>(defaults: T, option?: LabelsOption<T>): T;
+interface CodeBlockLabels {
+    actions: string;
+    plainText: string;
+    copy: string;
+    copied: string;
+    copyFailed: string;
+    showSource: string;
+    showPreview: string;
+    expand: string;
+    collapse: string;
+    previewFailed: string;
+}
+export declare const defaultCodeBlockLabels: Readonly<CodeBlockLabels>;
+interface DiagramLabels {
+    waiting: string;
+    rendering: string;
+    loadFailed: string;
+    retry: string;
+    renderFailed: string;
+    tooLarge: (length: number, limit: number) => string;
+}
+export declare const defaultDiagramLabels: Readonly<DiagramLabels>;
+interface ImageLabels extends Record<ImageActionIconName, string> {
+    loading: string;
+    loadFailed: string;
+    open: (alt: string) => string;
+    preview: string;
+    actions: string;
+}
+export declare const defaultImageLabels: Readonly<ImageLabels>;
+type TableExportReason = 'mergedCells' | 'notRectangular' | 'unsupportedStructure' | 'unsupportedContent' | 'unavailable';
+interface TableLabels extends Record<TableExportReason, string> {
+    actions: string;
+    copy: string;
+    download: string;
+    copied: string;
+    copyFailed: string;
+    scrollRegion: string;
+}
+export declare const defaultTableLabels: Readonly<TableLabels>;
 interface CodeSource {
     code: string;
     language: string;
@@ -12,14 +73,14 @@ type TableProjection = {
     reason?: undefined;
 } | {
     rows?: undefined;
-    reason: string;
+    reason: TableExportReason;
 };
 export declare function projectTable(node?: Element): TableProjection;
 export declare function serializeTable(rows: readonly (readonly string[])[], delimiter?: ',' | '\t'): string;
 export declare function extendsCode(next: string, previous: string): boolean;
 export declare function createCodeLanguageTracker(onSettle: () => void): {
     read(code: string, streaming: boolean): CodeLanguage | null;
-    observe(code: string, streaming: boolean): void;
+    observe(code: string, streaming: boolean): boolean;
     dispose: () => void;
 };
 interface CodeBlockInput {
@@ -91,10 +152,18 @@ type DiagramView = {
     svg: string;
     chartType: string;
     bind?: (element: object) => void;
+} | DiagramError;
+type DiagramError = {
+    kind: 'error';
+    reason: 'tooLarge';
+    length: number;
+    limit: number;
 } | {
     kind: 'error';
+    reason: 'parse' | 'render';
     message: string;
 };
+export declare function diagramErrorText(error: DiagramError, labels: Pick<DiagramLabels, 'tooLarge' | 'renderFailed'>): string;
 interface DiagramState {
     view: DiagramView;
     loadFailed: boolean;
@@ -116,25 +185,6 @@ export declare function lockImagePreviewScroll(target: {
         overflow: string;
     };
 }): () => void;
-type ImageActionIconName = 'rotateLeft' | 'rotateRight' | 'zoomIn' | 'zoomOut' | 'close' | 'prev' | 'next' | 'flipX' | 'flipY';
-type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery' | ImageActionIconName;
-type ImageLoadStatus = 'loading' | 'ready' | 'error';
-export declare const imageIconPaths: Record<ImageIconName, readonly string[]>;
-interface ImageGalleryItem {
-    id: object;
-    src: string;
-    alt: string;
-    precedes: (other: object) => boolean;
-}
-interface ImageGallery {
-    items: () => readonly ImageGalleryItem[];
-    size: () => number;
-    subscribe: (listener: () => void) => () => void;
-    set: (item: ImageGalleryItem) => void;
-    remove: (id: object) => void;
-}
-export declare function getImageGallery(scope: object): ImageGallery;
-export declare const imageActionLabels: Record<ImageActionIconName, string>;
 interface ImageTransform {
     x: number;
     y: number;
@@ -190,5 +240,6 @@ export interface CodeBlockOptions {
     expandNestedJson?: boolean;
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
+    labels?: LabelsOption<CodeBlockLabels>;
 }
-export type { CodeBlockInput, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLoadStatus, ImageTransform, MermaidInitTarget, TableProjection };
+export type { CodeBlockInput, CodeBlockLabels, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImageTransform, LabelsOption, MermaidInitTarget, TableExportReason, TableLabels, TableProjection };

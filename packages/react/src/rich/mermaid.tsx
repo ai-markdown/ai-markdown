@@ -4,9 +4,14 @@ import { useAIMarkdownBehaviors } from '@ai-markdown/react';
 import type { CodeBlockOptions } from '@ai-markdown/core/components';
 import {
   createDiagramController,
+  defaultDiagramLabels,
+  diagramErrorText,
+  resolveLabels,
   type CodeRendererInput,
+  type DiagramLabels,
   type DiagramState,
   type DiagramView,
+  type LabelsOption,
 } from '@ai-markdown/core/components';
 let engine: ReturnType<typeof importMermaid> | undefined;
 function importMermaid() {
@@ -36,7 +41,7 @@ function DiagramViewport({ diagram }: { diagram: Diagram }) {
   return <div ref={target} className="aimd-diagram-viewport" />;
 }
 /** Draws what core's `createDiagramController` publishes; the render policy is documented there. */
-export function createMermaidRenderer(configuredInterval?: number) {
+export function createMermaidRenderer(configuredInterval?: number, configuredLabels?: LabelsOption<DiagramLabels>) {
   return function MermaidRenderer(props: CodeRendererInput) {
     const group = useAIMarkdownBehaviors().codeBlock as CodeBlockOptions | undefined;
     const requestedInterval = configuredInterval ?? group?.mermaidIntervalMs ?? 300;
@@ -54,16 +59,17 @@ export function createMermaidRenderer(configuredInterval?: number) {
     }, [controller, props.code, props.colorScheme, props.streaming, props.active, interval]);
     useEffect(() => () => controller.dispose(), [controller]);
     const { view, loadFailed } = state;
+    const labels = resolveLabels(defaultDiagramLabels, configuredLabels);
     const waiting = view.kind === 'source' && !loadFailed;
     return (
       <div className="aimd-diagram" aria-busy={waiting}>
         {view.kind === 'diagram' && <DiagramViewport diagram={view} />}
-        {waiting && <p role="status">{props.streaming ? 'Waiting for diagram…' : 'Rendering diagram…'}</p>}
+        {waiting && <p role="status">{props.streaming ? labels.waiting : labels.rendering}</p>}
         {(view.kind === 'error' || loadFailed) && (
           <div role="alert">
-            <p>{view.kind === 'error' ? view.message : 'Diagram engine could not load.'}</p>
+            <p>{view.kind === 'error' ? diagramErrorText(view, labels) : labels.loadFailed}</p>
             <button type="button" onClick={() => controller.retry()}>
-              Retry diagram
+              {labels.retry}
             </button>
           </div>
         )}

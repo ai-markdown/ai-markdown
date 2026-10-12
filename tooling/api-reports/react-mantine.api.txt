@@ -1,5 +1,5 @@
 // Generated from the built public declaration. Review changes before updating.
-import { MantineAIMarkdownMetadata, MantineCodeBlockOptions, MantineLanguageFormat, defaultMantineCodeBlockOptions } from "./defs-chunk.js";
+import { MantineAIMarkdownMetadata, MantineCodeBlockLabels, MantineCodeBlockOptions, MantineLanguageFormat, MantineMermaidLabels, ResolvedMantineCodeBlockOptions, defaultMantineCodeBlockLabels, defaultMantineCodeBlockOptions, defaultMantineMermaidLabels } from "./defs-chunk.js";
 import "react";
 import { AIMarkdownBehaviorProps, AIMarkdownExtraStylesComponent, AIMarkdownProps, AIMarkdownTypographyProps } from "@ai-markdown/react";
 interface MantineAIMarkdownProps<TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata> extends AIMarkdownProps<TMetadata> {
@@ -9,17 +9,18 @@ declare const MantineAIMarkdownComponent: <TMetadata extends MantineAIMarkdownMe
 declare const _default: typeof MantineAIMarkdownComponent;
 declare const MantineAIMarkdownTypography: import("react").MemoExoticComponent<({ children, fontSize, style }: AIMarkdownTypographyProps) => import("react").JSX.Element>;
 declare const MantineAIMDefaultExtraStyles: AIMarkdownExtraStylesComponent;
-export declare function useMantineCodeBlockOptions(overrides?: Partial<MantineCodeBlockOptions>): Required<MantineCodeBlockOptions>;
+export declare function useMantineCodeBlockOptions(overrides?: Partial<MantineCodeBlockOptions>): ResolvedMantineCodeBlockOptions;
 export declare function preloadMantineCodeAssets(): Promise<void>;
 interface MantineBehaviorProps extends AIMarkdownBehaviorProps {
     codeBlock?: Partial<MantineCodeBlockOptions>;
 }
 export declare function defineMantineBehaviors(values: MantineBehaviorProps): Readonly<MantineBehaviorProps>;
 export declare const useMantineAIMarkdownMetadata: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>() => TMetadata | undefined;
-export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, type MantineCodeBlockOptions, MantineLanguageFormat, _default as default, defaultMantineCodeBlockOptions };
+export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, type MantineCodeBlockLabels, type MantineCodeBlockOptions, MantineLanguageFormat, type MantineMermaidLabels, type ResolvedMantineCodeBlockOptions, _default as default, defaultMantineCodeBlockLabels, defaultMantineCodeBlockOptions, defaultMantineMermaidLabels };
 
 // Relative declaration: dist/defs-chunk.d.ts
 import { AIMarkdownMetadata } from "@ai-markdown/react";
+import { CodeBlockLabels, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
 export declare enum MantineLanguageFormat {
     HighlightJs = "highlight-js",
     Shiki = "shiki"
@@ -32,7 +33,31 @@ export interface MantineCodeBlockOptions {
     expandNestedJson?: boolean;
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
+    labels?: LabelsOption<MantineCodeBlockLabels>;
+    mermaidLabels?: LabelsOption<MantineMermaidLabels>;
 }
+export interface MantineCodeBlockLabels extends CodeBlockLabels {
+    copyTooltip: string;
+    copiedTooltip: string;
+}
+export declare const defaultMantineCodeBlockLabels: Readonly<MantineCodeBlockLabels>;
+export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed' | 'tooLarge'> {
+    errorTitle: string;
+    render: string;
+    renderTooltip: string;
+    openInNewWindow: string;
+    openInNewWindowTooltip: string;
+    showCode: string;
+    showCodeTooltip: string;
+    copy: string;
+    copied: string;
+    copyTooltip: string;
+    copiedTooltip: string;
+    expand: string;
+    collapse: string;
+}
+export declare const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels>;
+export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>;
 export declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
 export interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
 }

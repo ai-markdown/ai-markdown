@@ -116,6 +116,34 @@ graph TD
 
 `mermaid` 库属于本包的直接依赖——无需单独手动安装。
 
+<span id="text-and-translation"></span>
+
+## 文案与翻译
+
+Mantine 的代码块和 Mermaid 图表块从 `codeBlock` 选项读取文字。默认值是英语，库不内置任何翻译。
+
+```tsx
+const codeBlock = {
+  labels: { copy: '复制代码', copied: '已复制', copyTooltip: '复制', copiedTooltip: '已复制' },
+  mermaidLabels: {
+    errorTitle: '图表渲染出错',
+    showCode: '显示图表源码',
+    showCodeTooltip: '显示源码',
+    copy: '复制图表源码',
+    copyTooltip: '复制',
+  },
+};
+
+<MantineAIMarkdown content={content} codeBlock={codeBlock} />;
+```
+
+- `labels` 是部分的 `MantineCodeBlockLabels`。Mantine 代码块使用 `copy`、`copied`、`copyTooltip`、`copiedTooltip`、`expand` 和 `collapse`。这个类型扩展了中性的 `CodeBlockLabels`，其余条目（`actions`、`plainText`、`showSource`、`showPreview`、`previewFailed`）用于包在自定义语言渲染器外面的源码和复制外框。
+- `mermaidLabels` 是部分的 `MantineMermaidLabels`。按钮的提示文字和无障碍名称是两个条目，例如 `showCodeTooltip` 和 `showCode`；`expand` 和 `collapse` 是源码视图展开控件的名称。`renderFailed` 和 `tooLarge(length, limit)` 是库自己写的两种错误文字；解析错误是 Mermaid 自己的信息。
+- 两个选项都可以是返回部分对象的函数。它在每次渲染的固定位置被调用，所以可以调用 hook，例如你的 i18n 库提供的 hook。
+- `defaultMantineCodeBlockLabels` 和 `defaultMantineMermaidLabels` 从 `@ai-markdown/react-mantine` 导出。
+
+和所有 `codeBlock` 的值一样，请在组件外定义这个对象，或者对它做 memo。图片和表格组件就是 React 的组件，使用它们各自的 `labels`，见[文案与翻译](rich-components.md#text-and-translation)。
+
 ## 流式代码：源码、展示与异步任务 <a id="streaming-code-source-display-and-asynchronous-work"></a>
 
 常规代码高亮内部严格区分**源码值**与**展示值**。最新的源码会立即同步，以供复制按钮使用；而纯追加的流式展示更新则可以通过 `highlightIntervalMs` 进行时间合并。这是一个有界的挂起更新窗口：新的追加不会无休止地推迟同一个截止时间。当流式结束、文本被替换、语言发生变更或进行非流式更新时，系统会跳过合并间隔，使最终视图瞬间追赶至最新状态。

@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, test, vi } from 'vitest';
-import { createDiagramController, type DiagramEngine, type DiagramRequest, type DiagramState } from './diagram';
+import {
+  createDiagramController,
+  diagramErrorText,
+  type DiagramEngine,
+  type DiagramRequest,
+  type DiagramState,
+} from './diagram';
+import { defaultDiagramLabels } from './labels';
 
 afterEach(() => vi.useRealTimers());
 
@@ -213,7 +220,7 @@ describe('streaming', () => {
     expect(view()?.kind).toBe('diagram');
     controller.update(request(MORE));
     await tick();
-    expect(view()).toEqual({ kind: 'error', message: 'Parse error on line 3' });
+    expect(view()).toEqual({ kind: 'error', reason: 'parse', message: 'Parse error on line 3' });
     // The obligation is spent: a later failure follows the static rule and changes nothing.
     const published = states.length;
     controller.update(request(MORE, { dark: true }));
@@ -231,8 +238,9 @@ describe('static failures', () => {
     await tick();
     const shown = view();
     expect(shown?.kind).toBe('error');
-    expect(shown?.kind === 'error' && shown.message.startsWith('Parse error\nxxx')).toBe(true);
-    expect(shown?.kind === 'error' && shown.message.length).toBe(501);
+    if (shown?.kind !== 'error' || shown.reason !== 'parse') throw new Error('expected a parse error');
+    expect(shown.message.startsWith('Parse error\nxxx')).toBe(true);
+    expect(shown.message.length).toBe(501);
     controller.dispose();
   });
 
@@ -256,10 +264,47 @@ describe('static failures', () => {
     controller.update(request(MORE));
     await tick();
     expect(engine.parse).not.toHaveBeenCalled();
-    expect(view()).toEqual({
-      kind: 'error',
-      message: `Diagram source is ${MORE.length} characters, above mermaid's maxTextSize of 12.`,
-    });
+    // The reason is data; the host's labels turn it into words.
+    const shown = view();
+    expect(shown).toEqual({ kind: 'error', reason: 'tooLarge', length: MORE.length, limit: 12 });
+    expect(shown?.kind === 'error' && diagramErrorText(shown, defaultDiagramLabels)).toBe(
+      `Diagram source is ${MORE.length} characters, above mermaid's maxTextSize of 12.`
+    );
+    controller.dispose();
+  });
+
+  test('only a failure of the parse itself is a parse error', async () => {
+    const engine = fakeEngine();
+    engine.mermaidAPI.getSiteConfig = () => {
+      throw new Error('config is broken');
+    };
+    const { controller, view } = mount(engine);
+    controller.update(request(BASE));
+    await tick();
+    expect(view()).toEqual({ kind: 'error', reason: 'render', message: 'config is broken' });
+    expect(engine.parse).not.toHaveBeenCalled();
+    controller.dispose();
+  });
+
+  test('a failure with no text from the engine carries none: the label supplies it', async () => {
+    const engine = fakeEngine();
+    engine.parse.mockResolvedValue(false);
+    const { controller, view } = mount(engine);
+    controller.update(request(BASE));
+    await tick();
+    expect(view()).toEqual({ kind: 'error', reason: 'parse', message: '' });
+    engine.parse.mockResolvedValue(true);
+    engine.render.mockRejectedValue(new Error('  '));
+    controller.retry();
+    await tick();
+    const shown = view();
+    expect(shown).toEqual({ kind: 'error', reason: 'render', message: '' });
+    expect(shown?.kind === 'error' && diagramErrorText(shown, defaultDiagramLabels)).toBe(
+      'Mermaid could not render this diagram.'
+    );
+    expect(
+      shown?.kind === 'error' && diagramErrorText(shown, { ...defaultDiagramLabels, renderFailed: '无法渲染' })
+    ).toBe('无法渲染');
     controller.dispose();
   });
 });

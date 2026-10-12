@@ -8,8 +8,10 @@ import {
 import type { MantineCodeBlockOptions } from '../defs';
 import MantineAIMPreCode from '../components/customized/PreCode';
 export type { MarkdownCodeBlockProps, CodeRendererInput } from '@ai-markdown/react/components/code/plain';
+/** `labels` covers the Mantine block and the neutral shell around a custom
+ * language renderer; `mermaidLabels` covers the Mantine diagram block. */
 export interface MantineMarkdownCodeBlockOptions
-  extends Omit<MarkdownCodeBlockOptions, 'highlight'>, Partial<MantineCodeBlockOptions> {}
+  extends Omit<MarkdownCodeBlockOptions, 'highlight' | 'labels'>, Partial<MantineCodeBlockOptions> {}
 /** Retains the consumer's Mantine highlighter provider and diagram controls.
  * Explicit language extensions use the same source/copy contract as React. */
 export function createMarkdownCodeBlock(options: MantineMarkdownCodeBlockOptions = {}) {

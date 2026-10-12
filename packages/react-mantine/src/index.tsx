@@ -33,7 +33,13 @@ export { default as MantineAIMDefaultExtraStyles } from './components/extra-styl
 // --- Types, config, and hooks ---
 
 /** Extended render configuration and metadata types for the Mantine integration. */
-export type { MantineAIMarkdownMetadata, MantineCodeBlockOptions } from './defs';
+export type {
+  MantineAIMarkdownMetadata,
+  MantineCodeBlockOptions,
+  MantineCodeBlockLabels,
+  MantineMermaidLabels,
+  ResolvedMantineCodeBlockOptions,
+} from './defs';
 
 /** The language names code blocks are handed to the highlighter in (`codeBlock.languageFormat`). */
 export { MantineLanguageFormat } from './defs';
@@ -41,7 +47,7 @@ export { MantineLanguageFormat } from './defs';
 // ── v2 surface (props-api v2) ───────────────────────────────────────────────
 
 /** Shipped defaults of the `codeBlock` behavior group. */
-export { defaultMantineCodeBlockOptions } from './defs';
+export { defaultMantineCodeBlockOptions, defaultMantineCodeBlockLabels, defaultMantineMermaidLabels } from './defs';
 
 /** Narrow hook for the `codeBlock` behavior group — the single assertion site. */
 export { useMantineCodeBlockOptions } from './hooks/useMantineCodeBlockOptions';

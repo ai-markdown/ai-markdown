@@ -1,6 +1,14 @@
 export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code';
-export type { MarkdownCodeBlockOptions, CodeRendererInput, CodeBlockOptions } from './code';
+export type {
+  MarkdownCodeBlockOptions,
+  CodeRendererInput,
+  CodeBlockOptions,
+  CodeBlockLabels,
+  DiagramLabels,
+  LabelsOption,
+} from './code';
 export { MarkdownImage, createMarkdownImage } from './image';
-export type { MarkdownImageOptions, MarkdownImageIcon, ImageIconName } from './image';
-export { MarkdownTable } from './table';
+export type { MarkdownImageOptions, MarkdownImageIcon, ImageIconName, ImageLabels } from './image';
+export { MarkdownTable, createMarkdownTable } from './table';
+export type { MarkdownTableOptions, TableLabels } from './table';
 export type { MarkdownComponentProps } from './types';

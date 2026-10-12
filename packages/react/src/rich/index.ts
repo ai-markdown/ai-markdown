@@ -1,6 +1,14 @@
 'use client';
 export { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from './code';
-export type { MarkdownCodeBlockProps, MarkdownCodeBlockOptions, CodeRendererInput, CodeBlockOptions } from './code';
+export type {
+  MarkdownCodeBlockProps,
+  MarkdownCodeBlockOptions,
+  CodeRendererInput,
+  CodeBlockOptions,
+  CodeBlockLabels,
+  DiagramLabels,
+  LabelsOption,
+} from './code';
 export { MarkdownImage, createMarkdownImage } from './image';
 export type {
   MarkdownImageProps,
@@ -8,6 +16,7 @@ export type {
   MarkdownImageIcon,
   ImageIconProps,
   ImageIconName,
+  ImageLabels,
 } from './image';
-export { MarkdownTable } from './table';
-export type { MarkdownTableProps } from './table';
+export { MarkdownTable, createMarkdownTable } from './table';
+export type { MarkdownTableProps, MarkdownTableOptions, TableLabels } from './table';

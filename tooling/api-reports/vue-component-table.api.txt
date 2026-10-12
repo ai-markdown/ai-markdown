@@ -1,7 +1,13 @@
 // Generated from the built public declaration. Review changes before updating.
 import { MarkdownComponentProps } from "../types-chunk.js";
 import { DefineComponent } from "vue";
+import { LabelsOption, LabelsOption as LabelsOption$1, TableLabels, TableLabels as TableLabels$1 } from "@ai-markdown/core/components";
+export interface MarkdownTableOptions {
+    labels?: LabelsOption$1<TableLabels$1>;
+}
+export declare function createMarkdownTable(options?: MarkdownTableOptions): DefineComponent<MarkdownComponentProps>;
 export declare const MarkdownTable: DefineComponent<MarkdownComponentProps>;
+export type { LabelsOption, TableLabels };
 
 // Relative declaration: dist/types-chunk.d.ts
 import { Element } from "hast";

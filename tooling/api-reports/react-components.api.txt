@@ -1,13 +1,13 @@
 // Generated from the built public declaration. Review changes before updating.
-import { CodeBlockOptions, CodeRendererInput, MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from "../code-plain-chunk.js";
-import { MarkdownCodeBlock, createMarkdownCodeBlock, preloadCodeAssets } from "../code-chunk.js";
-import { ImageIconName, ImageIconProps, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImageProps, createMarkdownImage } from "./image.js";
-import { MarkdownTable, MarkdownTableProps } from "./table.js";
-export { type CodeBlockOptions, type CodeRendererInput, type ImageIconName, type ImageIconProps, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, MarkdownTable, type MarkdownTableProps, createMarkdownCodeBlock, createMarkdownImage, preloadCodeAssets };
+import { CodeBlockLabels, CodeBlockOptions, CodeRendererInput, LabelsOption, MarkdownCodeBlockProps } from "../code-plain-chunk.js";
+import { DiagramLabels, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock, preloadCodeAssets } from "../code-chunk.js";
+import { ImageIconName, ImageIconProps, ImageLabels, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImageProps, createMarkdownImage } from "./image.js";
+import { MarkdownTable, MarkdownTableOptions, MarkdownTableProps, TableLabels, createMarkdownTable } from "./table.js";
+export { type CodeBlockLabels, type CodeBlockOptions, type CodeRendererInput, type DiagramLabels, type ImageIconName, type ImageIconProps, type ImageLabels, type LabelsOption, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, MarkdownTable, type MarkdownTableOptions, type MarkdownTableProps, type TableLabels, createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable, preloadCodeAssets };
 
 // Relative declaration: dist/code-plain-chunk.d.ts
 import { ComponentProps, ComponentType, ReactNode } from "react";
-import { CodeBlockInput, CodeBlockInput as CodeBlockInput$1, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeBlockSnapshot, CodeBlockSnapshot as CodeBlockSnapshot$1, CodeRendererInput, CodeRendererInput as CodeRendererInput$1 } from "@ai-markdown/core/components";
+import { CodeBlockInput, CodeBlockInput as CodeBlockInput$1, CodeBlockLabels, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeBlockSnapshot, CodeBlockSnapshot as CodeBlockSnapshot$1, CodeRendererInput, CodeRendererInput as CodeRendererInput$1, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
 import { Element } from "hast";
 export declare function useCodeBlock(input: CodeBlockInput): CodeBlockSnapshot;
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
@@ -19,18 +19,22 @@ export type MarkdownCodeBlockProps = ComponentProps<'pre'> & {
 };
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
 export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
-export type { CodeBlockInput$1 as CodeBlockInput, CodeBlockOptions$1 as CodeBlockOptions, CodeBlockSnapshot$1 as CodeBlockSnapshot, CodeRendererInput$1 as CodeRendererInput };
+export type { CodeBlockInput$1 as CodeBlockInput, CodeBlockLabels, CodeBlockOptions$1 as CodeBlockOptions, CodeBlockSnapshot$1 as CodeBlockSnapshot, CodeRendererInput$1 as CodeRendererInput, LabelsOption$1 as LabelsOption };
 
 // Relative declaration: dist/code-chunk.d.ts
-import { MarkdownCodeBlockOptions, MarkdownCodeBlockProps } from "./code-plain-chunk.js";
-import { CodeRendererInput } from "@ai-markdown/core/components";
+import { MarkdownCodeBlockOptions as MarkdownCodeBlockOptions$1, MarkdownCodeBlockProps } from "./code-plain-chunk.js";
+import { CodeRendererInput, DiagramLabels, DiagramLabels as DiagramLabels$1, LabelsOption } from "@ai-markdown/core/components";
 export declare function preloadCodeAssets(): Promise<void>;
+export interface MarkdownCodeBlockOptions extends MarkdownCodeBlockOptions$1 {
+    diagramLabels?: LabelsOption<DiagramLabels>;
+}
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
 export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
+export type { DiagramLabels$1 as DiagramLabels };
 
 // Relative declaration: dist/components/image.d.ts
 import { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
-import { ImageIconName, ImageIconName as ImageIconName$1 } from "@ai-markdown/core/components";
+import { ImageIconName, ImageIconName as ImageIconName$1, ImageLabels, ImageLabels as ImageLabels$1, LabelsOption, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
 import { Element } from "hast";
 export type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
     node?: Element;
@@ -44,15 +48,22 @@ export interface MarkdownImageOptions {
     icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
     group?: string | false;
     preview?: boolean;
+    labels?: LabelsOption$1<ImageLabels$1>;
 }
-export declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
+export declare function createMarkdownImage({ icons, group, preview: allowPreview, labels: configuredLabels }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
 export declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
-export type { ImageIconName };
+export type { ImageIconName, ImageLabels, LabelsOption };
 
 // Relative declaration: dist/components/table.d.ts
 import { ComponentProps } from "react";
+import { LabelsOption, LabelsOption as LabelsOption$1, TableLabels, TableLabels as TableLabels$1 } from "@ai-markdown/core/components";
 import { Element } from "hast";
 export type MarkdownTableProps = ComponentProps<'table'> & {
     node?: Element;
 };
-export declare function MarkdownTable({ node, children, ...props }: MarkdownTableProps): import("react").JSX.Element;
+export interface MarkdownTableOptions {
+    labels?: LabelsOption$1<TableLabels$1>;
+}
+export declare function createMarkdownTable(options?: MarkdownTableOptions): ({ node, children, ...props }: MarkdownTableProps) => import("react").JSX.Element;
+export declare const MarkdownTable: ({ node, children, ...props }: MarkdownTableProps) => import("react").JSX.Element;
+export type { LabelsOption, TableLabels };

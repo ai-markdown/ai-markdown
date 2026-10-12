@@ -1,4 +1,5 @@
 import type { Element, RootContent } from 'hast';
+import type { TableExportReason } from './labels';
 
 export interface CodeSource {
   code: string;
@@ -53,16 +54,23 @@ function text(node: RootContent): string {
   if (node.tagName === 'img' || node.tagName === 'cross-chunk-image') return String(node.properties.alt ?? '');
   return node.children.map(text).join('');
 }
-export type TableProjection = { rows: string[][]; reason?: undefined } | { rows?: undefined; reason: string };
-/** Project sanitized HAST semantics, never custom cell UI or raw Markdown. */
+export type TableProjection =
+  { rows: string[][]; reason?: undefined } | { rows?: undefined; reason: TableExportReason };
+class ExportRefused extends Error {
+  constructor(readonly reason: TableExportReason) {
+    super(reason);
+  }
+}
+/** Project sanitized HAST semantics, never custom cell UI or raw Markdown. A
+ * table that cannot be exported reports why as a code; `TableLabels` has the text. */
 export function projectTable(node?: Element): TableProjection {
   try {
-    if (node?.tagName !== 'table') throw new Error('Table source is unavailable');
+    if (node?.tagName !== 'table') throw new ExportRefused('unavailable');
     const rows: string[][] = [];
     const walk = (parent: Element) => {
       for (const child of parent.children) {
         if (child.type === 'text' && !child.value.trim()) continue;
-        if (child.type !== 'element') throw new Error('Unsupported table content');
+        if (child.type !== 'element') throw new ExportRefused('unsupportedContent');
         if (child.tagName === 'tr') {
           const cells: string[] = [];
           for (const cell of child.children) {
@@ -73,20 +81,20 @@ export function projectTable(node?: Element): TableProjection {
               Number(cell.properties.colSpan ?? 1) !== 1 ||
               Number(cell.properties.rowSpan ?? 1) !== 1
             )
-              throw new Error('Only tables without merged cells can be exported');
+              throw new ExportRefused('mergedCells');
             cells.push(text(cell));
           }
           rows.push(cells);
         } else if (['thead', 'tbody', 'tfoot'].includes(child.tagName) && parent === node) walk(child);
-        else throw new Error('Unsupported table structure');
+        else throw new ExportRefused('unsupportedStructure');
       }
     };
     walk(node);
     if (!rows.length || !rows[0].length || rows.some((r) => r.length !== rows[0].length))
-      throw new Error('Only rectangular tables can be exported');
+      throw new ExportRefused('notRectangular');
     return { rows };
   } catch (error) {
-    return { reason: error instanceof Error ? error.message : 'Table cannot be exported' };
+    return { reason: error instanceof ExportRefused ? error.reason : 'unavailable' };
   }
 }
 /** Spreadsheet text policy is independent of delimiter quoting. Negative

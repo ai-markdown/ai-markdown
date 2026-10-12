@@ -13,7 +13,12 @@
 
 import { useMemo } from 'react';
 import { useAIMarkdownBehaviors } from '@ai-markdown/react';
-import { defaultMantineCodeBlockOptions, MantineLanguageFormat, type MantineCodeBlockOptions } from '../defs';
+import {
+  defaultMantineCodeBlockOptions,
+  MantineLanguageFormat,
+  type MantineCodeBlockOptions,
+  type ResolvedMantineCodeBlockOptions,
+} from '../defs';
 
 const LANGUAGE_FORMATS = new Set<unknown>(Object.values(MantineLanguageFormat));
 
@@ -30,7 +35,7 @@ const LANGUAGE_FORMATS = new Set<unknown>(Object.values(MantineLanguageFormat));
  */
 export function useMantineCodeBlockOptions(
   overrides?: Partial<MantineCodeBlockOptions>
-): Required<MantineCodeBlockOptions> {
+): ResolvedMantineCodeBlockOptions {
   const behaviors = useAIMarkdownBehaviors();
   // The single assertion: the `codeBlock` group key is owned by this
   // package, contributed by `MantineAIMarkdown` via its behaviors Provider.
@@ -40,7 +45,7 @@ export function useMantineCodeBlockOptions(
     // undefined }}` type-checks, and a spread would let that explicit
     // undefined punch through the default while the signature promises
     // `Required<…>` (2026-08 project review, pkg-small-12).
-    const resolved = { ...defaultMantineCodeBlockOptions } as Required<MantineCodeBlockOptions>;
+    const resolved = { ...defaultMantineCodeBlockOptions } as ResolvedMantineCodeBlockOptions;
     for (const key of Object.keys(defaultMantineCodeBlockOptions) as Array<keyof MantineCodeBlockOptions>) {
       const value = overrides?.[key] ?? group?.[key];
       if (value !== undefined) (resolved as Record<string, unknown>)[key] = value;
@@ -54,6 +59,9 @@ export function useMantineCodeBlockOptions(
     if (!LANGUAGE_FORMATS.has(resolved.languageFormat)) {
       resolved.languageFormat = defaultMantineCodeBlockOptions.languageFormat!;
     }
+    // No defaults here: each component merges its own label defaults at render time.
+    resolved.labels = overrides?.labels ?? group?.labels;
+    resolved.mermaidLabels = overrides?.mermaidLabels ?? group?.mermaidLabels;
     return resolved;
   }, [group, overrides]);
 }

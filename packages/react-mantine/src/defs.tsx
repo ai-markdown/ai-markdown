@@ -6,6 +6,13 @@
  */
 
 import { AIMarkdownMetadata } from '@ai-markdown/react';
+import {
+  defaultCodeBlockLabels,
+  defaultDiagramLabels,
+  type CodeBlockLabels,
+  type DiagramLabels,
+  type LabelsOption,
+} from '@ai-markdown/core/components';
 
 /**
  * The language names code blocks are handed to the highlighter in. A fence's
@@ -79,7 +86,67 @@ export interface MantineCodeBlockOptions {
    * most streamed prefixes fail to parse anyway, so a much longer interval
    * is appropriate. Set 0 to attempt every update. @default 300 */
   mermaidIntervalMs?: number;
+  /** Text of the code block, as overrides of the English defaults. A function
+   * is read on every render, so it can follow the application's own i18n. */
+  labels?: LabelsOption<MantineCodeBlockLabels>;
+  /** Text of the Mermaid diagram block, as overrides of the English defaults. */
+  mermaidLabels?: LabelsOption<MantineMermaidLabels>;
 }
+
+/** Text of the Mantine code block. It uses the copy and the expand entries;
+ * the rest label the source and copy shell around a custom language renderer. */
+export interface MantineCodeBlockLabels extends CodeBlockLabels {
+  copyTooltip: string;
+  copiedTooltip: string;
+}
+export const defaultMantineCodeBlockLabels: Readonly<MantineCodeBlockLabels> = Object.freeze({
+  ...defaultCodeBlockLabels,
+  // Mantine's own wording for its expand control.
+  expand: 'Expand code',
+  collapse: 'Collapse code',
+  copyTooltip: 'Copy',
+  copiedTooltip: 'Copied',
+});
+
+/** Text of the Mantine Mermaid block. A tooltip and the accessible name of its button are separate entries. */
+export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed' | 'tooLarge'> {
+  /** Tab title of the source shown with an error. */
+  errorTitle: string;
+  render: string;
+  renderTooltip: string;
+  openInNewWindow: string;
+  openInNewWindowTooltip: string;
+  showCode: string;
+  showCodeTooltip: string;
+  copy: string;
+  copied: string;
+  copyTooltip: string;
+  copiedTooltip: string;
+  /** The expand control of the source view. */
+  expand: string;
+  collapse: string;
+}
+export const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels> = Object.freeze({
+  renderFailed: defaultDiagramLabels.renderFailed,
+  tooLarge: defaultDiagramLabels.tooLarge,
+  errorTitle: 'Mermaid Render Error',
+  render: 'Render Mermaid diagram',
+  renderTooltip: 'Render Mermaid',
+  openInNewWindow: 'Open Mermaid diagram in a new window',
+  openInNewWindowTooltip: 'Open in new window',
+  showCode: 'Show Mermaid code',
+  showCodeTooltip: 'Show Mermaid Code',
+  copy: 'Copy Mermaid code',
+  copied: 'Mermaid code copied',
+  copyTooltip: 'Copy',
+  copiedTooltip: 'Copied',
+  expand: 'Expand code',
+  collapse: 'Collapse code',
+});
+
+/** {@link MantineCodeBlockOptions} with every default applied; the label overrides stay as given. */
+export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>> &
+  Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>;
 
 /** Shipped defaults for the `codeBlock` behavior group. */
 export const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions> = Object.freeze({

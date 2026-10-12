@@ -1,16 +1,17 @@
 // Generated from the built public declaration. Review changes before updating.
 import { MarkdownComponentProps } from "../types-chunk.js";
 import { Component, DefineComponent, VNodeChild } from "vue";
-import { ImageIconName, ImageIconName as ImageIconName$1 } from "@ai-markdown/core/components";
+import { ImageIconName, ImageIconName as ImageIconName$1, ImageLabels, ImageLabels as ImageLabels$1, LabelsOption, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
 export type MarkdownImageIcon = VNodeChild | Component;
 export interface MarkdownImageOptions {
     icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
     group?: string | false;
     preview?: boolean;
+    labels?: LabelsOption$1<ImageLabels$1>;
 }
-export declare function createMarkdownImage({ icons, group, preview: allowPreview }?: MarkdownImageOptions): DefineComponent<MarkdownComponentProps>;
+export declare function createMarkdownImage({ icons, group, preview: allowPreview, labels: configuredLabels }?: MarkdownImageOptions): DefineComponent<MarkdownComponentProps>;
 export declare const MarkdownImage: DefineComponent<MarkdownComponentProps>;
-export type { ImageIconName };
+export type { ImageIconName, ImageLabels, LabelsOption };
 
 // Relative declaration: dist/types-chunk.d.ts
 import { Element } from "hast";

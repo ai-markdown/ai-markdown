@@ -38,9 +38,17 @@ describe('component contracts', () => {
       ]),
     ]);
     expect(projectTable(node)).toEqual({ rows: [['Label\nimage', 'x^2', '']] });
-    expect(projectTable(el('table', [el('tr', [el('td', [], { colSpan: 2 })])]))).toHaveProperty('reason');
-    expect(projectTable(el('table', [el('tr', [el('td', [el('table')])])]))).toHaveProperty('reason');
-    expect(projectTable(el('table', [el('tr', [el('td')]), el('tr', [el('td'), el('td')])]))).toHaveProperty('reason');
+    // A refusal is a code, never a sentence: the component that shows it owns the text.
+    expect(projectTable(el('table', [el('tr', [el('td', [], { colSpan: 2 })])]))).toEqual({ reason: 'mergedCells' });
+    expect(projectTable(el('table', [el('tr', [el('td')]), el('tr', [el('td'), el('td')])]))).toEqual({
+      reason: 'notRectangular',
+    });
+    expect(projectTable(el('table', [el('caption')]))).toEqual({ reason: 'unsupportedStructure' });
+    expect(projectTable(el('table', [{ type: 'comment', value: '' } as never]))).toEqual({
+      reason: 'unsupportedContent',
+    });
+    expect(projectTable(el('div'))).toEqual({ reason: 'unavailable' });
+    expect(projectTable()).toEqual({ reason: 'unavailable' });
   });
   test('spreadsheet escaping and formula protection are separate', () => {
     expect(serializeTable([['=cmd()', '+SUM(A1)', '@x', '-SUM(A1)', '-1.5e2', 'a,"b', '', 'x\ny']])).toBe(

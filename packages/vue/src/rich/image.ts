@@ -23,15 +23,21 @@ import {
   type ImageGallery,
   type ImageGalleryItem,
   type ImageIconName,
+  type ImageLabels,
   type ImageLoadStatus,
+  type LabelsOption,
+  defaultImageLabels,
+  resolveLabels,
 } from '@ai-markdown/core/components';
-export type { ImageIconName } from '@ai-markdown/core/components';
+export type { ImageIconName, ImageLabels, LabelsOption } from '@ai-markdown/core/components';
 export type MarkdownImageIcon = VNodeChild | Component;
 export interface MarkdownImageOptions {
   icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
   /** Images of one document form a gallery. A selector groups by the nearest matching ancestor instead; false disables grouping. */
   group?: string | false;
   preview?: boolean;
+  /** Text of the thumbnail and the preview, as overrides of the English defaults. A function is read on every render. */
+  labels?: LabelsOption<ImageLabels>;
 }
 function icon(name: ImageIconName, icons?: MarkdownImageOptions['icons']) {
   const custom = icons?.[name];
@@ -63,6 +69,7 @@ export function createMarkdownImage({
   icons,
   group,
   preview: allowPreview = true,
+  labels: configuredLabels,
 }: MarkdownImageOptions = {}): DefineComponent<MarkdownComponentProps> {
   return defineComponent({
     name: 'MarkdownImage',
@@ -184,12 +191,13 @@ export function createMarkdownImage({
       return () => {
         const item = current(),
           index = items.value.findIndex((entry) => entry.id === selected.value);
+        const labels = resolveLabels(defaultImageLabels, configuredLabels);
         const feedback = (state: ImageLoadStatus, alt = '') =>
           mounted.value &&
           state !== 'ready' &&
           h('span', { class: 'aimd-image-feedback', role: state === 'error' ? 'alert' : 'status' }, [
             icon(state === 'error' ? 'error' : 'placeholder', icons),
-            h('span', state === 'error' ? `Image could not be loaded.${alt ? ` ${alt}` : ''}` : 'Loading image…'),
+            h('span', state === 'error' ? `${labels.loadFailed}${alt ? ` ${alt}` : ''}` : labels.loading),
           ]);
         const img = h('img', {
           ...attrs,
@@ -232,7 +240,7 @@ export function createMarkdownImage({
                       type: 'button',
                       disabled: status.value !== 'ready',
                       class: 'aimd-image-trigger',
-                      'aria-label': `Preview image${attrs.alt ? `: ${attrs.alt}` : ''}`,
+                      'aria-label': labels.open(String(attrs.alt ?? '')),
                       onClick: () => {
                         // The list is materialized before `selected`, so the current() watch sees the entry.
                         items.value = currentGallery?.items() ?? [];
@@ -250,6 +258,7 @@ export function createMarkdownImage({
               items: items.value,
               current: index,
               renderIcon: (name: ImageIconName) => icon(name, icons),
+              labels,
               onCurrentChange: (next: number) => {
                 selected.value = items.value[next]?.id ?? null;
               },

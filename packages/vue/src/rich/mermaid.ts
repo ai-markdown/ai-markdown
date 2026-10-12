@@ -1,5 +1,14 @@
 import { defineComponent, h, onBeforeUnmount, onMounted, ref, shallowRef, watch, type PropType } from 'vue';
-import { createDiagramController, type DiagramState, type DiagramView } from '@ai-markdown/core/components';
+import {
+  createDiagramController,
+  defaultDiagramLabels,
+  diagramErrorText,
+  resolveLabels,
+  type DiagramLabels,
+  type DiagramState,
+  type DiagramView,
+  type LabelsOption,
+} from '@ai-markdown/core/components';
 let engine: ReturnType<typeof importMermaid> | undefined;
 function importMermaid() {
   return import('mermaid').then((module) => module.default);
@@ -31,7 +40,7 @@ const DiagramViewport = defineComponent({
   },
 });
 /** Draws what core's `createDiagramController` publishes; the render policy is documented there. */
-export function createMermaidRenderer(interval = 300) {
+export function createMermaidRenderer(interval = 300, configuredLabels?: LabelsOption<DiagramLabels>) {
   interval = Number.isFinite(interval) && interval >= 0 ? interval : 300;
   return defineComponent({
     name: 'MermaidRenderer',
@@ -64,13 +73,14 @@ export function createMermaidRenderer(interval = 300) {
       return () => {
         const { view, loadFailed } = state.value;
         const waiting = view.kind === 'source' && !loadFailed;
+        const labels = resolveLabels(defaultDiagramLabels, configuredLabels);
         return h('div', { class: 'aimd-diagram', 'aria-busy': waiting }, [
           view.kind === 'diagram' && h(DiagramViewport, { diagram: view }),
-          waiting && h('p', { role: 'status' }, props.streaming ? 'Waiting for diagram…' : 'Rendering diagram…'),
+          waiting && h('p', { role: 'status' }, props.streaming ? labels.waiting : labels.rendering),
           (view.kind === 'error' || loadFailed) &&
             h('div', { role: 'alert' }, [
-              h('p', view.kind === 'error' ? view.message : 'Diagram engine could not load.'),
-              h('button', { type: 'button', onClick: () => controller.retry() }, 'Retry diagram'),
+              h('p', view.kind === 'error' ? diagramErrorText(view, labels) : labels.loadFailed),
+              h('button', { type: 'button', onClick: () => controller.retry() }, labels.retry),
             ]),
         ]);
       };

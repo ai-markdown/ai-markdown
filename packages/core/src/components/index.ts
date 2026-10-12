@@ -1,4 +1,5 @@
 /** Framework-independent contracts for the opt-in Markdown components. */
+import type { CodeBlockLabels, LabelsOption } from './labels';
 export { extractCode, normalizeRenderers, projectTable, serializeTable } from './nodes';
 export type { CodeSource, TableProjection } from './nodes';
 export { extendsCode } from './codeText';
@@ -32,11 +33,28 @@ export interface CodeBlockOptions {
   expandNestedJson?: boolean;
   highlightIntervalMs?: number;
   mermaidIntervalMs?: number;
+  /** Text of the code block, as overrides of the English defaults. A function is called on every render. */
+  labels?: LabelsOption<CodeBlockLabels>;
 }
-export { createDiagramController } from './diagram';
-export type { DiagramEngine, DiagramState, DiagramRequest, DiagramView } from './diagram';
+export { createDiagramController, diagramErrorText } from './diagram';
+export type { DiagramEngine, DiagramState, DiagramRequest, DiagramView, DiagramError } from './diagram';
+export {
+  resolveLabels,
+  defaultCodeBlockLabels,
+  defaultDiagramLabels,
+  defaultImageLabels,
+  defaultTableLabels,
+} from './labels';
+export type {
+  LabelsOption,
+  CodeBlockLabels,
+  DiagramLabels,
+  ImageLabels,
+  TableLabels,
+  TableExportReason,
+} from './labels';
 export { lockImagePreviewScroll } from './scroll';
-export { imageIconPaths, imageActionLabels, getImageGallery } from './image';
+export { imageIconPaths, imageActionNames, getImageGallery } from './image';
 export type { ImageIconName, ImageActionIconName, ImageLoadStatus, ImageGalleryItem, ImageGallery } from './image';
 export {
   initialImageTransform,

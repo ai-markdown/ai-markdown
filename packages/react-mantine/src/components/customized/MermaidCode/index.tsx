@@ -1,6 +1,12 @@
 'use client';
 
-import { createDiagramController, type DiagramView } from '@ai-markdown/core/components';
+import {
+  createDiagramController,
+  diagramErrorText,
+  resolveLabels,
+  type DiagramError,
+  type DiagramView,
+} from '@ai-markdown/core/components';
 
 import React, { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { CodeHighlightControl, CodeHighlightTabs } from '@mantine/code-highlight';
@@ -8,7 +14,7 @@ import { ActionIcon, CopyButton, Flex, Text, Tooltip } from '@mantine/core';
 import type mermaidModule from 'mermaid';
 import { CheckIcon, CodeIcon, DiagramIcon } from './icons';
 import { useAIMarkdownState, useAIMarkdownTheme } from '@ai-markdown/react';
-import type { MantineCodeBlockOptions } from '../../../defs';
+import { defaultMantineMermaidLabels, type MantineCodeBlockOptions } from '../../../defs';
 import { useMantineCodeBlockOptions } from '../../../hooks/useMantineCodeBlockOptions';
 import './styles.scss';
 
@@ -29,7 +35,7 @@ const PRE_STYLE = { cursor: 'pointer', overflow: 'auto', width: '100%', padding:
  * phase: it overlays any view and flipping it back must restore the prior
  * one unchanged.
  */
-type MermaidView = { kind: 'source' } | { kind: 'diagram'; chartType: string } | { kind: 'error'; message: string };
+type MermaidView = { kind: 'source' } | { kind: 'diagram'; chartType: string } | DiagramError;
 
 /** Equality used to skip no-op view updates — repeat mid-stream successes
  *  of the same chart type must not re-render the host per chunk. */
@@ -38,7 +44,8 @@ const toMermaidView = (view: DiagramView): MermaidView =>
 
 const sameView = (a: MermaidView, b: MermaidView): boolean => {
   if (a.kind === 'diagram' && b.kind === 'diagram') return a.chartType === b.chartType;
-  if (a.kind === 'error' && b.kind === 'error') return a.message === b.message;
+  // Core publishes an error only when it differs from the one before it.
+  if (a.kind === 'error' && b.kind === 'error') return a === b;
   return a.kind === b.kind;
 };
 
@@ -138,7 +145,12 @@ const handleViewSVGInNewWindow = (svgElement: SVGElement | null | undefined, isD
 const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<MantineCodeBlockOptions> }) => {
   const { colorScheme, fontSize } = useAIMarkdownTheme();
   const { streaming } = useAIMarkdownState();
-  const { defaultExpanded, mermaidIntervalMs } = useMantineCodeBlockOptions(props.options);
+  const {
+    defaultExpanded,
+    mermaidIntervalMs,
+    mermaidLabels: configuredLabels,
+  } = useMantineCodeBlockOptions(props.options);
+  const labels = resolveLabels(defaultMantineMermaidLabels, configuredLabels);
   const isDark = colorScheme === 'dark';
   const ref = useRef<HTMLPreElement>(null);
   const [view, setViewState] = useState<MermaidView>({ kind: 'source' });
@@ -194,12 +206,14 @@ const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<Man
           w="100%"
           code={[
             {
-              fileName: view.kind === 'error' ? 'Mermaid Render Error' : 'mermaid',
+              fileName: view.kind === 'error' ? labels.errorTitle : 'mermaid',
               code: props.code,
               language: 'mermaid',
             },
           ]}
           defaultExpanded={defaultExpanded}
+          expandCodeLabel={labels.expand}
+          collapseCodeLabel={labels.collapse}
           maxCollapsedHeight="320px"
           styles={{
             filesScrollarea: {
@@ -217,8 +231,8 @@ const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<Man
             showOriginalCode
               ? [
                   <CodeHighlightControl
-                    tooltipLabel="Render Mermaid"
-                    aria-label="Render Mermaid diagram"
+                    tooltipLabel={labels.renderTooltip}
+                    aria-label={labels.render}
                     key="gpt"
                     onClick={() => {
                       setShowOriginalCode(false);
@@ -247,7 +261,7 @@ const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<Man
           mb={15}
           style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
         >
-          {view.message}
+          {diagramErrorText(view, labels)}
         </Text>
       )}
       <div
@@ -274,12 +288,12 @@ const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<Man
                 is a no-op until the SVG exists) so server and client markup
                 agree. */}
             {
-              <Tooltip label="Open in new window">
+              <Tooltip label={labels.openInNewWindowTooltip}>
                 <ActionIcon
                   size={28}
                   className="action-icon"
                   variant="transparent"
-                  aria-label="Open Mermaid diagram in a new window"
+                  aria-label={labels.openInNewWindow}
                   onClick={viewSvgInNewWindow}
                 >
                   <svg
@@ -302,12 +316,12 @@ const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<Man
                 </ActionIcon>
               </Tooltip>
             }
-            <Tooltip label="Show Mermaid Code">
+            <Tooltip label={labels.showCodeTooltip}>
               <ActionIcon
                 size={28}
                 className="action-icon"
                 variant="transparent"
-                aria-label="Show Mermaid code"
+                aria-label={labels.showCode}
                 onClick={() => {
                   setShowOriginalCode(true);
                 }}
@@ -317,12 +331,12 @@ const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<Man
             </Tooltip>
             <CopyButton value={props.code}>
               {({ copied, copy }) => (
-                <Tooltip label={copied ? 'Copied' : 'Copy'} withArrow position="right">
+                <Tooltip label={copied ? labels.copiedTooltip : labels.copyTooltip} withArrow position="right">
                   <ActionIcon
                     variant="transparent"
                     size={28}
                     className="action-icon"
-                    aria-label={copied ? 'Mermaid code copied' : 'Copy Mermaid code'}
+                    aria-label={copied ? labels.copied : labels.copy}
                     onClick={copy}
                   >
                     {copied ? (

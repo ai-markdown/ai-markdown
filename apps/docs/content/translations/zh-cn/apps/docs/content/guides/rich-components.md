@@ -119,13 +119,65 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 导出使用处理和清洗后的 Markdown 语义：链接标签、行内代码文本、图片 alt、换行以及只出现一次的 TeX 数学注解。自定义单元格额外插入的按钮等 UI 不会进入导出；标点可能已经受到排版插件处理。公式形态的文本会加前导单引号以供电子表格按文字处理，负数仍保留数值。这个策略与分隔符、引号和换行的转义分别执行。
 
-仅支持没有合并单元格的矩形表格导出；不支持的结构仍可正常显示和滚动，导出按钮禁用并显示原因。本组件不提供排序、编辑、分页或虚拟化。
+仅支持没有合并单元格的矩形表格导出；不支持的结构仍可正常显示和滚动，导出按钮禁用并显示原因。`projectTable` 以代码报告原因（`mergedCells`、`notRectangular`、`unsupportedStructure`、`unsupportedContent` 或 `unavailable`），每个代码对应的句子在表格的文案里。本组件不提供排序、编辑、分页或虚拟化。
+
+<span id="text-and-translation"></span>
+
+## 文案与翻译
+
+这些组件显示的每一段文字，都是显示它的那个组件的选项。默认值是英语。库不内置任何翻译：传入你自己的字符串，或者传入一个调用你的 i18n 库的函数。
+
+每个组件有自己的文案，没有共用的字典，也没有全局设置：
+
+| 组件         | 工厂                      | 选项            | 类型和默认值                                |
+| ------------ | ------------------------- | --------------- | ------------------------------------------- |
+| 代码块       | `createMarkdownCodeBlock` | `labels`        | `CodeBlockLabels`、`defaultCodeBlockLabels` |
+| Mermaid 渲染 | `createMarkdownCodeBlock` | `diagramLabels` | `DiagramLabels`、`defaultDiagramLabels`     |
+| 图片         | `createMarkdownImage`     | `labels`        | `ImageLabels`、`defaultImageLabels`         |
+| 表格         | `createMarkdownTable`     | `labels`        | `TableLabels`、`defaultTableLabels`         |
+
+类型和默认值从 `@ai-markdown/core/components` 导出，类型也随各个工厂一起导出。`diagramLabels` 属于带 Mermaid 渲染器的默认代码入口，plain 入口没有这个选项。`createMarkdownTable` 只是为了承载这个选项：`MarkdownTable` 就是 `createMarkdownTable()`。
+
+选项是一个部分对象，没有写的条目保留默认值：
+
+```tsx
+import { createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable } from '@ai-markdown/react/components';
+
+const Code = createMarkdownCodeBlock({
+  labels: { copy: '复制代码', copied: '已复制', copyFailed: '复制失败', expand: '展开', collapse: '收起' },
+  diagramLabels: { waiting: '等待图表…', retry: '重试' },
+});
+const Image = createMarkdownImage({ labels: { loading: '图片加载中…', open: (alt) => `预览图片：${alt}` } });
+const Table = createMarkdownTable({ labels: { copy: '复制表格', download: '下载 CSV' } });
+```
+
+大多数条目是字符串。有两种带参数，是函数：`ImageLabels.open(alt)`，以及图表文案里的 `tooLarge(length, limit)`。
+
+如果语言会在运行时切换，请传入一个返回部分对象的函数。组件每次渲染都会调用它。
+
+- 在 React 中，它在渲染过程的固定位置被调用，所以可以调用 hook。在里面读取你的 i18n 上下文，语言变化时组件就会重新渲染，包括那些本来会被 Markdown 的 memo 跳过的代码块：
+
+  ```tsx
+  function useCodeLabels() {
+    const { t } = useTranslation();
+    return { copy: t('markdown.copy'), copied: t('markdown.copied') };
+  }
+  const Code = createMarkdownCodeBlock({ labels: useCodeLabels });
+  ```
+
+- 在 Vue 中，它在渲染函数内被调用，所以它读取的响应式状态都会成为依赖：
+
+  ```ts
+  const Code = createMarkdownCodeBlock({ labels: () => ({ copy: t('markdown.copy'), copied: t('markdown.copied') }) });
+  ```
+
+有两种文字来自别处，不属于文案。Mermaid 的解析错误是 Mermaid 自己的信息，它指出出错的行，按原文显示。代码块工具栏里的语言名是围栏语言或检测到的语言，只有没有语言时的 `plainText` 是文案。
 
 <span id="mantine-and-styling"></span>
 
 ## Mantine 与默认样式
 
-`@ai-markdown/react-mantine/components` 提供同名的三个注册组件和代码块工厂。普通代码和内置 Mermaid 保留原来的高亮 provider、JSON 默认值及图表交互；显式语言扩展使用中性源码/复制外框。图片与 React 使用相同的 rc-image 内核和预览样式，表格使用共享 React 组件；除原有 Mantine 样式外，可导入 `@ai-markdown/react/components/styles.css`。
+`@ai-markdown/react-mantine/components` 提供同名的三个注册组件，以及代码块、图片和表格的工厂。它的代码块和 Mermaid 图表块有自己的文案，即 `codeBlock` 选项里的 `labels` 和 `mermaidLabels`，见 [Mantine 代码块](mantine-code-blocks.md#text-and-translation)。普通代码和内置 Mermaid 保留原来的高亮 provider、JSON 默认值及图表交互；显式语言扩展使用中性源码/复制外框。图片与 React 使用相同的 rc-image 内核和预览样式，表格使用共享 React 组件；除原有 Mantine 样式外，可导入 `@ai-markdown/react/components/styles.css`。
 
 默认 CSS 是可选的，以 `aimd-*` 类限定范围。代码块、表格和图片反馈区域暴露 `--aimd-border`、`--aimd-surface`、`--aimd-text`。React 组件跟随 Markdown 主题，也会使用 Mantine 解析后的主题；Vue 代码块使用工厂主题配置，表格和图片反馈区域继承上层 `[data-color-scheme="dark"]` 或 `[data-mantine-color-scheme="dark"]`。应用可以直接覆盖类和变量，不需要为改样式再包组件。
 
@@ -241,7 +293,7 @@ React 应用可以调用 `@ai-markdown/react/components/code/plain` 导出的 `u
 `createDiagramController` 实现了 [React](#react) 一节描述的渲染策略：流式期间不报错，结束后做一次纠正渲染，下载重试次数有上限，输入不变时不重复渲染。宿主把输入的每次变化传给 `update`，并按收到的状态绘制。
 
 ```ts
-import { createDiagramController } from '@ai-markdown/core/components';
+import { createDiagramController, defaultDiagramLabels, diagramErrorText } from '@ai-markdown/core/components';
 
 const controller = createDiagramController(
   () => import('mermaid').then((module) => module.default),
@@ -250,7 +302,7 @@ const controller = createDiagramController(
       host.innerHTML = view.svg;
       view.bind?.(host);
     } else if (view.kind === 'error') {
-      showError(view.message); // 纯文本
+      showError(diagramErrorText(view, defaultDiagramLabels)); // 纯文本
     } else {
       showSource(); // 还没有渲染出任何图表
     }
@@ -263,7 +315,7 @@ controller.retry(); // 由重试按钮调用
 controller.dispose(); // 卸载时调用
 ```
 
-`view.svg` 是 Mermaid 在 `strict` 或 `sandbox` 安全级别下的输出，应作为 HTML 插入。`view.message` 是文本，应作为文本节点插入。`active: false` 表示宿主正在显示别的内容，期间不进行渲染尝试。下载重试用尽后 `loadFailed` 为 true，`retry()` 会以新的重试次数重新开始。
+`view.svg` 是 Mermaid 在 `strict` 或 `sandbox` 安全级别下的输出，应作为 HTML 插入。错误状态带有 `reason`，不带库自己写的句子：`tooLarge` 带 `length` 和 `limit`，`parse` 和 `render` 带 Mermaid 的 `message`（可能为空）。`diagramErrorText(view, labels)` 用你的文案把它变成文字，结果应作为文本节点插入。`active: false` 表示宿主正在显示别的内容，期间不进行渲染尝试。下载重试用尽后 `loadFailed` 为 true，`retry()` 会以新的重试次数重新开始。
 
 <span id="calling-mermaid-yourself"></span>
 

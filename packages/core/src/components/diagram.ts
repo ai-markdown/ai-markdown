@@ -1,6 +1,7 @@
 import { createCodeFrame, nextCodeFrame, type CodeFrame } from './codeFrame';
 import { mermaidRenderQueue } from './renderQueue';
 import { ensureMermaidInitialized, getMermaidMaxTextSize, type MermaidInitTarget } from './mermaid';
+import type { DiagramLabels } from './labels';
 
 export interface DiagramEngine extends MermaidInitTarget {
   /** Resolves truthy for a source that parses; rejects, or resolves falsy, for one that does not. */
@@ -22,7 +23,27 @@ export interface DiagramEngine extends MermaidInitTarget {
 export type DiagramView =
   | { kind: 'source' }
   | { kind: 'diagram'; svg: string; chartType: string; bind?: (element: object) => void }
-  | { kind: 'error'; message: string };
+  | DiagramError;
+
+/**
+ * Why a diagram did not render, as data: the host owns the words.
+ * - `tooLarge`: the source is longer than the engine's `maxTextSize`.
+ * - `parse` and `render`: the engine refused the source or failed to draw it.
+ *   `message` is the engine's own text, which is diagnostic and not
+ *   translated, or empty when it gave none.
+ */
+export type DiagramError =
+  | { kind: 'error'; reason: 'tooLarge'; length: number; limit: number }
+  | { kind: 'error'; reason: 'parse' | 'render'; message: string };
+
+/** The text for an error view: the engine's own message when there is one, else the label for the reason. */
+export function diagramErrorText(
+  error: DiagramError,
+  labels: Pick<DiagramLabels, 'tooLarge' | 'renderFailed'>
+): string {
+  if (error.reason === 'tooLarge') return labels.tooLarge(error.length, error.limit);
+  return error.message || labels.renderFailed;
+}
 
 export interface DiagramState {
   view: DiagramView;
@@ -47,12 +68,15 @@ const ERROR_MESSAGE_MAX_CHARS = 500;
 const LOAD_RETRIES = 3;
 const LOAD_RETRY_MS = 1500;
 
-/** The failure reason as plain text. Hosts render it as a text node, never as HTML. */
-function describeRenderError(error: unknown): string {
+/** The engine's own failure text, or empty. Hosts render it as a text node, never as HTML. */
+function engineMessage(error: unknown): string {
   const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
   const text = raw.replace(/\r\n?/g, '\n').trim();
-  if (!text) return 'Mermaid could not render this diagram.';
   return text.length > ERROR_MESSAGE_MAX_CHARS ? `${text.slice(0, ERROR_MESSAGE_MAX_CHARS)}…` : text;
+}
+/** Thrown inside an attempt to carry a finished error view to its handler. */
+class DiagramFailure {
+  constructor(readonly view: DiagramError) {}
 }
 
 /** A timestamp and a random suffix: unique across diagrams and across copies of this module. */
@@ -117,11 +141,15 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
   let epoch = 0;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
+  const sameError = (a: DiagramError, b: DiagramError) =>
+    a.reason === 'tooLarge'
+      ? b.reason === 'tooLarge' && a.length === b.length && a.limit === b.limit
+      : b.reason === a.reason && a.message === b.message;
   const emit = () => publish({ view, loadFailed });
   /** Drops a view that repeats the one on screen. A diagram is always new: the host has to draw it. */
   const show = (next: DiagramView) => {
     if (next.kind === 'source' && view.kind === 'source') return;
-    if (next.kind === 'error' && view.kind === 'error' && next.message === view.message) return;
+    if (next.kind === 'error' && view.kind === 'error' && sameError(next, view)) return;
     view = next;
     emit();
   };
@@ -153,6 +181,8 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
       return;
     }
     loadFailures = 0;
+    // Which step an exception came from. Everything but the parse itself counts as rendering.
+    let reason: 'parse' | 'render' = 'render';
     try {
       if (stale()) return;
       // Initialization, parsing and rendering share one queued task, so another
@@ -164,9 +194,11 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
       // can be refused here that it would still have rendered.
       const maxTextSize = getMermaidMaxTextSize(engine);
       if (code.length > maxTextSize) {
-        throw new Error(`Diagram source is ${code.length} characters, above mermaid's maxTextSize of ${maxTextSize}.`);
+        throw new DiagramFailure({ kind: 'error', reason: 'tooLarge', length: code.length, limit: maxTextSize });
       }
-      if (!(await engine.parse(code))) throw new Error('Failed to parse mermaid code');
+      reason = 'parse';
+      if (!(await engine.parse(code))) throw new DiagramFailure({ kind: 'error', reason: 'parse', message: '' });
+      reason = 'render';
       if (stale()) return;
       const { svg, bindFunctions, diagramType } = await engine.render(diagramId(), code);
       if (stale()) return;
@@ -178,14 +210,15 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
       if (stale()) return;
       // Expected while the source is still arriving. The corrective pass reports real errors.
       if (streaming) return;
-      const message = describeRenderError(error);
+      const failure: DiagramError =
+        error instanceof DiagramFailure ? error.view : { kind: 'error', reason, message: engineMessage(error) };
       if (needsCorrective) {
         needsCorrective = false;
-        show({ kind: 'error', message });
+        show(failure);
         return;
       }
       if (view.kind === 'diagram') return;
-      show({ kind: 'error', message });
+      show(failure);
     }
   };
 
