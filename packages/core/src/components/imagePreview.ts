@@ -31,6 +31,9 @@ export interface ImagePreviewState {
   status: ImageLoadStatus;
   /** A drag or a pinch is in progress: the image follows the pointer without a transition. */
   moving: boolean;
+  /** Viewport point the preview grows out of and shrinks back into: the anchor of the image shown when it opened,
+   * then of the image shown when it closes. Undefined means the centre of the viewport. */
+  origin: { x: number; y: number } | undefined;
   canPrevious: boolean;
   canNext: boolean;
   canZoomIn: boolean;
@@ -43,6 +46,9 @@ export interface ImagePreviewHost {
   geometry(): ImageGeometry | undefined;
   /** Runs the callback before the next paint and returns a cancel function. `requestAnimationFrame` in a browser. */
   frame(callback: () => void): () => void;
+  /** Where the image registered under `id` sits on the page, as a viewport point: the centre of its thumbnail.
+   * Undefined when it has none or it is out of view. Asked when the preview opens and again when it closes. */
+  anchor?(id: object): { x: number; y: number } | undefined;
 }
 
 export interface ImagePreviewOptions {
@@ -72,6 +78,7 @@ const closedState: ImagePreviewState = Object.freeze({
   transform: initialImageTransform(),
   status: 'loading',
   moving: false,
+  origin: undefined,
   canPrevious: false,
   canNext: false,
   canZoomIn: false,
@@ -111,6 +118,7 @@ export function createImagePreviewController(
   let transform = initialImageTransform();
   let status: ImageLoadStatus = 'loading';
   let moving = false;
+  let origin: { x: number; y: number } | undefined;
 
   let unsubscribe: (() => void) | undefined;
   let cancelPublish: (() => void) | undefined;
@@ -135,6 +143,7 @@ export function createImagePreviewController(
       transform,
       status,
       moving,
+      origin,
       canPrevious: current > 0,
       canNext: current < items.length - 1,
       canZoomIn: ready && transform.scale < MAX_SCALE,
@@ -185,11 +194,16 @@ export function createImagePreviewController(
       top: box.top + box.height / 2 + transform.y - height / 2,
     });
   };
+  const anchorOf = (id: object) => {
+    const point = host.anchor?.(id);
+    return point && Number.isFinite(point.x) && Number.isFinite(point.y) ? { x: point.x, y: point.y } : undefined;
+  };
   const finishClosing = () => {
     closeTimer = undefined;
     phase = 'closed';
     items = [];
     selected = undefined;
+    origin = undefined;
     current = -1;
     emit();
   };
@@ -200,6 +214,8 @@ export function createImagePreviewController(
     unsubscribe?.();
     unsubscribe = undefined;
     endGesture();
+    // Back into the thumbnail of the image on screen now, which may not be the one that opened the preview.
+    origin = selected ? anchorOf(selected) : undefined;
     phase = 'closing';
     const duration =
       typeof options.closeDuration === 'function' ? options.closeDuration() : (options.closeDuration ?? CLOSE_MS);
@@ -241,6 +257,7 @@ export function createImagePreviewController(
       items = list;
       current = index;
       selected = id;
+      origin = anchorOf(id);
       startImage();
       unsubscribe = gallery.subscribe(() => follow(gallery));
       // Already open on another image: nothing to open from. Any other phase starts, or restarts, the opening.
@@ -365,6 +382,7 @@ export function createImagePreviewController(
       phase = 'closed';
       items = [];
       selected = undefined;
+      origin = undefined;
       current = -1;
     },
   };

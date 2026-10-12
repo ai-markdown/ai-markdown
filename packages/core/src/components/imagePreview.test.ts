@@ -29,9 +29,11 @@ function page(count = 3, closeDuration?: number | (() => number)) {
   let frames: Array<() => void> = [];
   const states: ImagePreviewState[] = [];
   let geometry: ImageGeometry | undefined = BOX;
+  const anchors = new Map<object, { x: number; y: number }>();
   const controller = createImagePreviewController(
     {
       geometry: () => geometry,
+      anchor: (id) => anchors.get(id),
       frame: (callback) => {
         frames.push(callback);
         return () => {
@@ -60,6 +62,7 @@ function page(count = 3, closeDuration?: number | (() => number)) {
     gallery,
     images,
     add,
+    anchors,
     states,
     frame,
     show,
@@ -88,6 +91,40 @@ describe('opening and closing', () => {
     vi.advanceTimersByTime(1);
     expect(state()).toMatchObject({ phase: 'closed', current: -1, items: [] });
     expect(states.map((entry) => entry.phase)).toEqual(['opening', 'open', 'closing', 'closed']);
+  });
+
+  test('it opens from the anchor of its image and closes into the anchor of the image then shown', () => {
+    const { controller, gallery, images, frame, state, anchors } = page(3);
+    anchors.set(images[0].id, { x: 120, y: 340 });
+    anchors.set(images[1].id, { x: 500, y: 90 });
+    controller.open(gallery, images[0].id);
+    expect(state().origin).toEqual({ x: 120, y: 340 });
+    frame();
+    frame();
+    // Navigation keeps the point: nothing scales while the preview is open.
+    controller.go(1);
+    expect(state().origin).toEqual({ x: 120, y: 340 });
+    controller.close();
+    expect(state()).toMatchObject({ phase: 'closing', origin: { x: 500, y: 90 } });
+    vi.advanceTimersByTime(300);
+    expect(state().origin).toBeUndefined();
+  });
+
+  test('an image with no anchor, or one that is not a number, uses the centre', () => {
+    const { controller, gallery, images, frame, state, anchors } = page(2, 0);
+    controller.open(gallery, images[0].id);
+    expect(state().origin).toBeUndefined();
+    controller.close();
+    anchors.set(images[0].id, { x: Number.NaN, y: 10 });
+    controller.open(gallery, images[0].id);
+    expect(state().origin).toBeUndefined();
+    frame();
+    frame();
+    // The thumbnail scrolled into view meanwhile: closing can go back into it.
+    anchors.set(images[0].id, { x: 40, y: 60 });
+    controller.go(0);
+    controller.close();
+    expect(state().phase).toBe('closed');
   });
 
   test('an id the gallery does not have opens nothing', () => {

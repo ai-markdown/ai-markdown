@@ -124,8 +124,20 @@ try {
     check(await root.locator('a .aimd-image-trigger').count(), 0, 'linked images stay links');
     const trigger = root.getByRole('button', { name: 'Preview image: plain' });
     await trigger.focus();
+    const thumbnail = await trigger.locator('img').evaluate((img) => {
+      const box = img.getBoundingClientRect();
+      return { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    });
     await page.keyboard.press('Enter');
     await page.locator('.aimd-image-preview[aria-modal="true"]').waitFor();
+    const origin = await page
+      .locator('.aimd-image-preview-body')
+      .evaluate((node) => node.style.transformOrigin.split(' ').map(parseFloat));
+    check(
+      Math.abs(origin[0] - thumbnail.x) < 1 && Math.abs(origin[1] - thumbnail.y) < 1,
+      true,
+      'the preview opens from the thumbnail that was activated'
+    );
     check(await page.locator('p dialog').count(), 0, 'dialog is portalled outside paragraphs');
     check(
       await page.locator('.aimd-image-preview').evaluate((node) => getComputedStyle(node).zIndex),
@@ -151,6 +163,18 @@ try {
       'thumbnail icon keeps its larger size'
     );
     await page.keyboard.press('Escape');
+    // While it leaves, the preview shrinks back into the same thumbnail.
+    const leaving = await page.waitForFunction(() => {
+      const preview = document.querySelector('.aimd-image-preview[data-phase="closing"]');
+      const body = preview?.querySelector('.aimd-image-preview-body');
+      return body ? body.style.transformOrigin.split(' ').map(parseFloat) : false;
+    });
+    const closingOrigin = await leaving.jsonValue();
+    check(
+      Math.abs(closingOrigin[0] - thumbnail.x) < 1 && Math.abs(closingOrigin[1] - thumbnail.y) < 1,
+      true,
+      'the preview closes into the thumbnail of the image shown'
+    );
     await page.waitForFunction(() => !document.querySelector('.aimd-image-preview[aria-modal="true"]'));
     check(
       await page.evaluate(() => getComputedStyle(document.body).overflowY),

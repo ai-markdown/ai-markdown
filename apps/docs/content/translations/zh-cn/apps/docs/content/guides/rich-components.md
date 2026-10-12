@@ -107,7 +107,7 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 ## 图片预览
 
-普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；预览是一个原生的模态 `<dialog>`，由浏览器负责焦点限制、顶层显示和 Escape。它有全屏暗色遮罩、两侧切图、底部悬浮工具栏，支持水平/垂直翻转、左右旋转、缩放。缩放范围为 1–50 倍，每步乘/除 1.5；滚轮、触控板捏合和双击围绕指针缩放。鼠标、手写笔和触摸的处理方式相同：一个指针拖拽，两个指针捏合，拖出视口边界后回弹。切图会重置变换。预览打开期间页面不滚动，滚动条消失时页面宽度保持不变。打开和关闭有 0.3 秒的淡入淡出，用户设置了“减少动画”时没有。React、Vue 和 Mantine 共用一份实现：规则在 `@ai-markdown/core/components` 里（`createImagePreviewController`），各框架只负责渲染对话框。交互规则改编自 [rc-image](https://github.com/react-component/image) 1.10.0，但没有任何包依赖它。预览挂到 body，不破坏段落结构。
+普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；预览是一个原生的模态 `<dialog>`，由浏览器负责焦点限制、顶层显示和 Escape。它有全屏暗色遮罩、两侧切图、底部悬浮工具栏，支持水平/垂直翻转、左右旋转、缩放。缩放范围为 1–50 倍，每步乘/除 1.5；滚轮、触控板捏合和双击围绕指针缩放。鼠标、手写笔和触摸的处理方式相同：一个指针拖拽，两个指针捏合，拖出视口边界后回弹。切图会重置变换。预览打开期间页面不滚动，滚动条消失时页面宽度保持不变。预览从被点击的缩略图位置放大出来；关闭时缩回当时显示的那张图片的缩略图位置，在图片组里切换过之后那是另一张缩略图。两段动画各 0.3 秒。缩略图不在视口内时不朝它缩放，改为以视口中心为准。用户设置了“减少动画”时没有动画。React、Vue 和 Mantine 共用一份实现：规则在 `@ai-markdown/core/components` 里（`createImagePreviewController`），各框架只负责渲染对话框。交互规则改编自 [rc-image](https://github.com/react-component/image) 1.10.0，但没有任何包依赖它。预览挂到 body，不破坏段落结构。
 
 链接、按钮以及对应交互 role 内的图片保留原有行为，动态修改 role 也会重新判断。预览使用浏览器实际选中的 `currentSrc`，没有时才用已清洗的 `src`，支持响应式图片。`src`/`srcSet` 变化会关闭预览；图片属性和事件仍落在实际 img 上。没有新增高清地址解析器或第二次 URL 策略处理。
 
@@ -365,7 +365,7 @@ img.addEventListener('pointermove', (event) =>
 img.addEventListener('pointerup', (event) => controller.pointerUp(event.pointerId));
 ```
 
-- `state.phase` 为 `closed`、`opening`、`open` 或 `closing`。不是 `closed` 时渲染；`opening` 和 `closing` 是过渡动画的起点和终点状态。`closeDuration` 决定 `closing` 持续多久。
+- `state.phase` 为 `closed`、`opening`、`open` 或 `closing`。不是 `closed` 时渲染；`opening` 和 `closing` 是过渡动画的起点和终点状态。`closeDuration` 决定 `closing` 持续多久。宿主可以提供可选的 `anchor(id)`，返回某张图片缩略图的中心（视口坐标）；控制器在预览打开时和关闭时各问一次，并把结果作为 `state.origin` 发布，用作缩放元素的 `transform-origin`。
 - 预览打开期间，`state.items`、`state.current` 和 `state.item` 跟随图片组变化。正在显示的图片离开图片组时预览关闭。
 - `state.transform` 交给 `imageTransformStyle`；拖拽或捏合期间 `state.moving` 为 true，此时图片应当不带过渡地跟随指针；`state.status` 是加载状态，由你通过 `loaded()` 和 `failed()` 报告。
 - `pointerDown`、`wheel` 和 `key` 在使用了事件时返回 true，此时应阻止事件的默认行为。监听滚轮时要传 `{ passive: false }`。

@@ -353,6 +353,9 @@
 }
 /* The native dialog supplies focus containment, the top layer and Escape. */
 dialog.aimd-image-preview {
+  /* Touches belong to the preview: no page pan, pull-to-refresh or browser zoom behind it. */
+  touch-action: none;
+  overscroll-behavior: contain;
   width: 100%;
   height: 100%;
   max-width: none;
@@ -409,7 +412,9 @@ dialog.aimd-image-preview::backdrop {
 .aimd-image-preview[data-phase='closing'] {
   opacity: 0;
 }
-.aimd-image-preview[data-phase='opening'] .aimd-image-preview-body {
+/* The body grows out of its thumbnail and shrinks back into it; the hosts set its transform-origin. */
+.aimd-image-preview[data-phase='opening'] .aimd-image-preview-body,
+.aimd-image-preview[data-phase='closing'] .aimd-image-preview-body {
   transform: scale(0);
 }
 @media (prefers-reduced-motion: reduce) {

@@ -103,6 +103,29 @@ describe('preview dialog', () => {
     expect(document.body.style.overflow).toBe('hidden');
   });
 
+  test('it grows out of the activated thumbnail and shrinks back into the thumbnail of the image shown', async () => {
+    // Closing takes its 300 ms here, so the leaving state can be observed.
+    window.matchMedia = (() => ({ matches: false })) as unknown as typeof window.matchMedia;
+    const { container: scope } = await mount(images(2));
+    await loadAll(scope);
+    // jsdom lays nothing out: give the two thumbnails a place on the page.
+    const place = (img: Element, left: number, top: number) => {
+      img.getBoundingClientRect = () => ({ left, top, width: 100, height: 60 }) as DOMRect;
+    };
+    const [first, second] = scope.querySelectorAll('.aimd-image img');
+    place(first, 20, 40);
+    place(second, 300, 400);
+    const body = () => dialog()!.querySelector('.aimd-image-preview-body') as HTMLElement;
+    await open(scope, 0);
+    expect(body().style.transformOrigin).toBe('70px 70px');
+    await act(async () => dialog()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
+    await act(async () => (dialog()!.querySelector('.aimd-image-preview-close') as HTMLElement).click());
+    expect(dialog()!.getAttribute('data-phase')).toBe('closing');
+    expect(body().style.transformOrigin).toBe('350px 430px');
+    await act(async () => new Promise((resolve) => setTimeout(resolve, 320)));
+    expect(dialog()).toBeNull();
+  });
+
   test('arrow keys move through the gallery and the buttons at the ends are disabled', async () => {
     const { container: scope } = await mount(images(2));
     await loadAll(scope);

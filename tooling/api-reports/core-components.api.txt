@@ -235,6 +235,10 @@ interface ImagePreviewState {
     transform: ImageTransform;
     status: ImageLoadStatus;
     moving: boolean;
+    origin: {
+        x: number;
+        y: number;
+    } | undefined;
     canPrevious: boolean;
     canNext: boolean;
     canZoomIn: boolean;
@@ -243,6 +247,10 @@ interface ImagePreviewState {
 interface ImagePreviewHost {
     geometry(): ImageGeometry | undefined;
     frame(callback: () => void): () => void;
+    anchor?(id: object): {
+        x: number;
+        y: number;
+    } | undefined;
 }
 interface ImagePreviewOptions {
     closeDuration?: number | (() => number);

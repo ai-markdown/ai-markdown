@@ -13,6 +13,15 @@ import {
 } from '@ai-markdown/core/components';
 
 const prefix = 'aimd-image-preview';
+/** Centre of a thumbnail in the viewport, or nothing when it is detached, hidden or out of view. */
+const thumbnailAnchor = (id: object) => {
+  if (!(id instanceof Element) || !id.isConnected) return;
+  const box = id.getBoundingClientRect();
+  const x = box.left + box.width / 2,
+    y = box.top + box.height / 2;
+  if (!box.width || !box.height || x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return;
+  return { x, y };
+};
 /** Focus is outside the dialog, or on a button that has just been disabled, which receives no key events. */
 const lostFocus = (dialog: HTMLElement | null) => {
   const active = document.activeElement;
@@ -53,6 +62,7 @@ export function useImagePreview(options: {
           const id = requestAnimationFrame(callback);
           return () => cancelAnimationFrame(id);
         },
+        anchor: thumbnailAnchor,
       },
       setState,
       // No leaving transition to wait for when the user asked for less motion.
@@ -143,7 +153,11 @@ export function useImagePreview(options: {
             }}
           >
             <div className={`${prefix}-mask`} onClick={() => controller.close()} />
-            <div className={`${prefix}-body`}>
+            <div
+              className={`${prefix}-body`}
+              // The preview grows out of its thumbnail and shrinks back into it.
+              style={state.origin ? { transformOrigin: `${state.origin.x}px ${state.origin.y}px` } : undefined}
+            >
               <img
                 ref={image}
                 key={item.src + current}

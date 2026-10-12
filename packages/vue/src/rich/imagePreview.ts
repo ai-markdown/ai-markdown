@@ -11,6 +11,15 @@ import {
 } from '@ai-markdown/core/components';
 
 const prefix = 'aimd-image-preview';
+/** Centre of a thumbnail in the viewport, or nothing when it is detached, hidden or out of view. */
+const thumbnailAnchor = (id: object) => {
+  if (!(id instanceof Element) || !id.isConnected) return;
+  const box = id.getBoundingClientRect();
+  const x = box.left + box.width / 2,
+    y = box.top + box.height / 2;
+  if (!box.width || !box.height || x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return;
+  return { x, y };
+};
 /** Focus is outside the dialog, or on a button that has just been disabled, which receives no key events. */
 const lostFocus = (dialog: HTMLElement | undefined | null) => {
   const active = document.activeElement;
@@ -51,6 +60,7 @@ export function useImagePreview(options: {
         const id = requestAnimationFrame(callback);
         return () => cancelAnimationFrame(id);
       },
+      anchor: thumbnailAnchor,
     },
     (next) => {
       state.value = next;
@@ -141,60 +151,70 @@ export function useImagePreview(options: {
             },
             [
               h('div', { class: `${prefix}-mask`, onClick: () => controller.close() }),
-              h('div', { class: `${prefix}-body` }, [
-                h('img', {
-                  ref: image,
-                  key: item.src + current,
-                  class: `${prefix}-img`,
-                  src: item.src,
-                  alt: item.alt,
-                  draggable: false,
-                  style: {
-                    transform: imageTransformStyle(transform),
-                    visibility: status === 'ready' ? 'visible' : 'hidden',
-                  },
-                  onLoad: () => controller.loaded(),
-                  onError: () => controller.failed(),
-                  onPointerdown: (event: PointerEvent) => {
-                    if (
-                      !controller.pointerDown({
-                        id: event.pointerId,
-                        x: event.clientX,
-                        y: event.clientY,
-                        button: event.button,
-                      })
-                    )
-                      return;
-                    event.preventDefault();
-                    event.stopPropagation();
-                    // Captured, the pointer keeps reporting to the image outside the window or its frame.
-                    (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
-                  },
-                  onPointermove: (event: PointerEvent) =>
-                    controller.pointerMove({ id: event.pointerId, x: event.clientX, y: event.clientY }),
-                  onPointerup: (event: PointerEvent) => controller.pointerUp(event.pointerId),
-                  onPointercancel: (event: PointerEvent) => controller.pointerUp(event.pointerId),
-                  onLostpointercapture: (event: PointerEvent) => controller.pointerUp(event.pointerId),
-                  onWheel: (event: WheelEvent) => {
-                    if (
-                      controller.wheel({
-                        deltaY: event.deltaY,
-                        mode: event.deltaMode,
-                        pinch: event.ctrlKey,
-                        x: event.clientX,
-                        y: event.clientY,
-                      })
-                    )
+              h(
+                'div',
+                {
+                  class: `${prefix}-body`,
+                  // The preview grows out of its thumbnail and shrinks back into it.
+                  style: state.value.origin
+                    ? { transformOrigin: `${state.value.origin.x}px ${state.value.origin.y}px` }
+                    : undefined,
+                },
+                [
+                  h('img', {
+                    ref: image,
+                    key: item.src + current,
+                    class: `${prefix}-img`,
+                    src: item.src,
+                    alt: item.alt,
+                    draggable: false,
+                    style: {
+                      transform: imageTransformStyle(transform),
+                      visibility: status === 'ready' ? 'visible' : 'hidden',
+                    },
+                    onLoad: () => controller.loaded(),
+                    onError: () => controller.failed(),
+                    onPointerdown: (event: PointerEvent) => {
+                      if (
+                        !controller.pointerDown({
+                          id: event.pointerId,
+                          x: event.clientX,
+                          y: event.clientY,
+                          button: event.button,
+                        })
+                      )
+                        return;
                       event.preventDefault();
-                  },
-                  onDblclick: (event: MouseEvent) => controller.doubleClick(event.clientX, event.clientY),
-                }),
-                status !== 'ready' &&
-                  h('span', { class: 'aimd-image-feedback', role: status === 'error' ? 'alert' : 'status' }, [
-                    options.renderIcon(status === 'error' ? 'error' : 'placeholder'),
-                    h('span', status === 'error' ? labels.loadFailed : labels.loading),
-                  ]),
-              ]),
+                      event.stopPropagation();
+                      // Captured, the pointer keeps reporting to the image outside the window or its frame.
+                      (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
+                    },
+                    onPointermove: (event: PointerEvent) =>
+                      controller.pointerMove({ id: event.pointerId, x: event.clientX, y: event.clientY }),
+                    onPointerup: (event: PointerEvent) => controller.pointerUp(event.pointerId),
+                    onPointercancel: (event: PointerEvent) => controller.pointerUp(event.pointerId),
+                    onLostpointercapture: (event: PointerEvent) => controller.pointerUp(event.pointerId),
+                    onWheel: (event: WheelEvent) => {
+                      if (
+                        controller.wheel({
+                          deltaY: event.deltaY,
+                          mode: event.deltaMode,
+                          pinch: event.ctrlKey,
+                          x: event.clientX,
+                          y: event.clientY,
+                        })
+                      )
+                        event.preventDefault();
+                    },
+                    onDblclick: (event: MouseEvent) => controller.doubleClick(event.clientX, event.clientY),
+                  }),
+                  status !== 'ready' &&
+                    h('span', { class: 'aimd-image-feedback', role: status === 'error' ? 'alert' : 'status' }, [
+                      options.renderIcon(status === 'error' ? 'error' : 'placeholder'),
+                      h('span', status === 'error' ? labels.loadFailed : labels.loading),
+                    ]),
+                ]
+              ),
               button('close', `${prefix}-close`),
               items.length > 1 && [
                 button('prev', `${prefix}-switch ${prefix}-switch-prev`, !state.value.canPrevious),
