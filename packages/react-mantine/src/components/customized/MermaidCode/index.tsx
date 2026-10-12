@@ -1,8 +1,6 @@
 'use client';
 
-import { mermaidRenderQueue } from './renderQueue';
-import { ensureMermaidInitialized, getMermaidMaxTextSize } from './initialize';
-import { useCodeFrame } from '../useCodeFrame';
+import { createDiagramController, type DiagramView } from '@ai-markdown/core/components';
 
 import React, { memo, useEffect, useRef, useState, useCallback } from 'react';
 import { CodeHighlightControl, CodeHighlightTabs } from '@mantine/code-highlight';
@@ -35,28 +33,13 @@ type MermaidView = { kind: 'source' } | { kind: 'diagram'; chartType: string } |
 
 /** Equality used to skip no-op view updates — repeat mid-stream successes
  *  of the same chart type must not re-render the host per chunk. */
+const toMermaidView = (view: DiagramView): MermaidView =>
+  view.kind === 'diagram' ? { kind: 'diagram', chartType: view.chartType } : view;
+
 const sameView = (a: MermaidView, b: MermaidView): boolean => {
   if (a.kind === 'diagram' && b.kind === 'diagram') return a.chartType === b.chartType;
   if (a.kind === 'error' && b.kind === 'error') return a.message === b.message;
   return a.kind === b.kind;
-};
-
-/** Longest error text shown under the error tab. mermaid's parse errors are
- *  a few lines ("Parse error on line 3: ... Expecting ..."); anything longer
- *  is noise. */
-const ERROR_MESSAGE_MAX_CHARS = 500;
-
-/**
- * The failure reason as plain text for the error tab, so the user can find
- * the failing line. Only ever rendered as a text node — never as HTML — and
- * capped in length. Non-Error throws (mermaid throws strings in places) are
- * stringified the same way.
- */
-const describeRenderError = (error: unknown): string => {
-  const raw = error instanceof Error ? error.message : typeof error === 'string' ? error : '';
-  const text = raw.replace(/\r\n?/g, '\n').trim();
-  if (!text) return 'Mermaid could not render this diagram.';
-  return text.length > ERROR_MESSAGE_MAX_CHARS ? `${text.slice(0, ERROR_MESSAGE_MAX_CHARS)}…` : text;
 };
 
 type Mermaid = typeof mermaidModule;
@@ -70,9 +53,6 @@ type Mermaid = typeof mermaidModule;
  * cached module-wide; the source-view warm-up covers the loading window.
  */
 let mermaidPromise: Promise<Mermaid> | null = null;
-/** Bounded automatic retries of a failed mermaid module download. */
-const MERMAID_LOAD_RETRIES = 3;
-const MERMAID_LOAD_RETRY_MS = 1500;
 const loadMermaid = (): Promise<Mermaid> => {
   // A rejected load is not cached — the next render attempt retries.
   mermaidPromise ??= import('mermaid').then(
@@ -83,17 +63,6 @@ const loadMermaid = (): Promise<Mermaid> => {
     }
   );
   return mermaidPromise;
-};
-
-/**
- * Generate a unique ID for mermaid SVG rendering.
- * Combines a timestamp with a random suffix to avoid collisions when
- * multiple mermaid diagrams render concurrently.
- *
- * @returns A unique string in the format `mermaid-{timestamp}-{random}`.
- */
-const generateMermaidUUID = () => {
-  return `mermaid-${new Date().getTime()}-${Math.random().toString(36).slice(2, 10)}`;
 };
 
 /**
@@ -159,46 +128,10 @@ const handleViewSVGInNewWindow = (svgElement: SVGElement | null | undefined, isD
  * - Chart type label extracted from mermaid's parse result
  * - Preserves the last successful render across transient parse failures
  *
- * ## Streaming contract
- *
- * While `streaming` is true (from render state), the code prop is usually a
- * truncated prefix of the final diagram, so parse failures are *expected*,
- * not exceptional:
- * - Before the first successful render, the raw source is shown as a plain
- *   code block (never the error tab).
- * - After a success, the last good SVG stays up; each subsequent chunk is
- *   re-attempted and the diagram refreshes only on the next success.
- * - When streaming ends (`streaming` is an effect dep), one corrective pass
- *   runs on the final code: success refreshes the diagram, failure surfaces
- *   the real error tab — even over a previously rendered mid-stream diagram,
- *   because that diagram no longer matches the final source. The pending
- *   corrective obligation is tracked by `needsCorrectiveRef` (armed on the
- *   streaming→false edge, consumed by the next completed attempt), so ONLY
- *   that one pass may clobber a rendered diagram; any later failure (e.g. a
- *   transient throw on a theme-flip re-render) falls back to the static rule
- *   below.
- * - A streaming→true edge marks a NEW generation (chat "regenerate" reuses
- *   the same component instance when the block's source offset — and thus
- *   its React key — is unchanged). All per-generation state is reset so the
- *   warm-up shows the new source instead of the previous generation's stale
- *   diagram or error tab.
- * - Render attempts are throttled by `codeBlock.mermaidIntervalMs`: the
- *   source the render effect sees (`renderCode`) is a trailing-throttled
- *   frame of `props.code`, so a fast stream costs at most one parse + render
- *   per interval instead of one per idle moment. The queue alone only
- *   merged pending attempts; with a synchronous layout per render, the
- *   main thread was still busy back to back. The frame flushes at once on
- *   completion and replacement, so the corrective pass always sees the final
- *   source; the source fallback and the copy button keep the latest
- *   `props.code`.
- *
- * ## Static contract (`streaming` stays false)
- *
- * Without streaming edges, failures follow the original conservative rule:
- * the error tab shows only while nothing has rendered yet. Once a diagram is
- * up, later failures (theme-flip re-render, a not-yet-complete `code` update
- * from a consumer that didn't pass `streaming`) keep the last good diagram
- * instead of clobbering it with an error.
+ * The render state machine is core's `createDiagramController`: what happens
+ * while the source streams, when the stream ends, when a render fails and
+ * when the engine cannot be downloaded is documented there. This component
+ * draws what it publishes and adds the Mantine controls.
  *
  * @param props.code - Raw mermaid diagram source code to render.
  */
@@ -207,195 +140,38 @@ const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<Man
   const { streaming } = useAIMarkdownState();
   const { defaultExpanded, mermaidIntervalMs } = useMantineCodeBlockOptions(props.options);
   const isDark = colorScheme === 'dark';
-  // The throttled source for the render effect (see "Streaming contract").
-  // Same trailing throttle as ordinary code display: appends within an
-  // interval replace one pending frame without moving its deadline; a
-  // non-streaming update, completion or replacement passes through at once.
-  const renderCode = useCodeFrame(props.code, 'mermaid', streaming, mermaidIntervalMs);
-
   const ref = useRef<HTMLPreElement>(null);
-  const renderVersionRef = useRef(0);
-  /** Mirrors `view` for reads inside the async render closure — state reads
-   *  there can be stale when deps change mid-flight. */
-  const viewRef = useRef<MermaidView>({ kind: 'source' });
-  /** Previous `streaming` value, for edge detection in the effect. */
-  const prevStreamingRef = useRef(false);
-  /** Armed on the streaming→false edge: the next completed render attempt is
-   *  the end-of-stream corrective pass, whose failure must surface even over
-   *  a rendered diagram. Consumed (reset) by that attempt's success OR
-   *  surfaced failure, so later unrelated failures can't clobber the SVG. */
-  const needsCorrectiveRef = useRef(false);
-  /** Inputs of the render whose SVG currently sits in the host `<pre>`.
-   *  When the effect re-runs with the same (code, theme) pair — the
-   *  post-stream corrective flip on an already-final diagram, or returning
-   *  from the source view — the DOM already holds that exact render, so
-   *  the attempt (and its parse + temp-element render) is skipped. */
-  const lastSuccessRef = useRef<{ code: string; isDark: boolean } | null>(null);
   const [view, setViewState] = useState<MermaidView>({ kind: 'source' });
   const [showOriginalCode, setShowOriginalCode] = useState(false);
-  /** Bumped (after a short delay) when the mermaid MODULE failed to load, so
-   *  the effect re-runs on otherwise unchanged inputs and retries the
-   *  download. A download failure is not a diagram error: it must neither
-   *  consume the corrective obligation nor show the error tab (v2.4.1
-   *  review — the corrective pass is one-shot, so a transient network
-   *  failure on it left a permanent "Render Error" that nothing re-tried).
-   *  Bounded by MERMAID_LOAD_RETRIES per generation. */
-  const [loadAttempt, setLoadAttempt] = useState(0);
-  const loadFailuresRef = useRef(0);
-
+  // The controller is created in an effect, because what it publishes is drawn
+  // into the host element. The SVG goes straight into the host, and React state
+  // keeps only what the chrome needs, so a repeat success of the same chart type
+  // does not re-render it.
+  const [machine] = useState<{ controller?: ReturnType<typeof createDiagramController> }>(() => ({}));
   useEffect(() => {
-    // View updates funnel through here so the ref mirror can't desync from
-    // the state, and no-op updates are dropped (repeat mid-stream successes
-    // and idempotent edge resets must not re-render the host per chunk).
-    const applyView = (next: MermaidView) => {
-      viewRef.current = next;
-      setViewState((prev) => (sameView(prev, next) ? prev : next));
-    };
-
-    // Streaming edge detection MUST run before any early return — the first
-    // chunk of a new stream can arrive while the code is still empty.
-    if (streaming && !prevStreamingRef.current) {
-      // Rising edge = a new generation is starting on this same instance
-      // (same block offset → same React key → no remount on regenerate).
-      // Reset all per-generation state so warm-up shows the incoming source,
-      // not the previous generation's stale diagram or error tab. Everything
-      // here is idempotent — a StrictMode double-run is harmless.
-      needsCorrectiveRef.current = false;
-      lastSuccessRef.current = null;
-      loadFailuresRef.current = 0;
-      applyView({ kind: 'source' });
-      if (ref.current) {
-        ref.current.innerHTML = '';
+    machine.controller ??= createDiagramController(loadMermaid, ({ view: next }) => {
+      const host = ref.current;
+      if (host) {
+        if (next.kind === 'diagram') {
+          host.innerHTML = next.svg;
+          next.bind?.(host);
+        } else if (next.kind === 'source') {
+          host.innerHTML = '';
+        }
       }
-    } else if (!streaming && prevStreamingRef.current) {
-      // Falling edge = the stream just ended; arm the corrective pass.
-      needsCorrectiveRef.current = true;
-    }
-    prevStreamingRef.current = streaming;
-    if (!renderCode || !ref.current || showOriginalCode) {
-      return;
-    }
-
-    // The SVG in the DOM already came from exactly this (code, theme) pair —
-    // nothing to recompute. This also SATISFIES a pending corrective
-    // obligation: the identical successful render IS the verdict on the
-    // final source, so the obligation is consumed, not left armed for some
-    // later unrelated failure to inherit.
-    if (lastSuccessRef.current?.code === renderCode && lastSuccessRef.current.isDark === isDark) {
-      needsCorrectiveRef.current = false;
-      return;
-    }
-
-    const renderVersion = ++renderVersionRef.current;
-    let cancelled = false;
-
-    let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    const renderMermaid = async () => {
-      let mermaid: Mermaid;
-      try {
-        mermaid = await loadMermaid();
-      } catch {
-        // Module load failed: keep whatever is showing (source view or the
-        // last diagram), leave the corrective obligation armed, and retry
-        // the download a bounded number of times.
-        if (cancelled || renderVersion !== renderVersionRef.current) return;
-        if (loadFailuresRef.current < MERMAID_LOAD_RETRIES) {
-          loadFailuresRef.current += 1;
-          retryTimer = setTimeout(() => setLoadAttempt((n) => n + 1), MERMAID_LOAD_RETRY_MS);
-        }
-        return;
-      }
-      loadFailuresRef.current = 0;
-      try {
-        if (!ref.current || cancelled || renderVersion !== renderVersionRef.current) {
-          return;
-        }
-        ensureMermaidInitialized(mermaid, isDark);
-        // Size gate before parse: `mermaid.render` would otherwise resolve
-        // with a placeholder diagram for oversized input, and this component
-        // would record that as a success. The raw length is compared; mermaid
-        // measures the text after stripping front matter and directives, so
-        // a source within a few bytes of the limit can be refused here that
-        // mermaid would still have rendered.
-        const maxTextSize = getMermaidMaxTextSize(mermaid);
-        if (renderCode.length > maxTextSize) {
-          throw new Error(
-            `Diagram source is ${renderCode.length} characters, above mermaid's maxTextSize of ${maxTextSize}.`
-          );
-        }
-        const parseResult = await mermaid.parse(renderCode);
-        if (!parseResult) {
-          throw new Error('Failed to parse mermaid code');
-        }
-
-        if (!ref.current || cancelled || renderVersion !== renderVersionRef.current) {
-          return;
-        }
-
-        // Deliberately NOT passing `ref.current` as mermaid's
-        // svgContainingElement: before the first success the host container
-        // is hidden with `display: none` (source fallback is showing), and
-        // mermaid measures text via getBBox during render — inside a
-        // display:none subtree layout never runs, every measurement is 0,
-        // and the diagram comes out as a ~16px SVG. With the argument
-        // omitted, mermaid renders in a temp element appended to
-        // `document.body` (its default path, cleaned up internally), so
-        // measurement works no matter what our container is doing. The SVG
-        // string is written into our own <pre> below either way.
-        // The queue holds initialization, parsing and rendering together,
-        // so another library instance cannot change the theme mid-task.
-        const rendered = await mermaid.render(generateMermaidUUID(), renderCode);
-        const { svg, bindFunctions, diagramType } = rendered;
-        if (!ref.current || cancelled || renderVersion !== renderVersionRef.current) {
-          return;
-        }
-
-        ref.current.innerHTML = svg;
-        bindFunctions?.(ref.current);
-        needsCorrectiveRef.current = false;
-        lastSuccessRef.current = { code: renderCode, isDark };
-        applyView({ kind: 'diagram', chartType: diagramType });
-      } catch (error) {
-        if (cancelled || renderVersion !== renderVersionRef.current) {
-          return;
-        }
-        // Mid-stream failures are expected (truncated code) — keep the last
-        // good diagram / source placeholder and wait for more bytes. The
-        // corrective pass after streaming ends reports real errors.
-        if (streaming) {
-          return;
-        }
-        const message = describeRenderError(error);
-        // End-of-stream corrective pass: the final source no longer renders,
-        // so the error must surface even over a mid-stream diagram. Consume
-        // the obligation so later unrelated failures don't inherit it.
-        if (needsCorrectiveRef.current) {
-          needsCorrectiveRef.current = false;
-          applyView({ kind: 'error', message });
-          return;
-        }
-        // Static rule: never clobber a rendered diagram (theme-flip
-        // re-renders, un-flagged code updates from static consumers).
-        if (viewRef.current.kind === 'diagram') {
-          return;
-        }
-        applyView({ kind: 'error', message });
-      }
-    };
-
-    const owner = renderVersionRef;
-    void mermaidRenderQueue.enqueue(owner, renderMermaid);
-
-    return () => {
-      cancelled = true;
-      mermaidRenderQueue.cancel(owner);
-      if (retryTimer !== undefined) clearTimeout(retryTimer);
-    };
-    // `streaming` in the deps is what drives the end-of-stream corrective
-    // pass: the flip to false re-runs this effect on the (unchanged) final
-    // code, so the last state reflects the full diagram source.
-    // `loadAttempt` re-runs it after a failed module download.
-  }, [renderCode, isDark, showOriginalCode, streaming, loadAttempt]);
+      const shown = toMermaidView(next);
+      setViewState((prev) => (sameView(prev, shown) ? prev : shown));
+    });
+    // The source view suspends attempts; coming back with the same source and theme renders nothing.
+    machine.controller.update({
+      code: props.code,
+      dark: isDark,
+      streaming,
+      active: !showOriginalCode,
+      interval: mermaidIntervalMs,
+    });
+  }, [machine, props.code, isDark, streaming, showOriginalCode, mermaidIntervalMs]);
+  useEffect(() => () => machine.controller?.dispose(), [machine]);
 
   const viewSvgInNewWindow = useCallback(() => {
     handleViewSVGInNewWindow(ref.current?.querySelector('svg'), isDark);

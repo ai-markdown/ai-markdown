@@ -8,6 +8,7 @@ import {
   onErrorCaptured,
   onMounted,
   ref,
+  shallowRef,
   watch,
   type Component,
   type PropType,
@@ -18,12 +19,14 @@ import {
   extractCode,
   normalizeRenderers,
   createCodeFrame,
+  createCodeLanguageTracker,
+  createJsonCompletenessScanner,
+  nextCodeFrame,
   prettyPrintJson,
-  jsonLooksComplete,
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
-import { detectLanguage, normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
+import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
 export type { CodeRendererInput, CodeBlockOptions } from '@ai-markdown/core/components';
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
   renderers?: Readonly<Record<string, Component | false>>;
@@ -63,36 +66,58 @@ export function createMarkdownCodeBlock(
         expanded = ref(options.defaultExpanded ?? true),
         feedback = ref('');
       const generation = ref(0);
-      const frame = ref(code.value);
-      const controller = createCodeFrame({ code: code.value, language: language.value }, (value) => {
-        frame.value = value.code;
+      // `current` is the latest text and its lineage; `frame` is the throttled one on screen.
+      const current = shallowRef(nextCodeFrame(undefined, code.value, language.value));
+      const frame = shallowRef(current.value);
+      const controller = createCodeFrame(current.value, (value) => {
+        frame.value = value;
       });
+      // The detection policy is core's tracker; a settle bumps `settles` so `detected` reads again.
+      const settles = ref(0);
+      const tracker = createCodeLanguageTracker(() => {
+        settles.value++;
+      });
+      const autoDetect = options.autoDetectUnknownLanguage ?? true;
+      // One scanner per block: a growing JSON block is scanned once, not once per frame.
+      const scanJson = createJsonCompletenessScanner();
       watch(
         [code, language, () => props.streaming],
-        ([next, lang, streaming], previous) => {
-          if (previous && (lang !== previous[1] || !next.startsWith(previous[0]))) {
+        ([next, lang, streaming]) => {
+          const following = nextCodeFrame(current.value, next, lang);
+          if (following.generation !== current.value.generation) {
             generation.value++;
             source.value = false;
             feedback.value = '';
           }
-          controller.update({ code: next, language: lang }, Boolean(streaming), interval);
+          current.value = following;
+          controller.update(following, Boolean(streaming), interval);
         },
         { flush: 'sync' }
       );
-      onBeforeUnmount(() => controller.dispose());
+      onBeforeUnmount(() => {
+        controller.dispose();
+        tracker.dispose();
+      });
       onMounted(() => {
         mounted.value = true;
       });
       const displayed = computed(() =>
-        !props.streaming || !code.value.startsWith(frame.value) || interval === 0 ? code.value : frame.value
+        !props.streaming || interval === 0 || current.value.generation !== frame.value.generation
+          ? code.value
+          : frame.value.code
       );
-      const detected = computed(
-        () =>
-          language.value ||
-          ((options.autoDetectUnknownLanguage ?? true) ? (detectLanguage(displayed.value).language ?? '') : '')
-      );
+      // `mounted` keeps the settle timer off the server render.
+      watch([code, () => props.streaming, language, mounted], ([text, streaming, lang, onClient]) => {
+        if (autoDetect && !lang && onClient) tracker.observe(text, Boolean(streaming));
+        else tracker.dispose();
+      });
+      const detected = computed(() => {
+        if (language.value || !autoDetect) return language.value;
+        void settles.value;
+        return tracker.read(code.value, Boolean(props.streaming)) ?? '';
+      });
       const formatted = computed(() =>
-        options.formatJson && detected.value === 'json' && (!props.streaming || jsonLooksComplete(displayed.value))
+        options.formatJson && detected.value === 'json' && (!props.streaming || scanJson(displayed.value))
           ? prettyPrintJson(displayed.value, options.expandNestedJson ?? false)
           : displayed.value
       );

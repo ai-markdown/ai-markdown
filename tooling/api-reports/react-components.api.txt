@@ -8,7 +8,10 @@ export { type CodeBlockOptions, type CodeRendererInput, type ImageIconName, type
 // Relative declaration: dist/code-plain-chunk.d.ts
 import { ComponentProps, ComponentType, ReactNode } from "react";
 import { CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput, CodeRendererInput as CodeRendererInput$1 } from "@ai-markdown/core/components";
+import { CodeLanguage } from "@ai-markdown/code-language-detector";
 import { Element } from "hast";
+export declare function useCodeFrame(code: string, language: string, streaming: boolean, interval: number): string;
+export declare function useDetectedLanguage(code: string, enabled: boolean, streaming: boolean): CodeLanguage | null;
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, ComponentType<CodeRendererInput> | false>>;
     highlight?: (code: string, language: string) => ReactNode;

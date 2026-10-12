@@ -5,7 +5,13 @@ import ts from 'typescript';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 if (pkg.private || pkg.name !== '@ai-markdown/core') throw new Error('Shared core must be public.');
-const allowed = new Set(['@ai-markdown/engine', '@types/hast', '@types/mdast', 'unist-util-visit']);
+const allowed = new Set([
+  '@ai-markdown/code-language-detector',
+  '@ai-markdown/engine',
+  '@types/hast',
+  '@types/mdast',
+  'unist-util-visit',
+]);
 for (const name of Object.keys({ ...pkg.dependencies, ...pkg.peerDependencies })) {
   if (!allowed.has(name)) throw new Error(`Unreviewed runtime dependency: ${name}`);
 }
@@ -23,7 +29,11 @@ for (const file of readdirSync('src', { recursive: true }).map(String)) {
       if (name.startsWith('.')) {
         if (!resolve(path, '..', name).startsWith(sourceRoot + sep))
           throw new Error(`${file}: escaped source boundary`);
-      } else if (!['@ai-markdown/engine', 'unist-util-visit', 'hast', 'mdast'].includes(name)) {
+      } else if (
+        !['@ai-markdown/code-language-detector', '@ai-markdown/engine', 'unist-util-visit', 'hast', 'mdast'].includes(
+          name
+        )
+      ) {
         throw new Error(`${file}: forbidden import ${name}`);
       }
     }

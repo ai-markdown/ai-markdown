@@ -108,8 +108,14 @@ describe('streaming edges', () => {
     expect(container.textContent).not.toContain('Mermaid Render Error');
     expect(errorText(container)).toBeUndefined();
 
-    // More bytes complete the diagram again.
+    // More bytes complete the diagram again. They append to the prefix, so the attempt waits
+    // for the interval like any other streamed append.
     await harness.update(<MantineAIMarkdown content={fence(step(1))} streaming codeBlock={CODE_BLOCK} />);
+    await settle();
+    expect(mermaidMock.renders).toEqual([src(BASE)]);
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, INTERVAL * 2));
+    });
     await settle();
     expect(mermaidMock.renders).toEqual([src(BASE), src(step(1))]);
     expect(diagram(container)).not.toBeNull();

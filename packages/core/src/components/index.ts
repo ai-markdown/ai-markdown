@@ -1,7 +1,9 @@
 /** Framework-independent contracts for the opt-in Markdown components. */
 export { extractCode, normalizeRenderers, projectTable, serializeTable } from './nodes';
 export type { CodeSource, TableProjection } from './nodes';
-export { createCodeFrame } from './codeFrame';
+export { codeBody, extendsCode } from './codeText';
+export { createCodeLanguageTracker } from './codeLanguage';
+export { createCodeFrame, nextCodeFrame } from './codeFrame';
 export type { CodeFrame } from './codeFrame';
 export { prettyPrintJson } from './formatJson';
 export { createJsonCompletenessScanner, jsonLooksComplete } from './jsonCompleteness';
@@ -35,7 +37,7 @@ export interface CodeBlockOptions {
   mermaidIntervalMs?: number;
 }
 export { createDiagramController } from './diagram';
-export type { DiagramEngine, DiagramState, DiagramRequest } from './diagram';
+export type { DiagramEngine, DiagramState, DiagramRequest, DiagramView } from './diagram';
 export { lockImagePreviewScroll } from './scroll';
 export { imageIconPaths, imageActionLabels, imageGroupSelector, getImageGallery } from './image';
 export type { ImageIconName, ImageActionIconName, ImageLoadStatus, ImageGalleryItem, ImageGallery } from './image';

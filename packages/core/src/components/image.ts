@@ -53,7 +53,10 @@ export interface ImageGalleryItem {
   precedes: (other: object) => boolean;
 }
 export interface ImageGallery {
+  /** Document-ordered entries. The same array is returned until the membership changes. */
   items: () => readonly ImageGalleryItem[];
+  /** Number of registered entries; O(1), so listeners can test it without sorting. */
+  size: () => number;
   subscribe: (listener: () => void) => () => void;
   set: (item: ImageGalleryItem) => void;
   remove: (id: object) => void;
@@ -65,9 +68,16 @@ export function getImageGallery(scope: object): ImageGallery {
   if (existing) return existing;
   const entries = new Map<object, ImageGalleryItem>();
   const listeners = new Set<() => void>();
-  const notify = () => listeners.forEach((listener) => listener());
+  // Sorted on read and cached: notifications do not sort, and readers that
+  // share the array see the same reference until the next set or remove.
+  let sorted: readonly ImageGalleryItem[] | undefined;
+  const notify = () => {
+    sorted = undefined;
+    listeners.forEach((listener) => listener());
+  };
   const gallery: ImageGallery = {
-    items: () => [...entries.values()].sort((a, b) => (a.precedes(b.id) ? -1 : b.precedes(a.id) ? 1 : 0)),
+    items: () => (sorted ??= [...entries.values()].sort((a, b) => (a.precedes(b.id) ? -1 : b.precedes(a.id) ? 1 : 0))),
+    size: () => entries.size,
     subscribe(listener) {
       listeners.add(listener);
       return () => {

@@ -31,6 +31,7 @@ import {
   imageIconPaths,
   imageActionLabels,
   type ImageActionIconName,
+  type ImageGallery,
   type ImageGalleryItem,
   type ImageIconName,
   type ImageLoadStatus,
@@ -138,7 +139,10 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
       [previewIndex, setPreviewIndex] = useState(0),
       [status, setStatus] = useState<ImageLoadStatus>('loading'),
       [loadedSource, setLoadedSource] = useState(''),
+      [multi, setMulti] = useState(false),
       [items, setItems] = useState<readonly ImageGalleryItem[]>([]);
+    const galleryRef = useRef<ImageGallery | undefined>(undefined),
+      selectedRef = useRef<object | null>(null);
     const [source, setSource] = useState({ src: props.src, srcSet: props.srcSet });
     if (source.src !== props.src || source.srcSet !== props.srcSet) {
       setSource({ src: props.src, srcSet: props.srcSet });
@@ -171,25 +175,36 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
     useEffect(() => {
       const element = image.current;
       if (!element || !enabled || status !== 'ready') {
-        setItems([]);
+        setMulti(false);
         return;
       }
       const scope = group === false ? element : (element.closest(group ?? imageGroupSelector) ?? element);
       const gallery = getImageGallery(scope);
-      const refresh = () => setItems(gallery.items());
-      const unsubscribe = gallery.subscribe(refresh);
+      // Every ready image hears each change, but only the open one materializes the list.
+      const sync = () => {
+        setMulti(gallery.size() > 1);
+        // The host owns the open preview; after navigation its selection may name another image.
+        if (selectedRef.current) setItems(gallery.items());
+      };
+      const unsubscribe = gallery.subscribe(sync);
+      galleryRef.current = gallery;
       gallery.set({
         id: element,
         src: element.currentSrc || props.src || '',
         alt: props.alt ?? '',
         precedes: (other) => Boolean(element.compareDocumentPosition(other as Node) & 4),
       });
-      refresh();
+      sync();
       return () => {
         unsubscribe();
         gallery.remove(element);
+        if (galleryRef.current === gallery) galleryRef.current = undefined;
       };
     }, [enabled, status, props.src, props.srcSet, props.alt, loadedSource]);
+    useEffect(() => {
+      selectedRef.current = selected;
+      if (selected) setItems(galleryRef.current?.items() ?? []);
+    }, [selected]);
     const close = () => {
       setSelected(null);
       trigger.current?.focus();
@@ -235,7 +250,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
         {feedback}
         {enabled && status === 'ready' && (
           <span className="aimd-image-cover">
-            <ImageIcon name={items.length > 1 ? 'gallery' : 'preview'} icons={icons} />
+            <ImageIcon name={multi ? 'gallery' : 'preview'} icons={icons} />
           </span>
         )}
       </>
@@ -251,7 +266,9 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
               disabled={status !== 'ready'}
               aria-label={`Preview image${props.alt ? `: ${props.alt}` : ''}`}
               onClick={() => {
-                setPreviewIndex(items.findIndex((entry) => entry.id === image.current));
+                const list = galleryRef.current?.items() ?? [];
+                setItems(list);
+                setPreviewIndex(list.findIndex((entry) => entry.id === image.current));
                 setSelected(image.current);
               }}
             >
@@ -277,7 +294,11 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
                 if (!open) setSelected(null);
               },
               afterOpenChange: (open) => {
-                if (!open) trigger.current?.focus();
+                if (!open) {
+                  // Skip the clear if the preview has been opened again since the close began.
+                  if (!selectedRef.current) setItems([]);
+                  trigger.current?.focus();
+                }
               },
               onChange: (next) => {
                 setPreviewIndex(next);

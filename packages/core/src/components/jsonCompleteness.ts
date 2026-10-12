@@ -1,6 +1,10 @@
+import { codeBody, startsWithText } from './codeText';
+
 /** Bracket-balance gate, not a JSON validator. Retain quote/escape state
  * across append seams so growing JSON does not rescan its whole body when
- * each nested object closes. Replacements start a fresh lineage. */
+ * each nested object closes. Replacements start a fresh lineage. The final
+ * newline of hast code text is left unscanned: it is whitespace, and it moves
+ * on every append. */
 export function createJsonCompletenessScanner() {
   let previous = '';
   let depth = 0;
@@ -9,16 +13,17 @@ export function createJsonCompletenessScanner() {
   let invalid = false;
   let last = '';
   return (text: string): boolean => {
+    const body = codeBody(text);
     let from = previous.length;
-    if (!text.startsWith(previous)) {
+    if (!startsWithText(body, previous)) {
       from = 0;
       depth = 0;
       quoted = escaped = invalid = false;
       last = '';
     }
-    previous = text;
-    for (let i = from; i < text.length; i++) {
-      const c = text[i];
+    previous = body;
+    for (let i = from; i < body.length; i++) {
+      const c = body[i];
       if (!/\s/.test(c)) last = c;
       if (quoted) {
         if (escaped) escaped = false;

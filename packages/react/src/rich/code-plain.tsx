@@ -1,7 +1,6 @@
 'use client';
 import {
   Component,
-  useEffect,
   useMemo,
   useState,
   useSyncExternalStore,
@@ -17,15 +16,21 @@ import {
   useAIMarkdownDocument,
 } from '@ai-markdown/react';
 import {
+  extendsCode,
   extractCode,
   normalizeRenderers,
-  createCodeFrame,
   prettyPrintJson,
-  jsonLooksComplete,
+  createJsonCompletenessScanner,
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
-import { detectLanguage, normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
+import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
+import { useCodeFrame } from './useCodeFrame';
+import { useDetectedLanguage } from './useDetectedLanguage';
+
+// The Mantine code block is built on the same two hooks.
+export { useCodeFrame } from './useCodeFrame';
+export { useDetectedLanguage } from './useDetectedLanguage';
 
 export type { CodeRendererInput, CodeBlockOptions } from '@ai-markdown/core/components';
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
@@ -42,17 +47,6 @@ class RendererBoundary extends Component<{ children: ReactNode; fallback: ReactN
   render() {
     return this.state.failed ? this.props.fallback : this.props.children;
   }
-}
-function useFrame(code: string, language: string, streaming: boolean, interval: number) {
-  const [frame, setFrame] = useState({ code, language });
-  const [controller] = useState(() => createCodeFrame({ code, language }, setFrame));
-  useEffect(() => {
-    controller.update({ code, language }, streaming, interval);
-  }, [controller, code, language, streaming, interval]);
-  useEffect(() => () => controller.dispose(), [controller]);
-  return !streaming || language !== frame.language || !code.startsWith(frame.code) || interval === 0
-    ? code
-    : frame.code;
 }
 const interval = (value: unknown, fallback: number) =>
   typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
@@ -77,7 +71,7 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
     // gets a fresh renderer generation; append preserves the mounted renderer.
     const [previous, setPrevious] = useState({ code, identity, generation: 0 });
     const generation =
-      previous.generation + (identity !== previous.identity || !code.startsWith(previous.code) ? 1 : 0);
+      previous.generation + (identity !== previous.identity || !extendsCode(code, previous.code) ? 1 : 0);
     const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
     const [source, setSource] = useState(false);
     const [expanded, setExpanded] = useState(option('defaultExpanded', true));
@@ -89,20 +83,20 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
         setFeedback('');
       }
     }
-    const frame = useFrame(code, language, streaming, interval(option('highlightIntervalMs', 50), 50));
+    const frame = useCodeFrame(code, language, streaming, interval(option('highlightIntervalMs', 50), 50));
     const autoDetect = option('autoDetectUnknownLanguage', true);
-    const detected = useMemo(
-      () => language || (autoDetect ? (detectLanguage(frame).language ?? '') : ''),
-      [frame, language, autoDetect]
-    );
+    const detected = useDetectedLanguage(code, autoDetect && !language, streaming) ?? language;
     const format = option('formatJson', false),
       nested = option('expandNestedJson', false);
+    // One scanner per block: a growing JSON block is scanned once, not once per frame.
+    const [scanJson] = useState(createJsonCompletenessScanner);
+    const jsonComplete = useMemo(
+      () => (format && detected === 'json' && streaming ? scanJson(frame) : false),
+      [format, detected, streaming, scanJson, frame]
+    );
     const displayed = useMemo(
-      () =>
-        format && detected === 'json' && (!streaming || jsonLooksComplete(frame))
-          ? prettyPrintJson(frame, nested)
-          : frame,
-      [frame, detected, format, nested, streaming]
+      () => (format && detected === 'json' && (!streaming || jsonComplete) ? prettyPrintJson(frame, nested) : frame),
+      [frame, detected, format, nested, streaming, jsonComplete]
     );
     const Renderer = renderers[language];
     const highlighted = useMemo(() => {

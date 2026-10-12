@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { createCodeFrame, nextCodeFrame } from './codeFrame';
+import { createCodeFrame, nextCodeFrame } from '@ai-markdown/core/components';
 
 /** Initial/SSR, static, final and replacement renders use current text.
  * Only append-only streaming frames may display the preceding snapshot. */

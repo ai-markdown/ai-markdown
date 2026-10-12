@@ -415,6 +415,9 @@ importers:
 
   packages/core:
     dependencies:
+      '@ai-markdown/code-language-detector':
+        specifier: workspace:^
+        version: link:../code-language-detector
       '@ai-markdown/engine':
         specifier: workspace:*
         version: link:../engine

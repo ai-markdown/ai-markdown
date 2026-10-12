@@ -3,49 +3,16 @@
 import { createContext, HTMLAttributes, memo, useContext, useMemo, useState } from 'react';
 import { CodeHighlight, CodeHighlightTabs, CodeHighlightControl } from '@mantine/code-highlight';
 import { useAIMarkdownState, useAIMarkdownTheme } from '@ai-markdown/react';
-import {
-  StreamingLanguageDetector,
-  normalizeHighlightJsLanguage,
-  normalizeShikiLanguage,
-  type CodeLanguage,
-} from '@ai-markdown/code-language-detector';
+// The frame throttle, language detection and JSON helpers are the shared headless ones.
+// This file adds the Mantine presentation.
+import { useCodeFrame, useDetectedLanguage } from '@ai-markdown/react/components/code/plain';
+import { createJsonCompletenessScanner, prettyPrintJson } from '@ai-markdown/core/components';
+import { normalizeHighlightJsLanguage, normalizeShikiLanguage } from '@ai-markdown/code-language-detector';
 import { useMantineCodeBlockOptions } from '../../hooks/useMantineCodeBlockOptions';
 import MantineAIMMermaidCode from './MermaidCode';
 import { CopyButton } from '@mantine/core';
-import { prettyPrintJson } from './formatJson';
-import { createJsonCompletenessScanner } from './jsonCompleteness';
-import { useCodeFrame } from './useCodeFrame';
 import { MantineLanguageFormat, type MantineCodeBlockOptions } from '../../defs';
-export { jsonLooksComplete } from './jsonCompleteness';
-export { prettyPrintJson } from './formatJson';
-
-const createDetector = () => new StreamingLanguageDetector();
-
-/**
- * The language of an unlabelled block, or null while the detector abstains.
- *
- * History: detection used to run `hljs.highlightAuto`, which scores every
- * registered grammar against the whole text. That forced a doubling
- * schedule to keep a stream O(n), an asynchronous highlight.js injection
- * (`codeBlock.highlightJs`) so the peer could stay optional, and a first
- * paint of "unknown" on every render path. The heuristic detector is
- * synchronous and dependency-free, so it runs during render — server
- * rendering included — and owns the streaming policy itself: it re-detects
- * only when the text has grown enough to change the evidence, never lowers
- * its confidence, charges a margin for a switch across language families,
- * and treats any text that does not extend the previous one (a regenerate)
- * as a new block.
- *
- * One detector per block instance. `finalize` is idempotent for an
- * unchanged text, so re-renders after the stream ends cost nothing.
- */
-function useDetectedLanguage(codeText: string, enabled: boolean, streaming: boolean): CodeLanguage | null {
-  const [detector] = useState(createDetector);
-  return useMemo(() => {
-    if (!enabled) return null;
-    return (streaming ? detector.update(codeText) : detector.finalize(codeText)).language;
-  }, [detector, enabled, streaming, codeText]);
-}
+export { jsonLooksComplete, prettyPrintJson } from '@ai-markdown/core/components';
 
 /**
  * Loads mermaid ahead of time. It is otherwise loaded on demand by the

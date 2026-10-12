@@ -1,4 +1,5 @@
 // Generated from the built public declaration. Review changes before updating.
+import { CodeLanguage } from "@ai-markdown/code-language-detector";
 import { Element } from "hast";
 interface CodeSource {
     code: string;
@@ -15,10 +16,19 @@ type TableProjection = {
 };
 export declare function projectTable(node?: Element): TableProjection;
 export declare function serializeTable(rows: readonly (readonly string[])[], delimiter?: ',' | '\t'): string;
+export declare function codeBody(code: string): string;
+export declare function extendsCode(next: string, previous: string): boolean;
+export declare function createCodeLanguageTracker(onSettle: () => void): {
+    read(code: string, streaming: boolean): CodeLanguage | null;
+    observe(code: string, streaming: boolean): void;
+    dispose: () => void;
+};
 interface CodeFrame {
     code: string;
     language: string;
+    generation: object;
 }
+export declare function nextCodeFrame(previous: CodeFrame | undefined, code: string, language: string): CodeFrame;
 export declare function createCodeFrame(initial: CodeFrame, publish: (frame: CodeFrame) => void): {
     update(next: CodeFrame, streaming: boolean, interval: number): void;
     dispose: () => void;
@@ -54,31 +64,39 @@ export declare const MERMAID_DEFAULT_MAX_TEXT_SIZE = 50000;
 export declare const getMermaidMaxTextSize: (mermaid: MermaidInitTarget) => number;
 export declare const ensureMermaidInitialized: (mermaid: MermaidInitTarget, isDark: boolean) => void;
 interface DiagramEngine extends MermaidInitTarget {
-    parse(code: string, options: {
-        suppressErrors: true;
-    }): Promise<unknown>;
+    parse(code: string): Promise<unknown>;
     render(id: string, code: string): Promise<{
         svg: string;
+        diagramType?: string;
         bindFunctions?(element: object): void;
     }>;
 }
-type DiagramState = {
-    status: 'loading' | 'ready' | 'error';
+type DiagramView = {
+    kind: 'source';
+} | {
+    kind: 'diagram';
     svg: string;
-    error?: string;
+    chartType: string;
     bind?: (element: object) => void;
+} | {
+    kind: 'error';
+    message: string;
 };
+interface DiagramState {
+    view: DiagramView;
+    loadFailed: boolean;
+}
 interface DiagramRequest {
     code: string;
     dark: boolean;
     streaming: boolean;
     active: boolean;
-    resetKey: string;
     interval: number;
 }
 export declare function createDiagramController(load: () => Promise<DiagramEngine>, publish: (state: DiagramState) => void): {
-    update(request: DiagramRequest): void;
-    dispose: () => void;
+    update(next: DiagramRequest): void;
+    retry(): void;
+    dispose(): void;
 };
 export declare function lockImagePreviewScroll(target: {
     style: {
@@ -98,6 +116,7 @@ interface ImageGalleryItem {
 }
 interface ImageGallery {
     items: () => readonly ImageGalleryItem[];
+    size: () => number;
     subscribe: (listener: () => void) => () => void;
     set: (item: ImageGalleryItem) => void;
     remove: (id: object) => void;
@@ -160,4 +179,4 @@ export interface CodeBlockOptions {
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
 }
-export type { CodeFrame, CodeSource, DiagramEngine, DiagramRequest, DiagramState, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLoadStatus, ImageTransform, MermaidInitTarget, TableProjection };
+export type { CodeFrame, CodeSource, DiagramEngine, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLoadStatus, ImageTransform, MermaidInitTarget, TableProjection };

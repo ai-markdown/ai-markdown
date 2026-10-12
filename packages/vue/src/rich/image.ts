@@ -20,6 +20,7 @@ import {
   getImageGallery,
   imageGroupSelector,
   imageIconPaths,
+  type ImageGallery,
   type ImageGalleryItem,
   type ImageIconName,
   type ImageLoadStatus,
@@ -74,8 +75,10 @@ export function createMarkdownImage({
       const enabled = ref(false),
         selected = shallowRef<object | null>(null),
         items = shallowRef<readonly ImageGalleryItem[]>([]),
+        multi = ref(false),
         status = ref<ImageLoadStatus>('loading'),
         loadedSource = ref('');
+      let currentGallery: ImageGallery | undefined;
       let observer: MutationObserver | undefined;
       const update = () => {
         const parent = image.value?.closest('.aimd-image');
@@ -124,25 +127,30 @@ export function createMarkdownImage({
         (_, __, onCleanup) => {
           const element = image.value;
           if (!element || !enabled.value || status.value !== 'ready') {
-            items.value = [];
+            multi.value = false;
             return;
           }
           const scope = group === false ? element : (element.closest(group ?? imageGroupSelector) ?? element);
           const gallery = getImageGallery(scope);
-          const refresh = () => {
-            items.value = gallery.items();
+          // Every ready image hears each change, but only the open one materializes the list.
+          const sync = () => {
+            multi.value = gallery.size() > 1;
+            // The host owns the open preview; after navigation its selection may name another image.
+            if (selected.value) items.value = gallery.items();
           };
-          const unsubscribe = gallery.subscribe(refresh);
+          const unsubscribe = gallery.subscribe(sync);
+          currentGallery = gallery;
           gallery.set({
             id: element,
             src: element.currentSrc || String(attrs.src ?? ''),
             alt: String(attrs.alt ?? ''),
             precedes: (other) => Boolean(element.compareDocumentPosition(other as Node) & 4),
           });
-          refresh();
+          sync();
           onCleanup(() => {
             unsubscribe();
             gallery.remove(element);
+            if (currentGallery === gallery) currentGallery = undefined;
           });
         },
         { flush: 'post' }
@@ -194,7 +202,7 @@ export function createMarkdownImage({
           feedback(status.value, String(attrs.alt ?? '')),
           enabled.value &&
             status.value === 'ready' &&
-            h('span', { class: 'aimd-image-cover' }, [icon(items.value.length > 1 ? 'gallery' : 'preview', icons)]),
+            h('span', { class: 'aimd-image-cover' }, [icon(multi.value ? 'gallery' : 'preview', icons)]),
         ];
         return [
           h(
@@ -211,6 +219,8 @@ export function createMarkdownImage({
                       class: 'aimd-image-trigger',
                       'aria-label': `Preview image${attrs.alt ? `: ${attrs.alt}` : ''}`,
                       onClick: () => {
+                        // The list is materialized before `selected`, so the current() watch sees the entry.
+                        items.value = currentGallery?.items() ?? [];
                         selected.value = image.value ?? null;
                       },
                     },
@@ -229,7 +239,11 @@ export function createMarkdownImage({
                 selected.value = items.value[next]?.id ?? null;
               },
               onClose: close,
-              afterClose: () => trigger.value?.focus(),
+              afterClose: () => {
+                // Skip the clear if the preview has been opened again since the close began.
+                if (!selected.value) items.value = [];
+                trigger.value?.focus();
+              },
             }),
         ];
       };

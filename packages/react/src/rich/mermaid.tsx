@@ -2,7 +2,12 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useAIMarkdownBehaviors } from '@ai-markdown/react';
 import type { CodeBlockOptions } from '@ai-markdown/core/components';
-import { createDiagramController, type CodeRendererInput, type DiagramState } from '@ai-markdown/core/components';
+import {
+  createDiagramController,
+  type CodeRendererInput,
+  type DiagramState,
+  type DiagramView,
+} from '@ai-markdown/core/components';
 let engine: ReturnType<typeof importMermaid> | undefined;
 function importMermaid() {
   return import('mermaid').then((module) => module.default);
@@ -17,26 +22,26 @@ function loadMermaid() {
 export function preloadCodeAssets(): Promise<void> {
   return loadMermaid().then(() => undefined);
 }
-function DiagramViewport({ state }: { state: DiagramState }) {
+type Diagram = Extract<DiagramView, { kind: 'diagram' }>;
+function DiagramViewport({ diagram }: { diagram: Diagram }) {
   const target = useRef<HTMLDivElement>(null);
-  const { svg, bind } = state;
   useLayoutEffect(() => {
     const element = target.current!;
-    element.innerHTML = svg;
-    bind?.(element);
+    element.innerHTML = diagram.svg;
+    diagram.bind?.(element);
     return () => {
       element.replaceChildren();
     };
-  }, [svg, bind]);
+  }, [diagram]);
   return <div ref={target} className="aimd-diagram-viewport" />;
 }
+/** Draws what core's `createDiagramController` publishes; the render policy is documented there. */
 export function createMermaidRenderer(configuredInterval?: number) {
   return function MermaidRenderer(props: CodeRendererInput) {
     const group = useAIMarkdownBehaviors().codeBlock as CodeBlockOptions | undefined;
     const requestedInterval = configuredInterval ?? group?.mermaidIntervalMs ?? 300;
     const interval = Number.isFinite(requestedInterval) && requestedInterval >= 0 ? requestedInterval : 300;
-    const [state, setState] = useState<DiagramState>({ status: 'loading', svg: '' });
-    const [retry, setRetry] = useState(0);
+    const [state, setState] = useState<DiagramState>({ view: { kind: 'source' }, loadFailed: false });
     const [controller] = useState(() => createDiagramController(loadMermaid, setState));
     useEffect(() => {
       controller.update({
@@ -44,21 +49,20 @@ export function createMermaidRenderer(configuredInterval?: number) {
         dark: props.colorScheme === 'dark',
         streaming: props.streaming,
         active: props.active,
-        resetKey: props.resetKey,
         interval,
       });
-    }, [controller, props.code, props.colorScheme, props.streaming, props.active, props.resetKey, retry, interval]);
+    }, [controller, props.code, props.colorScheme, props.streaming, props.active, interval]);
     useEffect(() => () => controller.dispose(), [controller]);
+    const { view, loadFailed } = state;
+    const waiting = view.kind === 'source' && !loadFailed;
     return (
-      <div className="aimd-diagram" aria-busy={state.status === 'loading'}>
-        {state.svg && <DiagramViewport state={state} />}
-        {state.status === 'loading' && !state.svg && (
-          <p role="status">{props.streaming ? 'Waiting for diagram…' : 'Rendering diagram…'}</p>
-        )}
-        {state.status === 'error' && (
+      <div className="aimd-diagram" aria-busy={waiting}>
+        {view.kind === 'diagram' && <DiagramViewport diagram={view} />}
+        {waiting && <p role="status">{props.streaming ? 'Waiting for diagram…' : 'Rendering diagram…'}</p>}
+        {(view.kind === 'error' || loadFailed) && (
           <div role="alert">
-            <p>{state.error}</p>
-            <button type="button" onClick={() => setRetry((value) => value + 1)}>
+            <p>{view.kind === 'error' ? view.message : 'Diagram engine could not load.'}</p>
+            <button type="button" onClick={() => controller.retry()}>
               Retry diagram
             </button>
           </div>

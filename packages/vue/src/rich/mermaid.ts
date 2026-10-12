@@ -1,5 +1,5 @@
-import { defineComponent, h, onBeforeUnmount, onMounted, ref, watch, type PropType } from 'vue';
-import { createDiagramController, type DiagramState } from '@ai-markdown/core/components';
+import { defineComponent, h, onBeforeUnmount, onMounted, ref, shallowRef, watch, type PropType } from 'vue';
+import { createDiagramController, type DiagramState, type DiagramView } from '@ai-markdown/core/components';
 let engine: ReturnType<typeof importMermaid> | undefined;
 function importMermaid() {
   return import('mermaid').then((module) => module.default);
@@ -14,21 +14,23 @@ function loadMermaid() {
 export function preloadCodeAssets(): Promise<void> {
   return loadMermaid().then(() => undefined);
 }
+type Diagram = Extract<DiagramView, { kind: 'diagram' }>;
 const DiagramViewport = defineComponent({
-  props: { state: { type: Object as PropType<DiagramState>, required: true } },
+  props: { diagram: { type: Object as PropType<Diagram>, required: true } },
   setup(props) {
     const target = ref<HTMLDivElement>();
     const install = () => {
       if (target.value) {
-        target.value.innerHTML = props.state.svg;
-        props.state.bind?.(target.value);
+        target.value.innerHTML = props.diagram.svg;
+        props.diagram.bind?.(target.value);
       }
     };
     onMounted(install);
-    watch(() => [props.state.svg, props.state.bind], install, { flush: 'post' });
+    watch(() => props.diagram, install, { flush: 'post' });
     return () => h('div', { ref: target, class: 'aimd-diagram-viewport' });
   },
 });
+/** Draws what core's `createDiagramController` publishes; the render policy is documented there. */
 export function createMermaidRenderer(interval = 300) {
   interval = Number.isFinite(interval) && interval >= 0 ? interval : 300;
   return defineComponent({
@@ -42,35 +44,36 @@ export function createMermaidRenderer(interval = 300) {
       language: String,
     },
     setup(props) {
-      const state = ref<DiagramState>({ status: 'loading', svg: '' });
+      const state = shallowRef<DiagramState>({ view: { kind: 'source' }, loadFailed: false });
       const controller = createDiagramController(loadMermaid, (next) => {
         state.value = next;
       });
-      const update = () =>
-        controller.update({
-          code: props.code,
-          dark: props.colorScheme === 'dark',
-          streaming: props.streaming,
-          active: props.active,
-          resetKey: props.resetKey,
-          interval,
-        });
-      watch(() => [props.code, props.colorScheme, props.streaming, props.active, props.resetKey], update, {
-        immediate: true,
-      });
+      watch(
+        () => [props.code, props.colorScheme, props.streaming, props.active],
+        () =>
+          controller.update({
+            code: props.code,
+            dark: props.colorScheme === 'dark',
+            streaming: props.streaming,
+            active: props.active,
+            interval,
+          }),
+        { immediate: true }
+      );
       onBeforeUnmount(() => controller.dispose());
-      return () =>
-        h('div', { class: 'aimd-diagram', 'aria-busy': state.value.status === 'loading' }, [
-          state.value.svg && h(DiagramViewport, { state: state.value }),
-          state.value.status === 'loading' &&
-            !state.value.svg &&
-            h('p', { role: 'status' }, props.streaming ? 'Waiting for diagram…' : 'Rendering diagram…'),
-          state.value.status === 'error' &&
+      return () => {
+        const { view, loadFailed } = state.value;
+        const waiting = view.kind === 'source' && !loadFailed;
+        return h('div', { class: 'aimd-diagram', 'aria-busy': waiting }, [
+          view.kind === 'diagram' && h(DiagramViewport, { diagram: view }),
+          waiting && h('p', { role: 'status' }, props.streaming ? 'Waiting for diagram…' : 'Rendering diagram…'),
+          (view.kind === 'error' || loadFailed) &&
             h('div', { role: 'alert' }, [
-              h('p', state.value.error),
-              h('button', { type: 'button', onClick: update }, 'Retry diagram'),
+              h('p', view.kind === 'error' ? view.message : 'Diagram engine could not load.'),
+              h('button', { type: 'button', onClick: () => controller.retry() }, 'Retry diagram'),
             ]),
         ]);
+      };
     },
   });
 }

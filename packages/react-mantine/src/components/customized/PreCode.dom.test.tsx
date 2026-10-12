@@ -16,7 +16,13 @@ import hljs from 'highlight.js';
 import MantineAIMarkdown from '../../MantineAIMarkdown';
 import { MantineLanguageFormat } from '../../defs';
 import { createMountHarness, flushEffects, installMantineDomStubs } from './domTestHarness';
-import * as jsonFormatting from './formatJson';
+import { prettyPrintJson } from '@ai-markdown/core/components';
+
+// The formatter lives in the shared core; wrap it so the test can count calls.
+vi.mock('@ai-markdown/core/components', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@ai-markdown/core/components')>();
+  return { ...actual, prettyPrintJson: vi.fn(actual.prettyPrintJson) };
+});
 
 /** Module constant: the group is compared by value. */
 const SHIKI_FORMAT = { languageFormat: MantineLanguageFormat.Shiki };
@@ -31,7 +37,7 @@ afterEach(async () => {
 
 test('JSON formatting follows displayed frames; replacement and completion bypass throttling', async () => {
   vi.useFakeTimers();
-  const format = vi.spyOn(jsonFormatting, 'prettyPrintJson');
+  const format = vi.mocked(prettyPrintJson);
   const adapter: CodeHighlightAdapter = {
     getHighlighter:
       () =>
@@ -149,4 +155,26 @@ describe('language auto-detection across a stream (client render)', () => {
     await harness.update(<MantineAIMarkdown content={fence(RUST)} codeBlock={AUTODETECT} />);
     expect(tabLabel(container)).toBe('rust');
   });
+});
+
+// hast code text ends with a newline, so a chunk that stops in the middle of a line is an append
+// only when that newline is ignored. A plain prefix test read it as a replacement and flushed.
+test('mid-line chunks are throttled like any other append', async () => {
+  let calls = 0;
+  const adapter: CodeHighlightAdapter = {
+    getHighlighter:
+      () =>
+      ({ code }) => (calls++, { highlightedCode: code, isHighlighted: false }),
+  };
+  const codeBlock = { highlightIntervalMs: 60_000 };
+  const full = '```js\n' + Array.from({ length: 12 }, (_, i) => `const value${i} = compute(${i});\n`).join('');
+  const view = (content: string) => <MantineAIMarkdown content={content} streaming codeBlock={codeBlock} />;
+  await harness.mount(view(full.slice(0, 10)), adapter);
+  const before = calls;
+  let frames = 0;
+  for (let end = 14; end < full.length + 4; end += 4, frames++) {
+    await harness.update(view(full.slice(0, Math.min(end, full.length))));
+  }
+  expect(frames).toBeGreaterThan(60);
+  expect(calls - before).toBeLessThan(3);
 });

@@ -3,14 +3,21 @@
 // stub that mirrors that replace semantics, and check that host keys
 // survive, that `sandbox` is not downgraded, that `loose` is upgraded, and
 // that `initialize` is not called when nothing needs to change.
-import type { MermaidConfig } from 'mermaid';
 import { beforeEach, describe, expect, test, vi } from 'vitest';
 import {
   ensureMermaidInitialized,
   getMermaidMaxTextSize,
   MERMAID_DEFAULT_MAX_TEXT_SIZE,
   resetMermaidInitializationForTests,
-} from './initialize';
+  type MermaidInitTarget,
+} from './mermaid';
+
+// core does not depend on mermaid, so the stub config is typed here: the keys the
+// initializer reads, plus the host keys these tests pass through it.
+type MermaidConfig = Omit<Parameters<MermaidInitTarget['initialize']>[0], 'themeVariables'> & {
+  themeVariables?: Record<string, unknown>;
+  [key: string]: unknown;
+};
 
 const DEFAULT_FONT = '"trebuchet ms", verdana, arial, sans-serif';
 
@@ -38,7 +45,7 @@ function createMermaidStub(hostConfig: MermaidConfig, { withSiteConfig = true } 
       themeVariables: { ...defaults().themeVariables, ...(conf.themeVariables ?? {}) },
     };
     if (conf.fontFamily && !conf.themeVariables?.fontFamily) {
-      site.themeVariables.fontFamily = conf.fontFamily;
+      site.themeVariables!.fontFamily = conf.fontFamily;
     }
   });
   const copy = () => ({ ...site, themeVariables: { ...site.themeVariables } });
@@ -129,9 +136,9 @@ describe('ensureMermaidInitialized', () => {
     const mermaid = createMermaidStub({ themeVariables: { fontFamily: 'Inter', primaryColor: '#ececff' } });
     ensureMermaidInitialized(mermaid, true);
     expect(mermaid.site.theme).toBe('dark');
-    expect(mermaid.site.themeVariables.edgeLabelBackground).toBe('#444444');
+    expect(mermaid.site.themeVariables!.edgeLabelBackground).toBe('#444444');
     // The stub's "computed" dark variables carry a marker so a leak is visible.
-    mermaid.site.themeVariables.primaryColor = '#1f2020';
+    mermaid.site.themeVariables!.primaryColor = '#1f2020';
     ensureMermaidInitialized(mermaid, false);
     expect(mermaid.initialize).toHaveBeenCalledTimes(2);
     const passed = mermaid.initialize.mock.calls[1][0];

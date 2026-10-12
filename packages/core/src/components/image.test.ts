@@ -19,8 +19,20 @@ describe('image gallery lifecycle', () => {
     expect(gallery.items().map((entry) => entry.id)).toEqual([first, middle, last]);
     expect(getImageGallery(scope)).toBe(gallery);
     expect(getImageGallery({}).items()).toEqual([]);
+    expect(gallery.size()).toBe(3);
+    // The order is cached until membership changes, so a reader sees one stable array.
+    const cached = gallery.items();
     first.order = 4;
-    expect(gallery.items().map((entry) => entry.id)).toEqual([middle, last, first]);
+    expect(gallery.items()).toBe(cached);
+    gallery.set(item({ order: 0 }, 'leading'));
+    expect(gallery.size()).toBe(4);
+    expect(gallery.items().map((entry) => entry.src)).toEqual(['leading', 'photo', 'photo', 'photo']);
+    expect(gallery.items().map((entry) => entry.id)).toEqual([
+      expect.objectContaining({ order: 0 }),
+      middle,
+      last,
+      first,
+    ]);
   });
   it('notifies changes without re-emitting unchanged loads and removes departed images', () => {
     const gallery = getImageGallery({}),
