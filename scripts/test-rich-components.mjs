@@ -117,6 +117,10 @@ try {
   await page.goto(url);
   // The default skin is replaceable through CSS in every adapter.
   await page.addStyleTag({ content: '.aimd-image-preview { z-index: 1500; }' });
+  // A page that scrolls on its root element, the case a lock on the body alone does not cover.
+  await page.addStyleTag({
+    content: 'html { overflow-y: scroll; } body::after { content: ""; display: block; height: 3000px; }',
+  });
   for (const framework of ['react', 'vue']) {
     console.log(`Checking ${framework} rich components`);
     const root = page.locator(`#${framework}`);
@@ -148,6 +152,17 @@ try {
       await page.evaluate(() => getComputedStyle(document.body).overflowY),
       'hidden',
       'preview locks background scrolling'
+    );
+    // The page is tall and its root element is the scroller: neither a wheel over the mask nor a scroll key moves it.
+    const scrollBefore = await page.evaluate(() => window.scrollY);
+    await page.mouse.move(5, 5);
+    await page.mouse.wheel(0, 600);
+    await page.keyboard.press('PageDown');
+    await page.waitForTimeout(150);
+    check(
+      await page.evaluate(() => [window.scrollY, getComputedStyle(document.documentElement).overflowY]),
+      [scrollBefore, 'hidden'],
+      'the page behind does not scroll under the preview'
     );
     await page.locator('.aimd-image-preview-img').waitFor({ state: 'visible' });
     check(await page.getByRole('button', { name: 'Zoom out', exact: true }).isDisabled(), true, 'minimum zoom is 1x');

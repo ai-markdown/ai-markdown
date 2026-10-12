@@ -1,13 +1,13 @@
 // Generated from the built public declaration. Review changes before updating.
 import { MantineCodeBlockOptions } from "./defs-chunk.js";
 import { CodeRendererInput, MarkdownCodeBlockOptions, MarkdownCodeBlockProps, MarkdownCodeBlockProps as MarkdownCodeBlockProps$1 } from "@ai-markdown/react/components/code/plain";
-import { ImageIconName, ImageIconProps, ImageLabels, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, createMarkdownImage } from "@ai-markdown/react/components/image";
+import { ImageIconName, ImageIconProps, ImageLabels, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImagePreviewOptions, createMarkdownImage } from "@ai-markdown/react/components/image";
 import { MarkdownTable, MarkdownTableOptions, TableLabels, createMarkdownTable } from "@ai-markdown/react/components/table";
 interface MantineMarkdownCodeBlockOptions extends Omit<MarkdownCodeBlockOptions, 'highlight' | 'labels'>, Partial<MantineCodeBlockOptions> {
 }
 export declare function createMarkdownCodeBlock(options?: MantineMarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps$1) => import("react").JSX.Element;
 export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps$1) => import("react").JSX.Element;
-export { type CodeRendererInput, type ImageIconName, type ImageIconProps, type ImageLabels, type MantineMarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, MarkdownTable, type MarkdownTableOptions, type TableLabels, createMarkdownImage, createMarkdownTable };
+export { type CodeRendererInput, type ImageIconName, type ImageIconProps, type ImageLabels, type MantineMarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImagePreviewOptions, MarkdownTable, type MarkdownTableOptions, type TableLabels, createMarkdownImage, createMarkdownTable };
 
 // Relative declaration: dist/defs-chunk.d.ts
 import { AIMarkdownMetadata } from "@ai-markdown/react";

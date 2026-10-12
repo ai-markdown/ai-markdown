@@ -1,4 +1,5 @@
-import { useImagePreview } from './imagePreview';
+import { useImagePreview, type MarkdownImagePreviewOptions } from './imagePreview';
+export type { MarkdownImagePreviewOptions } from './imagePreview';
 import {
   defineComponent,
   h,
@@ -33,7 +34,9 @@ export interface MarkdownImageOptions {
   icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
   /** Images of one document form a gallery. A selector groups by the nearest matching ancestor instead; false disables grouping. */
   group?: string | false;
-  preview?: boolean;
+  /** False offers no preview. An object configures it: zoom limits and step, `movable`, `wheel`, and the
+   * `onOpenChange`, `afterOpenChange`, `onChange` and `onTransform` callbacks. */
+  preview?: boolean | MarkdownImagePreviewOptions;
   /** Text of the thumbnail and the preview, as overrides of the English defaults. A function is read on every render. */
   labels?: LabelsOption<ImageLabels>;
 }
@@ -66,9 +69,11 @@ function icon(name: ImageIconName, icons?: MarkdownImageOptions['icons']) {
 export function createMarkdownImage({
   icons,
   group,
-  preview: allowPreview = true,
+  preview: previewOption = true,
   labels: configuredLabels,
 }: MarkdownImageOptions = {}): DefineComponent<MarkdownComponentProps> {
+  const allowPreview = previewOption !== false;
+  const previewOptions = typeof previewOption === 'object' ? previewOption : undefined;
   return defineComponent({
     name: 'MarkdownImage',
     inheritAttrs: false,
@@ -87,6 +92,7 @@ export function createMarkdownImage({
       const preview = useImagePreview({
         renderIcon: (name) => icon(name, icons),
         labels: () => resolveLabels(defaultImageLabels, configuredLabels),
+        preview: previewOptions,
         onClosed: () => trigger.value?.focus(),
       });
       let observer: MutationObserver | undefined;

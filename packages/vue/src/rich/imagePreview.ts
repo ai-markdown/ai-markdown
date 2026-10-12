@@ -7,8 +7,12 @@ import {
   type ImageGallery,
   type ImageIconName,
   type ImageLabels,
+  type ImagePreviewOptions,
   type ImagePreviewState,
 } from '@ai-markdown/core/components';
+
+/** Zoom limits, switches and callbacks of the preview. */
+export type MarkdownImagePreviewOptions = Omit<ImagePreviewOptions, 'closeDuration'>;
 
 const prefix = 'aimd-image-preview';
 /** Centre of a thumbnail in the viewport, or nothing when it is detached, hidden or out of view. */
@@ -19,6 +23,13 @@ const thumbnailAnchor = (id: object) => {
     y = box.top + box.height / 2;
   if (!box.width || !box.height || x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) return;
   return { x, y };
+};
+/** Stops the page behind the preview: the root element and the body both, since either can be the scroller.
+ * The body is padded by the scrollbar that disappears, so the page keeps its width. */
+const lockPageScroll = () => {
+  const scrollbar = window.innerWidth - document.documentElement.clientWidth;
+  const releases = [lockImagePreviewScroll(document.documentElement), lockImagePreviewScroll(document.body, scrollbar)];
+  return () => releases.forEach((release) => release());
 };
 /** Focus is outside the dialog, or on a button that has just been disabled, which receives no key events. */
 const lostFocus = (dialog: HTMLElement | undefined | null) => {
@@ -36,6 +47,8 @@ const TOOLBAR = ['flipY', 'flipX', 'rotateLeft', 'rotateRight', 'zoomOut', 'zoom
 export function useImagePreview(options: {
   renderIcon: (name: ImageIconName) => VNodeChild;
   labels: () => ImageLabels;
+  /** Zoom limits, switches and callbacks, as given to the factory. */
+  preview?: MarkdownImagePreviewOptions;
   /** The dialog is gone: return focus to what opened it. */
   onClosed: () => void;
 }) {
@@ -66,7 +79,10 @@ export function useImagePreview(options: {
       state.value = next;
     },
     // No leaving transition to wait for when the user asked for less motion.
-    { closeDuration: () => (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 300) }
+    {
+      ...options.preview,
+      closeDuration: () => (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ? 0 : 300),
+    }
   );
   state.value = controller.state();
   let release: (() => void) | undefined;
@@ -76,7 +92,7 @@ export function useImagePreview(options: {
       const modal = dialog.value;
       if (phase === 'opening' && modal) {
         if (!modal.open) modal.showModal();
-        release ??= lockImagePreviewScroll(document.body, window.innerWidth - document.documentElement.clientWidth);
+        release ??= lockPageScroll();
         modal.focus();
       } else if (phase === 'closed' && previous !== 'closed') {
         release?.();
@@ -134,7 +150,7 @@ export function useImagePreview(options: {
             'dialog',
             {
               ref: dialog,
-              class: [prefix, `${prefix}-movable`, moving && `${prefix}-moving`],
+              class: [prefix, state.value.movable && `${prefix}-movable`, moving && `${prefix}-moving`],
               'data-phase': phase,
               'aria-label': item.alt || labels.preview,
               'aria-modal': 'true',
@@ -148,6 +164,9 @@ export function useImagePreview(options: {
               onKeydown: (event: KeyboardEvent) => {
                 if (controller.key(event.key)) event.preventDefault();
               },
+              // Nothing inside the preview scrolls, so a wheel or a touch the image did not use must not reach the page.
+              onWheel: (event: WheelEvent) => event.preventDefault(),
+              onTouchmove: (event: TouchEvent) => event.preventDefault(),
             },
             [
               h('div', { class: `${prefix}-mask`, onClick: () => controller.close() }),

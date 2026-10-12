@@ -204,12 +204,15 @@ interface ImageGeometry {
 }
 export declare const initialImageTransform: () => ImageTransform;
 export declare function imageTransformStyle(transform: ImageTransform): string;
-export declare function zoomImage(transform: ImageTransform, ratio: number, geometry: ImageGeometry, centerX?: number, centerY?: number, touch?: boolean): ImageTransform;
-export declare function imageWheelRatio(delta: number, mode?: number, pinch?: boolean): number;
+export declare function zoomImage(transform: ImageTransform, ratio: number, geometry: ImageGeometry, centerX?: number, centerY?: number, touch?: boolean, limits?: {
+    min: number;
+    max: number;
+}): ImageTransform;
+export declare function imageWheelRatio(delta: number, mode?: number, pinch?: boolean, step?: number): number;
 export declare function reboundImage(transform: ImageTransform, geometry: ImageGeometry, bounds: {
     left: number;
     top: number;
-}): ImageTransform;
+}, minScale?: number): ImageTransform;
 export declare function imagePinchCenter(oldA: {
     x: number;
     y: number;
@@ -235,6 +238,7 @@ interface ImagePreviewState {
     transform: ImageTransform;
     status: ImageLoadStatus;
     moving: boolean;
+    movable: boolean;
     origin: {
         x: number;
         y: number;
@@ -254,7 +258,23 @@ interface ImagePreviewHost {
 }
 interface ImagePreviewOptions {
     closeDuration?: number | (() => number);
+    scaleStep?: number;
+    minScale?: number;
+    maxScale?: number;
+    movable?: boolean;
+    wheel?: boolean;
+    onOpenChange?(open: boolean, info: {
+        current: number;
+        item: ImageGalleryItem | undefined;
+    }): void;
+    afterOpenChange?(open: boolean): void;
+    onChange?(current: number, previous: number): void;
+    onTransform?(info: {
+        transform: ImageTransform;
+        action: ImagePreviewAction;
+    }): void;
 }
+type ImagePreviewAction = 'zoomIn' | 'zoomOut' | 'rotateLeft' | 'rotateRight' | 'flipX' | 'flipY' | 'wheel' | 'doubleClick' | 'move' | 'pinch' | 'rebound' | 'prev' | 'next';
 interface ImagePointer {
     id: number;
     x: number;
@@ -300,4 +320,4 @@ export interface CodeBlockOptions {
     mermaidIntervalMs?: number;
     labels?: LabelsOption<CodeBlockLabels>;
 }
-export type { CodeBlockInput, CodeBlockLabels, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImagePointer, ImagePreviewHost, ImagePreviewOptions, ImagePreviewPhase, ImagePreviewState, ImageTransform, LabelsOption, MermaidInitTarget, TableExportReason, TableLabels, TableProjection };
+export type { CodeBlockInput, CodeBlockLabels, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImagePointer, ImagePreviewAction, ImagePreviewHost, ImagePreviewOptions, ImagePreviewPhase, ImagePreviewState, ImageTransform, LabelsOption, MermaidInitTarget, TableExportReason, TableLabels, TableProjection };

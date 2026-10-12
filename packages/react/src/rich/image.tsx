@@ -10,7 +10,8 @@ import {
   type ReactNode,
 } from 'react';
 import { useAIMarkdownDocument, useAIMarkdownTheme } from '@ai-markdown/react';
-import { useImagePreview } from './imagePreview';
+import { useImagePreview, type MarkdownImagePreviewOptions } from './imagePreview';
+export type { MarkdownImagePreviewOptions } from './imagePreview';
 const subscribeClient = () => () => {};
 const clientSnapshot = () => true;
 const serverSnapshot = () => false;
@@ -37,7 +38,9 @@ export interface MarkdownImageOptions {
   icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
   /** Images of one document form a gallery. A selector groups by the nearest matching ancestor instead; false disables grouping. */
   group?: string | false;
-  preview?: boolean;
+  /** False offers no preview. An object configures it: zoom limits and step, `movable`, `wheel`, and the
+   * `onOpenChange`, `afterOpenChange`, `onChange` and `onTransform` callbacks. */
+  preview?: boolean | MarkdownImagePreviewOptions;
   /** Text of the thumbnail and the preview, as overrides of the English defaults. A function is called at a fixed place in every render, so it may call hooks. */
   labels?: LabelsOption<ImageLabels>;
 }
@@ -81,9 +84,11 @@ function ImageIcon({ name, icons }: { name: ImageIconName; icons?: MarkdownImage
 export function createMarkdownImage({
   icons,
   group,
-  preview: allowPreview = true,
+  preview: previewOption = true,
   labels: configuredLabels,
 }: MarkdownImageOptions = {}) {
+  const allowPreview = previewOption !== false;
+  const previewOptions = typeof previewOption === 'object' ? previewOption : undefined;
   return function MarkdownImage({ node: _node, ...props }: MarkdownImageProps) {
     const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
     const { colorScheme } = useAIMarkdownTheme();
@@ -100,6 +105,7 @@ export function createMarkdownImage({
     const preview = useImagePreview({
       renderIcon: (name) => <ImageIcon name={name} icons={icons} />,
       labels,
+      preview: previewOptions,
       onClosed: () => trigger.current?.focus(),
     });
     const closePreview = preview.close;

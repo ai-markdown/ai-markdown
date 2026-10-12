@@ -31,6 +31,8 @@ export interface ImagePreviewState {
   status: ImageLoadStatus;
   /** A drag or a pinch is in progress: the image follows the pointer without a transition. */
   moving: boolean;
+  /** The image can be dragged and pinched (the `movable` option). */
+  movable: boolean;
   /** Viewport point the preview grows out of and shrinks back into: the anchor of the image shown when it opened,
    * then of the image shown when it closes. Undefined means the centre of the viewport. */
   origin: { x: number; y: number } | undefined;
@@ -55,7 +57,42 @@ export interface ImagePreviewOptions {
   /** How long the leaving style stays up, in milliseconds. Zero closes at once. A function is read at each close,
    * so a host can answer zero while the user prefers reduced motion. Default 300. */
   closeDuration?: number | (() => number);
+  /** What one zoom step adds to the scale factor: the toolbar, a double click and a full wheel notch multiply or
+   * divide by `1 + scaleStep`. Default 0.5. */
+  scaleStep?: number;
+  /** Smallest scale the toolbar and the wheel reach, and the one a pinch returns to. Default 1. */
+  minScale?: number;
+  /** Largest scale. Default 50. */
+  maxScale?: number;
+  /** Whether the image can be dragged and pinched. Default true. */
+  movable?: boolean;
+  /** Whether the wheel and a trackpad pinch zoom. Default true. */
+  wheel?: boolean;
+  /** The preview started to open (true) or to close (false). */
+  onOpenChange?(open: boolean, info: { current: number; item: ImageGalleryItem | undefined }): void;
+  /** The opening or closing has finished. */
+  afterOpenChange?(open: boolean): void;
+  /** The user moved to another image of the gallery. */
+  onChange?(current: number, previous: number): void;
+  /** The transform changed. A drag or a wheel burst reports once per frame, with the last action. */
+  onTransform?(info: { transform: ImageTransform; action: ImagePreviewAction }): void;
 }
+
+/** What changed the transform, as reported to `onTransform`. */
+export type ImagePreviewAction =
+  | 'zoomIn'
+  | 'zoomOut'
+  | 'rotateLeft'
+  | 'rotateRight'
+  | 'flipX'
+  | 'flipY'
+  | 'wheel'
+  | 'doubleClick'
+  | 'move'
+  | 'pinch'
+  | 'rebound'
+  | 'prev'
+  | 'next';
 
 export interface ImagePointer {
   /** Pointer id: one drag, or one finger of a pinch. */
@@ -66,9 +103,9 @@ export interface ImagePointer {
   button?: number;
 }
 
-const ZOOM_STEP = 1.5;
-const MAX_SCALE = 50;
 const CLOSE_MS = 300;
+const positive = (value: unknown, fallback: number) =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
 
 const closedState: ImagePreviewState = Object.freeze({
   phase: 'closed',
@@ -78,6 +115,7 @@ const closedState: ImagePreviewState = Object.freeze({
   transform: initialImageTransform(),
   status: 'loading',
   moving: false,
+  movable: true,
   origin: undefined,
   canPrevious: false,
   canNext: false,
@@ -103,14 +141,22 @@ const closedState: ImagePreviewState = Object.freeze({
  *   else is published at once. Each update is applied to the current state, so
  *   several in one frame add up.
  * - Switching images resets the transform. Zoom is limited to 1x to 50x in
- *   1.5x steps, about the pointer for the wheel and a double click, about the
- *   viewport centre for the toolbar.
+ *   1.5x steps unless the options say otherwise, about the pointer for the
+ *   wheel and a double click, about the viewport centre for the toolbar.
+ * - The `on…` options report what the user did; they are called after the
+ *   state that reflects it has been published.
  */
 export function createImagePreviewController(
   host: ImagePreviewHost,
   publish: (state: ImagePreviewState) => void,
   options: ImagePreviewOptions = {}
 ) {
+  const limits = { min: positive(options.minScale, 1), max: 0 };
+  limits.max = Math.max(limits.min, positive(options.maxScale, 50));
+  const scaleStep = positive(options.scaleStep, 0.5);
+  const movable = options.movable ?? true;
+  const wheelZoom = options.wheel ?? true;
+
   let phase: ImagePreviewPhase = 'closed';
   let items: readonly ImageGalleryItem[] = [];
   let selected: object | undefined;
@@ -143,23 +189,46 @@ export function createImagePreviewController(
       transform,
       status,
       moving,
+      movable,
       origin,
       canPrevious: current > 0,
       canNext: current < items.length - 1,
-      canZoomIn: ready && transform.scale < MAX_SCALE,
-      canZoomOut: ready && transform.scale > 1,
+      canZoomIn: ready && transform.scale < limits.max,
+      canZoomOut: ready && transform.scale > limits.min,
     };
+  };
+  /** The action behind a transform change that has not been reported yet. */
+  let reported: ImagePreviewAction | undefined;
+  /** Publishes, then tells the listener about a transform the state now shows. */
+  const flush = () => {
+    publish(snapshot());
+    const action = reported;
+    reported = undefined;
+    if (action) options.onTransform?.({ transform, action });
   };
   const emit = () => {
     cancelPublish?.();
     cancelPublish = undefined;
-    publish(snapshot());
+    flush();
   };
   const emitNextFrame = () => {
     cancelPublish ??= host.frame(() => {
       cancelPublish = undefined;
-      publish(snapshot());
+      flush();
     });
+  };
+  /** Sets the transform for a user action. An equal transform is not a change and is not reported. */
+  const apply = (next: ImageTransform, action: ImagePreviewAction) => {
+    const same =
+      next.x === transform.x &&
+      next.y === transform.y &&
+      next.scale === transform.scale &&
+      next.rotate === transform.rotate &&
+      next.flipX === transform.flipX &&
+      next.flipY === transform.flipY;
+    if (same) return;
+    transform = next;
+    reported = action;
   };
   const endGesture = () => {
     pointers.clear();
@@ -173,15 +242,15 @@ export function createImagePreviewController(
     status = 'loading';
     endGesture();
   };
-  const zoom = (ratio: number, x?: number, y?: number, touch = false) => {
+  const zoom = (action: ImagePreviewAction, ratio: number, x?: number, y?: number, touch = false) => {
     const box = host.geometry();
-    if (box && status === 'ready') transform = zoomImage(transform, ratio, box, x, y, touch);
+    if (box && status === 'ready') apply(zoomImage(transform, ratio, box, x, y, touch, limits), action);
   };
   /** Where the transformed image sits, from the numbers alone: the page may not have drawn the latest transform yet. */
   const rebound = () => {
-    // Below the natural size the image goes back to it, measured or not.
-    if (transform.scale < 1) {
-      transform = { ...transform, x: 0, y: 0, scale: 1 };
+    // Below the smallest size the image goes back to it, measured or not.
+    if (transform.scale < limits.min) {
+      apply({ ...transform, x: 0, y: 0, scale: limits.min }, 'rebound');
       return;
     }
     const box = host.geometry();
@@ -189,10 +258,18 @@ export function createImagePreviewController(
     const turned = transform.rotate % 180 !== 0;
     const width = (turned ? box.height : box.width) * transform.scale;
     const height = (turned ? box.width : box.height) * transform.scale;
-    transform = reboundImage(transform, box, {
-      left: box.left + box.width / 2 + transform.x - width / 2,
-      top: box.top + box.height / 2 + transform.y - height / 2,
-    });
+    apply(
+      reboundImage(
+        transform,
+        box,
+        {
+          left: box.left + box.width / 2 + transform.x - width / 2,
+          top: box.top + box.height / 2 + transform.y - height / 2,
+        },
+        limits.min
+      ),
+      'rebound'
+    );
   };
   const anchorOf = (id: object) => {
     const point = host.anchor?.(id);
@@ -206,6 +283,7 @@ export function createImagePreviewController(
     origin = undefined;
     current = -1;
     emit();
+    options.afterOpenChange?.(false);
   };
   const close = () => {
     if (phase === 'closed' || phase === 'closing') return;
@@ -217,20 +295,31 @@ export function createImagePreviewController(
     // Back into the thumbnail of the image on screen now, which may not be the one that opened the preview.
     origin = selected ? anchorOf(selected) : undefined;
     phase = 'closing';
+    const info = { current, item: items[current] };
     const duration =
       typeof options.closeDuration === 'function' ? options.closeDuration() : (options.closeDuration ?? CLOSE_MS);
     if (duration > 0) {
       emit();
+      options.onOpenChange?.(false, info);
       closeTimer = setTimeout(finishClosing, duration);
-    } else finishClosing();
+    } else {
+      options.onOpenChange?.(false, info);
+      finishClosing();
+    }
   };
   const go = (delta: number) => {
     const target = current + delta;
     if (phase === 'closed' || phase === 'closing' || target < 0 || target >= items.length || target === current) return;
+    const previous = current;
+    const { x, y, scale, rotate, flipX, flipY } = transform;
+    const transformed = x !== 0 || y !== 0 || scale !== 1 || rotate !== 0 || flipX || flipY;
     current = target;
     selected = items[target].id;
     startImage();
+    // The new image starts from a clean view; that is a transform change when the old one was not clean.
+    if (transformed) reported = delta < 0 ? 'prev' : 'next';
     emit();
+    options.onChange?.(current, previous);
   };
   /** The gallery changed: keep showing the same image at its new index, or close when it is gone. */
   const follow = (gallery: ImageGallery) => {
@@ -266,14 +355,18 @@ export function createImagePreviewController(
         return true;
       }
       cancelOpening = undefined;
+      // Restarting an opening that is under way is not a second opening.
+      const starting = phase !== 'opening';
       phase = 'opening';
       emit();
+      if (starting) options.onOpenChange?.(true, { current, item: items[current] });
       // Two frames: the first paints the starting style, the second may leave it.
       cancelOpening = host.frame(() => {
         cancelOpening = host.frame(() => {
           cancelOpening = undefined;
           phase = 'open';
           emit();
+          options.afterOpenChange?.(true);
         });
       });
       return true;
@@ -288,12 +381,12 @@ export function createImagePreviewController(
       if (name === 'prev') return go(-1);
       if (name === 'next') return go(1);
       if (status !== 'ready') return;
-      if (name === 'zoomIn') zoom(ZOOM_STEP);
-      else if (name === 'zoomOut') zoom(1 / ZOOM_STEP);
-      else if (name === 'rotateLeft') transform = { ...transform, rotate: transform.rotate - 90 };
-      else if (name === 'rotateRight') transform = { ...transform, rotate: transform.rotate + 90 };
-      else if (name === 'flipX') transform = { ...transform, flipX: !transform.flipX };
-      else if (name === 'flipY') transform = { ...transform, flipY: !transform.flipY };
+      if (name === 'zoomIn') zoom(name, 1 + scaleStep);
+      else if (name === 'zoomOut') zoom(name, 1 / (1 + scaleStep));
+      else if (name === 'rotateLeft') apply({ ...transform, rotate: transform.rotate - 90 }, name);
+      else if (name === 'rotateRight') apply({ ...transform, rotate: transform.rotate + 90 }, name);
+      else if (name === 'flipX') apply({ ...transform, flipX: !transform.flipX }, name);
+      else if (name === 'flipY') apply({ ...transform, flipY: !transform.flipY }, name);
       emit();
     },
     /** The image shown finished loading, or failed to. */
@@ -310,7 +403,7 @@ export function createImagePreviewController(
     },
     /** True when the pointer now takes part in a gesture: capture it and prevent the default action. */
     pointerDown(pointer: ImagePointer): boolean {
-      if ((phase !== 'open' && phase !== 'opening') || status !== 'ready') return false;
+      if (!movable || (phase !== 'open' && phase !== 'opening') || status !== 'ready') return false;
       if (pointer.button !== undefined && pointer.button !== 0) return false;
       // A third finger is ignored: the pinch stays with the first two.
       if (pointers.size >= 2 && !pointers.has(pointer.id)) return false;
@@ -329,8 +422,8 @@ export function createImagePreviewController(
         const [a, b] = [...pointers.values()];
         const span = Math.hypot(before[0].x - before[1].x, before[0].y - before[1].y);
         const center = imagePinchCenter(before[0], before[1], a, b);
-        if (span > 0) zoom(Math.hypot(a.x - b.x, a.y - b.y) / span, center.x, center.y, true);
-      } else if (grip) transform = { ...transform, x: pointer.x - grip.x, y: pointer.y - grip.y };
+        if (span > 0) zoom('pinch', Math.hypot(a.x - b.x, a.y - b.y) / span, center.x, center.y, true);
+      } else if (grip) apply({ ...transform, x: pointer.x - grip.x, y: pointer.y - grip.y }, 'move');
       displaced = true;
       emitNextFrame();
     },
@@ -351,16 +444,16 @@ export function createImagePreviewController(
     /** True when the wheel zoomed: prevent the default action. `mode` is `WheelEvent.deltaMode`; `pinch` is a
      * trackpad pinch, which browsers report as a wheel event with the control key set. */
     wheel(input: { deltaY: number; x: number; y: number; mode?: number; pinch?: boolean }): boolean {
-      if (phase !== 'open' || status !== 'ready' || !input.deltaY) return false;
-      zoom(imageWheelRatio(input.deltaY, input.mode, input.pinch), input.x, input.y);
+      if (!wheelZoom || phase !== 'open' || status !== 'ready' || !input.deltaY) return false;
+      zoom('wheel', imageWheelRatio(input.deltaY, input.mode, input.pinch, scaleStep), input.x, input.y);
       emitNextFrame();
       return true;
     },
     /** Returns to the natural size, or zooms one step about the point when already there. */
     doubleClick(x: number, y: number): void {
       if (phase !== 'open' || status !== 'ready') return;
-      if (transform.scale !== 1) transform = { ...transform, x: 0, y: 0, scale: 1 };
-      else zoom(ZOOM_STEP, x, y);
+      if (transform.scale !== 1) apply({ ...transform, x: 0, y: 0, scale: 1 }, 'doubleClick');
+      else zoom('doubleClick', 1 + scaleStep, x, y);
       emit();
     },
     /** True when the key was used: prevent the default action. Left and right move through a gallery. */

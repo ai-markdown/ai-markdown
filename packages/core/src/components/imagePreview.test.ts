@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest';
 import { getImageGallery, type ImageGalleryItem } from './image';
-import { createImagePreviewController, type ImagePreviewState } from './imagePreview';
+import { createImagePreviewController, type ImagePreviewOptions, type ImagePreviewState } from './imagePreview';
 import type { ImageGeometry } from './imageTransform';
 
 beforeEach(() => vi.useFakeTimers());
@@ -10,7 +10,7 @@ afterEach(() => vi.useRealTimers());
 const BOX: ImageGeometry = { width: 600, height: 400, left: 200, top: 200, viewportWidth: 1000, viewportHeight: 800 };
 
 /** A page: a gallery of images in insertion order, a frame queue run by hand, and the states published. */
-function page(count = 3, closeDuration?: number | (() => number)) {
+function page(count = 3, closeDuration?: number | (() => number), options: ImagePreviewOptions = {}) {
   const order: object[] = [];
   const gallery = getImageGallery({});
   const add = (name: string): ImageGalleryItem => {
@@ -42,7 +42,7 @@ function page(count = 3, closeDuration?: number | (() => number)) {
       },
     },
     (state) => states.push(state),
-    { closeDuration }
+    { closeDuration, ...options }
   );
   /** Runs the frames queued so far; frames they queue wait for the next call. */
   const frame = () => {
@@ -504,5 +504,148 @@ describe('wheel and double click', () => {
     controller.action('zoomIn');
     controller.wheel({ deltaY: -100, x: 1, y: 1 });
     expect(state().transform.scale).toBe(1);
+  });
+});
+
+describe('options', () => {
+  test('scaleStep sets the step of the toolbar, the double click and a wheel notch', () => {
+    const { controller, show, state } = page(1, 0, { scaleStep: 1 });
+    show();
+    controller.action('zoomIn');
+    expect(state().transform.scale).toBe(2);
+    controller.action('zoomOut');
+    expect(state().transform.scale).toBe(1);
+    controller.wheel({ deltaY: -100, x: 500, y: 400 });
+    expect(state().transform.scale).toBe(2);
+    controller.doubleClick(500, 400);
+    controller.doubleClick(500, 400);
+    expect(state().transform.scale).toBe(2);
+  });
+
+  test('minScale and maxScale bound the zoom, the buttons, and where a pinch returns to', () => {
+    const { controller, show, state } = page(1, 0, { minScale: 0.5, maxScale: 3 });
+    show();
+    expect(state()).toMatchObject({ canZoomOut: true, canZoomIn: true });
+    controller.action('zoomOut');
+    controller.action('zoomOut');
+    expect(state().transform.scale).toBe(0.5);
+    expect(state().canZoomOut).toBe(false);
+    for (let i = 0; i < 9; i++) controller.action('zoomIn');
+    expect(state().transform.scale).toBe(3);
+    expect(state().canZoomIn).toBe(false);
+    controller.pointerDown({ id: 1, x: 400, y: 400, button: 0 });
+    controller.pointerDown({ id: 2, x: 600, y: 400, button: 0 });
+    controller.pointerMove({ id: 2, x: 410, y: 400 });
+    expect(state().transform.scale).toBeLessThan(0.5);
+    controller.pointerUp(1);
+    controller.pointerUp(2);
+    expect(state().transform).toMatchObject({ scale: 0.5, x: 0, y: 0 });
+  });
+
+  test('values that are not positive numbers fall back to the defaults', () => {
+    const { controller, show, state } = page(1, 0, { scaleStep: 0, minScale: -2, maxScale: Number.NaN });
+    show();
+    controller.action('zoomIn');
+    expect(state().transform.scale).toBe(1.5);
+    expect(state().canZoomOut).toBe(true);
+    for (let i = 0; i < 20; i++) controller.action('zoomIn');
+    expect(state().transform.scale).toBe(50);
+  });
+
+  test('movable: false ignores pointers; wheel: false ignores the wheel; the toolbar still works', () => {
+    const { controller, show, state } = page(1, 0, { movable: false, wheel: false });
+    show();
+    expect(state().movable).toBe(false);
+    expect(controller.pointerDown({ id: 1, x: 500, y: 400, button: 0 })).toBe(false);
+    controller.pointerMove({ id: 1, x: 600, y: 400 });
+    expect(controller.wheel({ deltaY: -100, x: 500, y: 400 })).toBe(false);
+    expect(state()).toMatchObject({ moving: false, transform: { x: 0, scale: 1 } });
+    controller.action('zoomIn');
+    controller.doubleClick(500, 400);
+    expect(state().transform.scale).toBe(1);
+  });
+});
+
+describe('events', () => {
+  const recorder = () => {
+    const log: string[] = [];
+    const options: ImagePreviewOptions = {
+      onOpenChange: (open, info) => log.push(`open:${open}:${info.current}:${info.item?.alt}`),
+      afterOpenChange: (open) => log.push(`after:${open}`),
+      onChange: (current, previous) => log.push(`change:${previous}->${current}`),
+      onTransform: ({ transform, action }) =>
+        log.push(`${action}:${transform.scale}:${transform.x}:${transform.rotate}`),
+    };
+    return { log, options };
+  };
+
+  test('opening, navigating and closing are reported in order, after the state shows them', () => {
+    const { log, options } = recorder();
+    const view = page(3, undefined, options);
+    view.controller.open(view.gallery, view.images[1].id);
+    expect(log).toEqual(['open:true:1:image-1']);
+    view.frame();
+    view.frame();
+    expect(log.at(-1)).toBe('after:true');
+    view.controller.loaded();
+    view.controller.go(1);
+    view.controller.go(1);
+    expect(log.slice(2)).toEqual(['change:1->2']);
+    view.controller.close();
+    expect(log.at(-1)).toBe('open:false:2:image-2');
+    vi.advanceTimersByTime(300);
+    expect(log.at(-1)).toBe('after:false');
+    // Each report came after a published state.
+    expect(view.states.at(-1)?.phase).toBe('closed');
+  });
+
+  test('opening again while opening is one opening', () => {
+    const { log, options } = recorder();
+    const view = page(3, 0, options);
+    view.controller.open(view.gallery, view.images[0].id);
+    view.frame();
+    view.controller.open(view.gallery, view.images[1].id);
+    view.frame();
+    view.frame();
+    expect(log).toEqual(['open:true:0:image-0', 'after:true']);
+  });
+
+  test('each discrete action reports its transform once; an unchanged transform reports nothing', () => {
+    const { log, options } = recorder();
+    const view = page(2, 0, options);
+    view.show();
+    log.length = 0;
+    view.controller.action('zoomIn');
+    view.controller.action('rotateRight');
+    view.controller.action('zoomOut');
+    // Already at the smallest scale: nothing changes, nothing is reported.
+    view.controller.action('zoomOut');
+    view.controller.doubleClick(500, 400);
+    expect(log).toEqual(['zoomIn:1.5:0:0', 'rotateRight:1.5:0:90', 'zoomOut:1:0:90', 'doubleClick:1.5:0:90']);
+  });
+
+  test('a drag and a wheel burst report once per frame, then the rebound and the reset on navigation', () => {
+    const { log, options } = recorder();
+    const view = page(2, 0, options);
+    view.show();
+    log.length = 0;
+    view.controller.pointerDown({ id: 1, x: 500, y: 400, button: 0 });
+    view.controller.pointerMove({ id: 1, x: 510, y: 400 });
+    view.controller.pointerMove({ id: 1, x: 540, y: 400 });
+    expect(log).toEqual([]);
+    view.frame();
+    expect(log).toEqual(['move:1:40:0']);
+    view.controller.pointerUp(1);
+    expect(log.at(-1)).toBe('rebound:1:0:0');
+    view.controller.wheel({ deltaY: -100, x: 500, y: 400 });
+    view.controller.wheel({ deltaY: -100, x: 500, y: 400 });
+    view.frame();
+    expect(log.at(-1)).toBe('wheel:2.25:0:0');
+    log.length = 0;
+    view.controller.go(1);
+    expect(log).toEqual(['next:1:0:0', 'change:0->1']);
+    // The new image is already clean, so going back reports the change of image only.
+    view.controller.go(-1);
+    expect(log.slice(2)).toEqual(['change:1->0']);
   });
 });

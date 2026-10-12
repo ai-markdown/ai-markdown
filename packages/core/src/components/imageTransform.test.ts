@@ -33,6 +33,16 @@ describe('rc-image transform contract', () => {
     expect(imageWheelRatio(0)).toBe(1);
     expect(imageWheelRatio(Number.NaN)).toBe(1);
   });
+  it('takes its limits, its step and its smallest size from the caller', () => {
+    const limits = { min: 0.5, max: 4 };
+    expect(zoomImage(initialImageTransform(), 0.1, box, 500, 400, false, limits).scale).toBe(0.5);
+    expect(zoomImage(initialImageTransform(), 100, box, 500, 400, false, limits).scale).toBe(4);
+    expect(imageWheelRatio(-100, 0, false, 1)).toBe(2);
+    expect(imageWheelRatio(50, 0, false, 1)).toBe(1 / 1.5);
+    expect(imageWheelRatio(-5000, 0, true, 1)).toBe(2);
+    const small = { ...initialImageTransform(), scale: 0.2, x: 30, y: 40 };
+    expect(reboundImage(small, box, { left: 0, top: 0 }, 0.5)).toMatchObject({ scale: 0.5, x: 0, y: 0 });
+  });
   it('keeps the point under the pointer fixed when the image is rotated or flipped', () => {
     // The image point under a viewport point P is found by undoing translate, scale/flip and rotation
     // about the layout centre. Zooming about P must leave that image point under P.

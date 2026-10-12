@@ -1,9 +1,9 @@
 // Generated from the built public declaration. Review changes before updating.
 import { CodeBlockLabels, CodeBlockOptions, CodeRendererInput, LabelsOption, MarkdownCodeBlockProps } from "../code-plain-chunk.js";
 import { DiagramLabels, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock, preloadCodeAssets } from "../code-chunk.js";
-import { ImageIconName, ImageIconProps, ImageLabels, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImageProps, createMarkdownImage } from "./image.js";
+import { ImageIconName, ImageIconProps, ImageLabels, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImagePreviewOptions, MarkdownImageProps, createMarkdownImage } from "../image-chunk.js";
 import { MarkdownTable, MarkdownTableOptions, MarkdownTableProps, TableLabels, createMarkdownTable } from "./table.js";
-export { type CodeBlockLabels, type CodeBlockOptions, type CodeRendererInput, type DiagramLabels, type ImageIconName, type ImageIconProps, type ImageLabels, type LabelsOption, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImageProps, MarkdownTable, type MarkdownTableOptions, type MarkdownTableProps, type TableLabels, createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable, preloadCodeAssets };
+export { type CodeBlockLabels, type CodeBlockOptions, type CodeRendererInput, type DiagramLabels, type ImageIconName, type ImageIconProps, type ImageLabels, type LabelsOption, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImagePreviewOptions, type MarkdownImageProps, MarkdownTable, type MarkdownTableOptions, type MarkdownTableProps, type TableLabels, createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable, preloadCodeAssets };
 
 // Relative declaration: dist/code-plain-chunk.d.ts
 import { ComponentProps, ComponentType, ReactNode } from "react";
@@ -32,10 +32,11 @@ export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptio
 export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
 export type { DiagramLabels$1 as DiagramLabels };
 
-// Relative declaration: dist/components/image.d.ts
+// Relative declaration: dist/image-chunk.d.ts
 import { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
-import { ImageIconName, ImageIconName as ImageIconName$1, ImageLabels, ImageLabels as ImageLabels$1, LabelsOption, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
+import { ImageIconName, ImageIconName as ImageIconName$1, ImageLabels, ImageLabels as ImageLabels$1, ImagePreviewOptions, LabelsOption, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
 import { Element } from "hast";
+export type MarkdownImagePreviewOptions = Omit<ImagePreviewOptions, 'closeDuration'>;
 export type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
     node?: Element;
 };
@@ -45,14 +46,14 @@ export interface ImageIconProps {
 }
 export type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
 export interface MarkdownImageOptions {
-    icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
+    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
     group?: string | false;
-    preview?: boolean;
-    labels?: LabelsOption$1<ImageLabels$1>;
+    preview?: boolean | MarkdownImagePreviewOptions;
+    labels?: LabelsOption<ImageLabels>;
 }
-export declare function createMarkdownImage({ icons, group, preview: allowPreview, labels: configuredLabels }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
+export declare function createMarkdownImage({ icons, group, preview: previewOption, labels: configuredLabels }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
 export declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
-export type { ImageIconName, ImageLabels, LabelsOption };
+export type { ImageIconName$1 as ImageIconName, ImageLabels$1 as ImageLabels, LabelsOption$1 as LabelsOption };
 
 // Relative declaration: dist/components/table.d.ts
 import { ComponentProps } from "react";

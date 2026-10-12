@@ -17,6 +17,7 @@ export type {
   ImageIconProps,
   ImageIconName,
   ImageLabels,
+  MarkdownImagePreviewOptions,
 } from './image';
 export { MarkdownTable, createMarkdownTable } from './table';
 export type { MarkdownTableProps, MarkdownTableOptions, TableLabels } from './table';

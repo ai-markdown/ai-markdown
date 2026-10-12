@@ -1,7 +1,12 @@
 // Generated from the built public declaration. Review changes before updating.
+import { ImageIconName, ImageIconProps, ImageLabels, LabelsOption, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImagePreviewOptions, MarkdownImageProps, createMarkdownImage } from "../image-chunk.js";
+export { type ImageIconName, ImageIconProps, type ImageLabels, type LabelsOption, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, type MarkdownImagePreviewOptions, MarkdownImageProps, createMarkdownImage };
+
+// Relative declaration: dist/image-chunk.d.ts
 import { ComponentPropsWithoutRef, ComponentType, ReactNode } from "react";
-import { ImageIconName, ImageIconName as ImageIconName$1, ImageLabels, ImageLabels as ImageLabels$1, LabelsOption, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
+import { ImageIconName, ImageIconName as ImageIconName$1, ImageLabels, ImageLabels as ImageLabels$1, ImagePreviewOptions, LabelsOption, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
 import { Element } from "hast";
+export type MarkdownImagePreviewOptions = Omit<ImagePreviewOptions, 'closeDuration'>;
 export type MarkdownImageProps = ComponentPropsWithoutRef<'img'> & {
     node?: Element;
 };
@@ -11,11 +16,11 @@ export interface ImageIconProps {
 }
 export type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
 export interface MarkdownImageOptions {
-    icons?: Partial<Record<ImageIconName$1, MarkdownImageIcon>>;
+    icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
     group?: string | false;
-    preview?: boolean;
-    labels?: LabelsOption$1<ImageLabels$1>;
+    preview?: boolean | MarkdownImagePreviewOptions;
+    labels?: LabelsOption<ImageLabels>;
 }
-export declare function createMarkdownImage({ icons, group, preview: allowPreview, labels: configuredLabels }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
+export declare function createMarkdownImage({ icons, group, preview: previewOption, labels: configuredLabels }?: MarkdownImageOptions): ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
 export declare const MarkdownImage: ({ node: _node, ...props }: MarkdownImageProps) => import("react").JSX.Element;
-export type { ImageIconName, ImageLabels, LabelsOption };
+export type { ImageIconName$1 as ImageIconName, ImageLabels$1 as ImageLabels, LabelsOption$1 as LabelsOption };

@@ -7,4 +7,5 @@ export type {
   ImageIconProps,
   ImageIconName,
   ImageLabels,
+  MarkdownImagePreviewOptions,
 } from '@ai-markdown/react/components/image';

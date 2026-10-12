@@ -28,16 +28,21 @@ export function imageTransformStyle(transform: ImageTransform): string {
   const { x, y, scale, rotate, flipX, flipY } = transform;
   return `translate3d(${x}px, ${y}px, 0) scale3d(${flipX ? '-' : ''}${scale}, ${flipY ? '-' : ''}${scale}, 1) rotate(${rotate}deg)`;
 }
+const DEFAULT_SCALE_LIMITS = { min: 1, max: 50 };
+/** Scales by `ratio` about a viewport point, keeping the image point under it in place, within `limits`. */
 export function zoomImage(
   transform: ImageTransform,
   ratio: number,
   geometry: ImageGeometry,
   centerX = geometry.viewportWidth / 2,
   centerY = geometry.viewportHeight / 2,
-  touch = false
+  touch = false,
+  limits: { min: number; max: number } = DEFAULT_SCALE_LIMITS
 ): ImageTransform {
   if (!Number.isFinite(ratio) || ratio <= 0) return transform;
-  const scale = Math.min(50, touch ? Math.max(0.01, transform.scale * ratio) : Math.max(1, transform.scale * ratio));
+  // A pinch may pass below the minimum while the fingers are down; `reboundImage` brings it back.
+  const floor = touch ? 0.01 : limits.min;
+  const scale = Math.min(limits.max, Math.max(floor, transform.scale * ratio));
   const difference = scale / transform.scale - 1;
   let x = transform.x - difference * (centerX - transform.x - geometry.left - geometry.width / 2);
   let y = transform.y - difference * (centerY - transform.y - geometry.top - geometry.height / 2);
@@ -57,21 +62,23 @@ export function zoomImage(
  *   pages, not pixels: three lines or one page count as a notch.
  * - `pinch` is a trackpad pinch, which arrives as a wheel event with the
  *   control key set and small deltas. It scales continuously with the delta.
+ * - `step` is what a full notch adds to the scale factor: 0.5 makes it 1.5x.
  */
-export function imageWheelRatio(delta: number, mode = 0, pinch = false): number {
+export function imageWheelRatio(delta: number, mode = 0, pinch = false, step = 0.5): number {
   if (!Number.isFinite(delta) || delta === 0) return 1;
-  if (pinch) return Math.min(1.5, Math.max(1 / 1.5, Math.exp(-delta / 100)));
+  if (pinch) return Math.min(1 + step, Math.max(1 / (1 + step), Math.exp(-delta / 100)));
   const pixels = mode === 1 ? (delta * 100) / 3 : mode === 2 ? delta * 100 : delta;
-  const ratio = 1 + Math.min(Math.abs(pixels / 100), 1) * 0.5;
+  const ratio = 1 + Math.min(Math.abs(pixels / 100), 1) * step;
   return pixels > 0 ? 1 / ratio : ratio;
 }
 /** Snap a moved image back inside the viewport, taking quarter turns into account. */
 export function reboundImage(
   transform: ImageTransform,
   geometry: ImageGeometry,
-  bounds: { left: number; top: number }
+  bounds: { left: number; top: number },
+  minScale = 1
 ): ImageTransform {
-  if (transform.scale < 1) return { ...transform, x: 0, y: 0, scale: 1 };
+  if (transform.scale < minScale) return { ...transform, x: 0, y: 0, scale: minScale };
   const rotated = transform.rotate % 180 !== 0;
   const width = (rotated ? geometry.height : geometry.width) * transform.scale;
   const height = (rotated ? geometry.width : geometry.height) * transform.scale;

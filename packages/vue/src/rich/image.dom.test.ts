@@ -246,6 +246,58 @@ describe('preview dialog', () => {
     expect(document.activeElement).toBe(dialog());
   });
 
+  test('preview options reach the controller: limits, switches and callbacks', async () => {
+    const log: string[] = [];
+    const Image = createMarkdownImage({
+      preview: {
+        scaleStep: 1,
+        maxScale: 2,
+        movable: false,
+        onOpenChange: (open, info) => log.push(`open:${open}:${info.current}`),
+        afterOpenChange: (open) => log.push(`after:${open}`),
+        onChange: (current, previous) => log.push(`change:${previous}->${current}`),
+        onTransform: ({ transform, action }) => log.push(`${action}:${transform.scale}`),
+      },
+    });
+    const { scope } = await show(() => markdown([one('a'), one('b')].join('\n\n'), { components: { img: Image } }));
+    await open(scope, 0);
+    expect(log).toEqual(['open:true:0', 'after:true']);
+    // Not movable: no grab cursor class, and a press starts nothing.
+    expect(dialog()!.className).not.toContain('aimd-image-preview-movable');
+    shown().dispatchEvent(pointer('pointerdown', 100, 100));
+    await nextTick();
+    expect(dialog()!.className).not.toContain('aimd-image-preview-moving');
+    const zoomIn = () => dialog()!.querySelector('.aimd-image-preview-actions-action-zoomIn') as HTMLButtonElement;
+    zoomIn().click();
+    await nextTick();
+    expect(shown().style.transform).toContain('scale3d(2, 2, 1)');
+    expect(zoomIn().disabled).toBe(true);
+    dialog()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    await nextTick();
+    (dialog()!.querySelector('.aimd-image-preview-close') as HTMLElement).click();
+    await nextTick();
+    expect(log.slice(2)).toEqual(['zoomIn:2', 'next:1', 'change:0->1', 'open:false:1', 'after:false']);
+  });
+
+  test('the page behind cannot scroll: the root and the body are locked, and stray wheels are cancelled', async () => {
+    const { scope } = await show(() => markdown(one('a')));
+    document.documentElement.style.overflow = 'scroll';
+    await open(scope);
+    expect(document.documentElement.style.overflow).toBe('hidden');
+    expect(document.body.style.overflow).toBe('hidden');
+    // A wheel or a touch move over the mask is not the image's, and must not scroll the page either.
+    for (const type of ['wheel', 'touchmove']) {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      dialog()!.querySelector('.aimd-image-preview-mask')!.dispatchEvent(event);
+      expect(event.defaultPrevented, type).toBe(true);
+    }
+    (dialog()!.querySelector('.aimd-image-preview-close') as HTMLElement).click();
+    await nextTick();
+    expect(document.documentElement.style.overflow).toBe('scroll');
+    expect(document.body.style.overflow).toBe('');
+    document.documentElement.style.overflow = '';
+  });
+
   test('the preview closes when the source of its image changes', async () => {
     const content = ref(one('a'));
     const { scope, settle } = await show(() => markdown(content.value));

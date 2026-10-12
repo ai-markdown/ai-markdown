@@ -107,7 +107,7 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 ## 图片预览
 
-普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；预览是一个原生的模态 `<dialog>`，由浏览器负责焦点限制、顶层显示和 Escape。它有全屏暗色遮罩、两侧切图、底部悬浮工具栏，支持水平/垂直翻转、左右旋转、缩放。缩放范围为 1–50 倍，每步乘/除 1.5；滚轮、触控板捏合和双击围绕指针缩放。鼠标、手写笔和触摸的处理方式相同：一个指针拖拽，两个指针捏合，拖出视口边界后回弹。切图会重置变换。预览打开期间页面不滚动，滚动条消失时页面宽度保持不变。预览从被点击的缩略图位置放大出来；关闭时缩回当时显示的那张图片的缩略图位置，在图片组里切换过之后那是另一张缩略图。两段动画各 0.3 秒。缩略图不在视口内时不朝它缩放，改为以视口中心为准。用户设置了“减少动画”时没有动画。React、Vue 和 Mantine 共用一份实现：规则在 `@ai-markdown/core/components` 里（`createImagePreviewController`），各框架只负责渲染对话框。交互规则改编自 [rc-image](https://github.com/react-component/image) 1.10.0，但没有任何包依赖它。预览挂到 body，不破坏段落结构。
+普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；预览是一个原生的模态 `<dialog>`，由浏览器负责焦点限制、顶层显示和 Escape。它有全屏暗色遮罩、两侧切图、底部悬浮工具栏，支持水平/垂直翻转、左右旋转、缩放。缩放范围为 1–50 倍，每步乘/除 1.5；滚轮、触控板捏合和双击围绕指针缩放。鼠标、手写笔和触摸的处理方式相同：一个指针拖拽，两个指针捏合，拖出视口边界后回弹。切图会重置变换。预览打开期间背后的页面无法滚动：根元素和 body 都被锁定，图片没有用到的滚轮和触摸会被取消，滚动条消失时页面宽度保持不变。预览从被点击的缩略图位置放大出来；关闭时缩回当时显示的那张图片的缩略图位置，在图片组里切换过之后那是另一张缩略图。两段动画各 0.3 秒。缩略图不在视口内时不朝它缩放，改为以视口中心为准。用户设置了“减少动画”时没有动画。React、Vue 和 Mantine 共用一份实现：规则在 `@ai-markdown/core/components` 里（`createImagePreviewController`），各框架只负责渲染对话框。交互规则改编自 [rc-image](https://github.com/react-component/image) 1.10.0，但没有任何包依赖它。预览挂到 body，不破坏段落结构。
 
 链接、按钮以及对应交互 role 内的图片保留原有行为，动态修改 role 也会重新判断。预览使用浏览器实际选中的 `currentSrc`，没有时才用已清洗的 `src`，支持响应式图片。`src`/`srcSet` 变化会关闭预览；图片属性和事件仍落在实际 img 上。没有新增高清地址解析器或第二次 URL 策略处理。
 
@@ -183,6 +183,8 @@ const Table = createMarkdownTable({ labels: { copy: '复制表格', download: '�
 
 `pre` 注册项负责普通围栏代码；单独的 `code` 注册项仍用于行内代码和回退的非标准 pre 结构，不会自动组合进增强代码块。带额外节点属性或非标准子结构的 pre 保留原来的渲染结果。
 
+<span id="image-icons-and-galleries"></span>
+
 ## 图片图标与分组预览
 
 服务端渲染的图片在 JavaScript 加载前保持可见。水合后，缩略图加载时显示 `image` 占位图标，失败时显示 `image-off` 和图片说明。可预览的图片在悬浮或键盘聚焦时显示入口：单图使用 `image-play`，多图使用 `gallery-thumbnails`。
@@ -208,6 +210,26 @@ React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/component
 默认将同一文档内已加载、可预览的图片组成画廊，顺序与页面一致。单独使用的 Markdown 实例是一篇文档；在 `AIMarkdownDocuments` 内共用同一个显式 `documentId` 的实例也是一篇文档，所以协调输出的各个分段共用一个画廊。加载中、加载失败和链接中的图片不会加入；不同文档互不混组。预览支持上/下一张、左右方向键、缩放、旋转和翻转。选中图片被移除时关闭预览，Esc 关闭后焦点回到最初打开预览的图片。
 
 `group: false` 可关闭分组；`group: '[data-photo-album]'` 可按最近的、匹配业务选择器的祖先元素分组，找不到匹配祖先时按单图处理。排版根节点不参与分组，自定义 `Typography` 组件不需要任何标记。`preview: false` 仅关闭预览，保留加载/错误反馈。
+
+`preview` 也可以是一个对象，用来配置预览：
+
+```tsx
+const AppImage = createMarkdownImage({
+  preview: {
+    scaleStep: 0.5, // 每一步把缩放倍数乘以或除以 1 + scaleStep
+    minScale: 1,
+    maxScale: 50,
+    movable: true, // false：不能拖拽，也不能双指缩放
+    wheel: true, // false：滚轮和触控板捏合不缩放
+    onOpenChange: (open, { current, item }) => track('preview', { open, src: item?.src }),
+    afterOpenChange: (open) => {},
+    onChange: (current, previous) => {},
+    onTransform: ({ transform, action }) => {},
+  },
+});
+```
+
+示例里的值就是默认值，每一项都可以省略。`onOpenChange` 在预览开始打开或开始关闭时调用，`afterOpenChange` 在打开或关闭完成后调用。`onChange` 在用户切换到图片组里的另一张图片时调用。`onTransform` 报告每一次缩放、旋转、翻转、拖拽和回弹，以及引起它的动作（`zoomIn`、`zoomOut`、`rotateLeft`、`rotateRight`、`flipX`、`flipY`、`wheel`、`doubleClick`、`move`、`pinch`、`rebound`、`prev`、`next`）；拖拽或连续滚轮每帧只报告一次。Vue 和 Mantine 的工厂接受同样的对象。
 
 可选默认样式提供 `.aimd-image`、`.aimd-image-cover`、`.aimd-image-feedback`、`.aimd-image-icon`，水合后的缩略图状态由 `data-status="loading|ready|error"` 标记，可直接覆盖样式。
 
@@ -370,7 +392,8 @@ img.addEventListener('pointerup', (event) => controller.pointerUp(event.pointerI
 - `state.transform` 交给 `imageTransformStyle`；拖拽或捏合期间 `state.moving` 为 true，此时图片应当不带过渡地跟随指针；`state.status` 是加载状态，由你通过 `loaded()` 和 `failed()` 报告。
 - `pointerDown`、`wheel` 和 `key` 在使用了事件时返回 true，此时应阻止事件的默认行为。监听滚轮时要传 `{ passive: false }`。
 - `action(name)` 执行一个工具栏动作；`canPrevious`、`canNext`、`canZoomIn` 和 `canZoomOut` 表示哪些按钮应当禁用。
-- `lockImagePreviewScroll(document.body, window.innerWidth - document.documentElement.clientWidth)` 阻止页面滚动，并按消失的滚动条宽度给页面加内边距。预览关闭后调用它返回的函数。
+- `lockImagePreviewScroll(document.body, window.innerWidth - document.documentElement.clientWidth)` 阻止 body 滚动，并按消失的滚动条宽度给它加内边距。`document.documentElement` 也要锁定（不需要传宽度），因为两者都可能是页面的滚动容器。预览关闭后调用它们返回的函数。
+- `createImagePreviewController` 的第三个参数还接受 `scaleStep`、`minScale`、`maxScale`、`movable`、`wheel`，以及[图片图标与分组预览](#image-icons-and-galleries)一节介绍的 `onOpenChange`、`afterOpenChange`、`onChange` 和 `onTransform` 回调。
 
 自带的 React 和 Vue 预览就是把这个控制器放在原生模态 `<dialog>` 里。`zoomImage`、`reboundImage`、`imagePinchCenter` 和 `imageWheelRatio` 是它使用的计算函数，单独导出，供只需要其中一项的宿主使用。
 

@@ -60,6 +60,7 @@ export type {
   ImagePreviewState,
   ImagePreviewHost,
   ImagePreviewOptions,
+  ImagePreviewAction,
   ImagePointer,
 } from './imagePreview';
 export { imageIconPaths, imageActionNames, getImageGallery } from './image';

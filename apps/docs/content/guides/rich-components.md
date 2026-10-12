@@ -97,7 +97,7 @@ The same paths exist under `@ai-markdown/vue`. Plain code supports custom render
 
 ## Image preview
 
-Server-rendered images remain visible before JavaScript loads. After hydration, loading/error feedback is enabled and a ready ordinary image becomes a keyboard-operable preview trigger. Enter opens a fullscreen preview; Escape or Close dismisses it and restores focus. The preview is a native modal `<dialog>` attached to the document body, so inline images never create invalid paragraph markup, and the browser supplies focus containment, the top layer and Escape. It has a dark fullscreen mask, side navigation, and a floating toolbar with vertical/horizontal flip, left/right rotation and zoom. Zoom ranges from 1× to 50× in 1.5× steps; the wheel, a trackpad pinch and a double click zoom around the pointer. Mouse, pen and touch are handled alike: one pointer drags, two pinch, and an image moved past the viewport edges rebounds. Switching images resets the transform. The page behind does not scroll while the preview is open, and it keeps its width when its scrollbar disappears. The preview grows out of the thumbnail that was activated, and when it closes it shrinks back into the thumbnail of the image then shown, which after navigating a gallery is another one. Each takes 0.3 s. A thumbnail that is out of view is not aimed at; the preview then scales about the centre. There is no animation when the user prefers reduced motion. React, Vue and Mantine share one implementation: the rules live in `@ai-markdown/core/components` (`createImagePreviewController`) and each framework renders the dialog. The interaction rules are adapted from [rc-image](https://github.com/react-component/image) 1.10.0; no package depends on it. Images inside links/buttons or matching interactive roles keep their original behavior, including dynamically changed roles.
+Server-rendered images remain visible before JavaScript loads. After hydration, loading/error feedback is enabled and a ready ordinary image becomes a keyboard-operable preview trigger. Enter opens a fullscreen preview; Escape or Close dismisses it and restores focus. The preview is a native modal `<dialog>` attached to the document body, so inline images never create invalid paragraph markup, and the browser supplies focus containment, the top layer and Escape. It has a dark fullscreen mask, side navigation, and a floating toolbar with vertical/horizontal flip, left/right rotation and zoom. Zoom ranges from 1× to 50× in 1.5× steps; the wheel, a trackpad pinch and a double click zoom around the pointer. Mouse, pen and touch are handled alike: one pointer drags, two pinch, and an image moved past the viewport edges rebounds. Switching images resets the transform. The page behind cannot scroll while the preview is open: the root element and the body are both locked, a wheel or a touch that the image does not use is cancelled, and the page keeps its width when its scrollbar disappears. The preview grows out of the thumbnail that was activated, and when it closes it shrinks back into the thumbnail of the image then shown, which after navigating a gallery is another one. Each takes 0.3 s. A thumbnail that is out of view is not aimed at; the preview then scales about the centre. There is no animation when the user prefers reduced motion. React, Vue and Mantine share one implementation: the rules live in `@ai-markdown/core/components` (`createImagePreviewController`) and each framework renders the dialog. The interaction rules are adapted from [rc-image](https://github.com/react-component/image) 1.10.0; no package depends on it. Images inside links/buttons or matching interactive roles keep their original behavior, including dynamically changed roles.
 
 The preview uses the browser's selected `currentSrc` (or sanitized `src`), preserving responsive images. Changing `src`/`srcSet` closes the preview. Attributes and image events stay on the actual image. There is no separate high-resolution URL resolver or second URL-policy pass.
 
@@ -128,6 +128,26 @@ Toolbar icons are configurable through the same `icons` option: `close`, `prev`,
 By default, the loaded previewable images of one document form a gallery in DOM order. A standalone Markdown instance is one document; instances that share an explicit `documentId` inside `AIMarkdownDocuments` are one document too, so the sections of a coordinated answer share a gallery. Linked images, failed images and pending images are excluded. The dialog provides Previous/Next buttons and left/right arrow keys, and closes if its selected image disappears. Escape restores focus to the image that opened the gallery. Separate documents stay isolated.
 
 Use `group: false` for independent previews, or `group: '[data-photo-album]'` to group by the nearest ancestor that matches a selector you own; an image with no matching ancestor previews independently. The typography root plays no part in grouping, so a custom `Typography` component needs no marker. `preview: false` retains loading/error feedback without adding a preview button.
+
+`preview` also takes an object that configures the preview:
+
+```tsx
+const AppImage = createMarkdownImage({
+  preview: {
+    scaleStep: 0.5, // one step multiplies or divides the scale by 1 + scaleStep
+    minScale: 1,
+    maxScale: 50,
+    movable: true, // false: no dragging and no pinch
+    wheel: true, // false: the wheel and a trackpad pinch do not zoom
+    onOpenChange: (open, { current, item }) => track('preview', { open, src: item?.src }),
+    afterOpenChange: (open) => {},
+    onChange: (current, previous) => {},
+    onTransform: ({ transform, action }) => {},
+  },
+});
+```
+
+The values shown are the defaults; every entry is optional. `onOpenChange` runs when the preview starts to open or to close and `afterOpenChange` when that has finished. `onChange` runs when the user moves to another image of the gallery. `onTransform` reports each zoom, rotation, flip, drag and rebound with the action that caused it (`zoomIn`, `zoomOut`, `rotateLeft`, `rotateRight`, `flipX`, `flipY`, `wheel`, `doubleClick`, `move`, `pinch`, `rebound`, `prev`, `next`); a drag or a wheel burst reports once per frame. The Vue and Mantine factories take the same object.
 
 Import the optional component stylesheet to get the supplied fullscreen preview layout, or provide equivalent styles for `.aimd-image-preview-*`.
 
@@ -346,7 +366,8 @@ img.addEventListener('pointerup', (event) => controller.pointerUp(event.pointerI
 - `state.transform` goes through `imageTransformStyle`; `state.moving` is true during a drag or a pinch, when the image should follow without a transition; `state.status` is the load state you report with `loaded()` and `failed()`.
 - `pointerDown`, `wheel` and `key` return true when they used the event: prevent its default action then. Listen to the wheel with `{ passive: false }`.
 - `action(name)` runs a toolbar action; `canPrevious`, `canNext`, `canZoomIn` and `canZoomOut` say which buttons to disable.
-- `lockImagePreviewScroll(document.body, window.innerWidth - document.documentElement.clientWidth)` stops the page from scrolling and pads it by the scrollbar it loses. Call the function it returns when the preview has closed.
+- `lockImagePreviewScroll(document.body, window.innerWidth - document.documentElement.clientWidth)` stops the body from scrolling and pads it by the scrollbar it loses. Lock `document.documentElement` too, without a width, since either can be the page's scroller. Call the functions they return when the preview has closed.
+- The third argument of `createImagePreviewController` also takes `scaleStep`, `minScale`, `maxScale`, `movable`, `wheel` and the `onOpenChange`, `afterOpenChange`, `onChange` and `onTransform` callbacks described under [image icons and galleries](#image-icons-and-galleries).
 
 The supplied React and Vue previews are this controller in a native modal `<dialog>`. `zoomImage`, `reboundImage`, `imagePinchCenter` and `imageWheelRatio` are the calculations it applies, exported for a host that needs one of them alone.
 
