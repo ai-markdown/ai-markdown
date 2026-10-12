@@ -1,19 +1,14 @@
 /** Framework-independent contracts for the opt-in Markdown components. */
 export { extractCode, normalizeRenderers, projectTable, serializeTable } from './nodes';
 export type { CodeSource, TableProjection } from './nodes';
-export { codeBody, extendsCode } from './codeText';
+export { extendsCode } from './codeText';
 export { createCodeLanguageTracker } from './codeLanguage';
 export { createCodeFrame, nextCodeFrame } from './codeFrame';
 export type { CodeFrame } from './codeFrame';
 export { prettyPrintJson } from './formatJson';
 export { createJsonCompletenessScanner, jsonLooksComplete } from './jsonCompleteness';
-export { createRenderQueue, mermaidRenderQueue } from './renderQueue';
-export {
-  ensureMermaidInitialized,
-  getMermaidMaxTextSize,
-  MERMAID_DEFAULT_MAX_TEXT_SIZE,
-  resetMermaidInitializationForTests,
-} from './mermaid';
+export { mermaidRenderQueue } from './renderQueue';
+export { ensureMermaidInitialized, getMermaidMaxTextSize } from './mermaid';
 export type { MermaidInitTarget } from './mermaid';
 
 export interface CodeRendererInput {

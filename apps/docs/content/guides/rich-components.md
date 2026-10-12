@@ -1,6 +1,6 @@
 # Code blocks, diagrams, images and tables
 
-These component entries are currently available in repository builds and are scheduled for the next package release. The published 3.2.2 packages do not include them.
+These component entries are available from 3.3.0. The shared helpers in `@ai-markdown/core/components` described under [Build a renderer or an adapter](#build-a-renderer-or-an-adapter) are as of 3.4.0.
 
 The optional components register directly on Markdown. No AST wrapper or additional provider is needed. React uses `customComponents`; Vue uses `components`. Base Markdown rendering remains available without these imports.
 
@@ -19,6 +19,8 @@ const components = { pre: MarkdownCodeBlock, img: MarkdownImage, table: Markdown
 ```
 
 Mermaid is a built-in **code language renderer**, selected by an explicit `mermaid` fence. It loads on the client; the server and initial hydration show source code. Copy always uses the latest raw source, including during streaming, regardless of the displayed preview or formatted code.
+
+While the document streams, a diagram source is usually an incomplete prefix, so a parse failure is not reported: the block keeps showing the source, or the last diagram that rendered. Attempts are spaced by `mermaidIntervalMs`. When streaming ends, one more pass renders the final source, and if that fails the block shows mermaid's own error message. If the engine module cannot be downloaded, the component retries three times, 1.5 seconds apart, and then shows "Diagram engine could not load." with a Retry button.
 
 ## Vue
 
@@ -61,6 +63,8 @@ Vue exposes the same factory from `@ai-markdown/vue/components/code`; renderer v
 A renderer receives `code`, `language`, document-level `streaming`, `colorScheme`, `active`, and an opaque `resetKey`. Source append preserves its instance; replacement changes the generation. Stop or invalidate asynchronous work when `active` becomes false, `resetKey` changes, or the component unmounts. Rendering errors fall back to source, but arbitrary promises started by custom renderers must handle their own errors. If two business documents have identical input, use a different Markdown key to force a new lifecycle. React also observes its document context; Vue applications should key Markdown by their document identity when replacing it.
 
 Default neutral options are `defaultExpanded: true`, `autoDetectUnknownLanguage: true`, `highlightIntervalMs: 50`, `mermaidIntervalMs: 300`, `formatJson: false`, and `expandNestedJson: false`. React factory values override the existing `codeBlock` behavior group, which overrides these defaults. Group transport still replaces whole groups. Vue accepts options through the factory; its `colorScheme` option accepts `'light'`, `'dark'`, or a reactive getter. Changing CSS colors alone does not change Mermaid's theme.
+
+A block with no fence language is detected as it streams. `streaming` describes the document and does not say when one fence has closed, so a block whose text has not changed for 300 ms is judged as complete and labelled, even while the rest of the document is still arriving. A block whose text is replaced starts detection over.
 
 Syntax highlighting is optional. The `highlight(code, language)` factory option returns React nodes or Vue VNodes. Without it, code remains plain selectable text. For a trusted highlight.js instance in React:
 
@@ -144,3 +148,110 @@ Only rectangular tables without merged cells are exported. Unsupported structure
 The neutral CSS is optional and scoped to `aimd-*` classes. Code, table and image feedback surfaces expose `--aimd-border`, `--aimd-surface`, and `--aimd-text`. React components follow the Markdown theme, including the resolved Mantine theme. Vue code follows its factory option; Vue tables and image feedback inherit a `[data-color-scheme="dark"]` or `[data-mantine-color-scheme="dark"]` ancestor. HTML controls remain usable without this CSS. Override the classes and variables in application styles rather than wrapping the components solely to restyle them.
 
 A `pre` override owns ordinary fenced code. A separate `code` override still applies to inline code and fallback `pre` structures, but is not automatically composed into the enhanced block. Nonstandard `pre` structures or additional node attributes keep the original rendering intact.
+
+## Build a renderer or an adapter
+
+`@ai-markdown/core/components` holds the logic the React, Vue and Mantine components share. It has no framework or DOM types. Use it to write a custom language renderer, to replace one of the supplied components, or to write the components for another framework. `@ai-markdown/core` depends on `@ai-markdown/code-language-detector` for the language helper.
+
+| Task                             | Exports                                                                                                         |
+| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| Read a `pre` node                | `extractCode`, `normalizeRenderers`                                                                             |
+| Tell an append from a rewrite    | `extendsCode`                                                                                                   |
+| Throttle displayed code          | `nextCodeFrame`, `createCodeFrame`                                                                              |
+| Detect an unlabelled language    | `createCodeLanguageTracker`                                                                                     |
+| Format JSON                      | `createJsonCompletenessScanner`, `jsonLooksComplete`, `prettyPrintJson`                                         |
+| Render a Mermaid diagram         | `createDiagramController`                                                                                       |
+| Call Mermaid next to our diagram | `mermaidRenderQueue`, `ensureMermaidInitialized`, `getMermaidMaxTextSize`                                       |
+| Export a table                   | `projectTable`, `serializeTable`                                                                                |
+| Group and transform images       | `getImageGallery`, `imageGroupSelector`, `zoomImage`, `reboundImage`, `imagePinchCenter`, `imageTransformStyle` |
+
+### Append or rewrite
+
+The `code` a renderer receives is the hast text of the block, which always ends with one newline that the Markdown source does not have. A chunk that lands in the middle of a line therefore turns `ab\n` into `abc\n`, and a plain prefix test reports a rewrite on almost every chunk. `extendsCode` compares without that newline:
+
+```ts
+import { extendsCode } from '@ai-markdown/core/components';
+
+extendsCode('abc\n', 'ab\n'); // true: appended
+'abc\n'.startsWith('ab\n'); // false
+extendsCode('ax\n', 'ab\n'); // false: rewritten
+```
+
+Use it whenever a renderer keeps work between updates, such as an incremental parser or a timer. The supplied code block already uses it to decide `resetKey`, so a renderer that only needs to know when to start over can watch `resetKey`.
+
+### Displayed code and language
+
+`createCodeFrame` is a trailing throttle for the text handed to a highlighter. Appends inside one interval replace a single pending frame without moving its deadline; a rewrite, a non-streaming update and the end of the stream are published at once. `nextCodeFrame` carries the append lineage between updates.
+
+```ts
+import { createCodeFrame, createCodeLanguageTracker, nextCodeFrame } from '@ai-markdown/core/components';
+
+let current = nextCodeFrame(undefined, code, language);
+const frames = createCodeFrame(current, (frame) => show(frame.code));
+const tracker = createCodeLanguageTracker(() => rerender());
+
+// On every update:
+current = nextCodeFrame(current, code, language);
+frames.update(current, streaming, 50);
+const detected = tracker.read(code, streaming); // synchronous, safe during server rendering
+tracker.observe(code, streaming); // once the text is on screen; starts the 300 ms settle timer
+
+// On unmount:
+frames.dispose();
+tracker.dispose();
+```
+
+`tracker.read` returns the detected language or `null`. It keeps one verdict while the text only grows and starts over when the text is rewritten. The callback passed to `createCodeLanguageTracker` runs when the text has settled; read again then. React applications can use the `useCodeFrame` and `useDetectedLanguage` hooks from `@ai-markdown/react/components/code/plain`, which wrap these two helpers.
+
+### A diagram renderer
+
+`createDiagramController` is the render policy described under [React](#react): no error while streaming, one corrective pass at the end, bounded download retries, and no repeated render for unchanged input. The host passes every change of its inputs to `update` and draws the state it receives.
+
+```ts
+import { createDiagramController } from '@ai-markdown/core/components';
+
+const controller = createDiagramController(
+  () => import('mermaid').then((module) => module.default),
+  ({ view, loadFailed }) => {
+    if (view.kind === 'diagram') {
+      host.innerHTML = view.svg;
+      view.bind?.(host);
+    } else if (view.kind === 'error') {
+      showError(view.message); // plain text
+    } else {
+      showSource(); // nothing has rendered yet
+    }
+    showRetry(loadFailed || view.kind === 'error');
+  }
+);
+
+controller.update({ code, dark, streaming, active, interval: 300 });
+controller.retry(); // from a Retry button
+controller.dispose(); // on unmount
+```
+
+`view.svg` is mermaid's output under the `strict` or `sandbox` security level and is meant to be inserted as HTML. `view.message` is text; insert it as a text node. `active: false` pauses attempts while the host shows something else. `loadFailed` is true once the download retries are spent, and `retry()` starts over with a new budget.
+
+### Calling Mermaid yourself
+
+Mermaid keeps one global configuration and one global renderer. If the page renders Mermaid outside these components, run that work through the same queue, or its `initialize` can change the theme between our initialization and our render:
+
+```ts
+import mermaid from 'mermaid';
+import { ensureMermaidInitialized, getMermaidMaxTextSize, mermaidRenderQueue } from '@ai-markdown/core/components';
+
+const owner = {}; // one per diagram instance
+await mermaidRenderQueue.enqueue(owner, async () => {
+  ensureMermaidInitialized(mermaid, dark);
+  if (code.length > getMermaidMaxTextSize(mermaid)) throw new Error('Diagram source is too large.');
+  const { svg } = await mermaid.render(id, code);
+  draw(svg);
+});
+// On unmount:
+mermaidRenderQueue.cancel(owner);
+```
+
+- The queue runs one task at a time and keeps at most one pending task per owner. Enqueueing again for the same owner replaces the pending task; the replaced call resolves without running.
+- `ensureMermaidInitialized` keeps the configuration the application passed to `mermaid.initialize`, raises `loose`, `antiscript` or an unset `securityLevel` to `strict`, leaves `sandbox` alone, and follows the color scheme only when the application has not chosen a theme. It does nothing when no key needs to change.
+- `getMermaidMaxTextSize` returns the effective `maxTextSize`. Check it before rendering: above the limit `mermaid.render` resolves with a placeholder diagram and does not reject.
+- The queue belongs to one copy of `@ai-markdown/core`. It serializes work only when the bundler resolves the components and the application to the same copy.

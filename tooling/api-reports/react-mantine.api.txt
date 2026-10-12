@@ -2,7 +2,6 @@
 import { MantineAIMarkdownMetadata, MantineCodeBlockOptions, MantineLanguageFormat, defaultMantineCodeBlockOptions } from "./defs-chunk.js";
 import "react";
 import { AIMarkdownBehaviorProps, AIMarkdownExtraStylesComponent, AIMarkdownProps, AIMarkdownTypographyProps } from "@ai-markdown/react";
-import "@ai-markdown/core/components";
 interface MantineAIMarkdownProps<TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata> extends AIMarkdownProps<TMetadata> {
     codeBlock?: Partial<MantineCodeBlockOptions>;
 }

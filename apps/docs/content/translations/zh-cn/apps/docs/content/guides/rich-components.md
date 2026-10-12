@@ -1,6 +1,6 @@
 # 代码块、图表、图片与表格
 
-这些新增入口目前可在仓库构建中使用，将随下一次版本发布提供；已发布的 3.2.2 包尚未包含它们。
+这些组件入口从 3.3.0 起提供。[自己写渲染器或适配器](#build-a-renderer-or-an-adapter)一节介绍的 `@ai-markdown/core/components` 共用函数以 3.4.0 为准。
 
 这些组件直接注册到 Markdown 即可使用，不需要自己提取 AST、再包一层组件或增加 provider。React 使用 `customComponents`，Vue 使用 `components`。基础 Markdown 入口保持独立。
 
@@ -21,6 +21,8 @@ const components = { pre: MarkdownCodeBlock, img: MarkdownImage, table: Markdown
 ```
 
 Mermaid 是代码块内置的语言渲染器，由显式的 `mermaid` 围栏触发。引擎在客户端按需加载，服务端和首次 hydration 都输出源码。复制始终使用最新原始源码，包含末尾换行，不受高亮节流、格式化或当前预览模式影响。
+
+文档流式输出期间，图表源码通常只是不完整的前缀，所以解析失败不会报错：代码块继续显示源码，或者显示上一次渲染成功的图表。两次尝试之间的间隔由 `mermaidIntervalMs` 决定。流式结束后会用最终源码再渲染一次，这次失败才显示 Mermaid 给出的错误信息。引擎模块下载失败时，组件会间隔 1.5 秒重试三次，之后显示“Diagram engine could not load.”和重试按钮。
 
 <span id="vue"></span>
 
@@ -67,6 +69,8 @@ Vue 从 `@ai-markdown/vue/components/code` 导出同名工厂，语言渲染器�
 渲染器接收 `code`、`language`、文档级 `streaming`、`colorScheme`、`active` 和不透明的 `resetKey`。追加源码保留组件实例，替换源码会切换代次。自定义异步渲染器需要在停用、代次变化和卸载时取消或使旧任务失效；组件渲染异常会回退源码，但自行启动的 Promise 仍需自行处理错误。两个业务文档内容完全相同时，请用不同的 Markdown key 重建生命周期。React 还会读取文档上下文；Vue 应用替换文档时建议按文档身份设置 key。
 
 中性组件默认配置为 `defaultExpanded: true`、`autoDetectUnknownLanguage: true`、`highlightIntervalMs: 50`、`mermaidIntervalMs: 300`、`formatJson: false`、`expandNestedJson: false`。React 的优先级是工厂显式选项、既有 `codeBlock` behavior group、默认值；group 传输仍按整组替换。Vue 通过工厂配置，`colorScheme` 接受 `'light'`、`'dark'` 或响应式 getter。仅修改 CSS 不会自动改变 Mermaid 图表主题。
+
+没有标注语言的代码块在流式输出过程中就会检测语言。`streaming` 描述的是整个文档，并不表示某个围栏已经闭合，所以代码块的文本连续 300 毫秒没有变化时，就按已完成判定并显示语言，即使文档的其余部分还在输出。文本被替换后检测重新开始。
 
 语法高亮是可选增强。`highlight(code, language)` 返回 React 节点或 Vue VNode；没有驱动时仍可正常显示、选择和复制纯文本。以下是 React 使用可信 highlight.js 实例的示例：
 
@@ -156,3 +160,120 @@ React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/component
 可选默认样式提供 `.aimd-image`、`.aimd-image-cover`、`.aimd-image-feedback`、`.aimd-image-icon`，水合后的缩略图状态由 `data-status="loading|ready|error"` 标记，可直接覆盖样式。
 
 工具栏也支持通过 `icons` 配置图标或组件：`close`、`prev`、`next`、`flipX`、`flipY`、`rotateLeft`、`rotateRight`、`zoomIn`、`zoomOut`。导入组件样式即可使用全屏预览布局；自行提供样式时需覆盖 `.aimd-image-preview-*`。
+
+<span id="build-a-renderer-or-an-adapter"></span>
+
+## 自己写渲染器或适配器
+
+`@ai-markdown/core/components` 包含 React、Vue 和 Mantine 组件共用的逻辑，不含任何框架或 DOM 类型。编写自定义语言渲染器、替换某个自带组件，或者为其他框架编写组件时，都可以使用它。`@ai-markdown/core` 因语言检测函数而依赖 `@ai-markdown/code-language-detector`。
+
+| 用途                       | 导出                                                                                                            |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| 读取 `pre` 节点            | `extractCode`、`normalizeRenderers`                                                                             |
+| 区分追加和替换             | `extendsCode`                                                                                                   |
+| 对显示的代码节流           | `nextCodeFrame`、`createCodeFrame`                                                                              |
+| 检测未标注的语言           | `createCodeLanguageTracker`                                                                                     |
+| 格式化 JSON                | `createJsonCompletenessScanner`、`jsonLooksComplete`、`prettyPrintJson`                                         |
+| 渲染 Mermaid 图表          | `createDiagramController`                                                                                       |
+| 在内置图表之外调用 Mermaid | `mermaidRenderQueue`、`ensureMermaidInitialized`、`getMermaidMaxTextSize`                                       |
+| 导出表格                   | `projectTable`、`serializeTable`                                                                                |
+| 图片分组和变换             | `getImageGallery`、`imageGroupSelector`、`zoomImage`、`reboundImage`、`imagePinchCenter`、`imageTransformStyle` |
+
+<span id="append-or-rewrite"></span>
+
+### 追加还是替换
+
+渲染器收到的 `code` 是代码块的 hast 文本，它的末尾总有一个 Markdown 源码里没有的换行。因此落在一行中间的 chunk 会把 `ab\n` 变成 `abc\n`，直接做前缀判断时，几乎每个 chunk 都会被当成替换。`extendsCode` 比较时不计这个换行：
+
+```ts
+import { extendsCode } from '@ai-markdown/core/components';
+
+extendsCode('abc\n', 'ab\n'); // true：追加
+'abc\n'.startsWith('ab\n'); // false
+extendsCode('ax\n', 'ab\n'); // false：替换
+```
+
+渲染器在两次更新之间保留了工作成果（例如增量解析器或定时器）时，都应该用它来判断。自带的代码块已经用它决定 `resetKey`，只需要知道何时重新开始的渲染器观察 `resetKey` 即可。
+
+<span id="displayed-code-and-language"></span>
+
+### 显示的代码和语言
+
+`createCodeFrame` 是交给高亮器的文本的尾部节流。同一个间隔内的多次追加只替换一个待发布的帧，不推迟它的截止时间；替换、非流式更新和流式结束会立即发布。`nextCodeFrame` 在两次更新之间传递追加关系。
+
+```ts
+import { createCodeFrame, createCodeLanguageTracker, nextCodeFrame } from '@ai-markdown/core/components';
+
+let current = nextCodeFrame(undefined, code, language);
+const frames = createCodeFrame(current, (frame) => show(frame.code));
+const tracker = createCodeLanguageTracker(() => rerender());
+
+// 每次更新：
+current = nextCodeFrame(current, code, language);
+frames.update(current, streaming, 50);
+const detected = tracker.read(code, streaming); // 同步执行，服务端渲染时也可以调用
+tracker.observe(code, streaming); // 文本显示之后调用；启动 300 毫秒的静止计时
+
+// 卸载时：
+frames.dispose();
+tracker.dispose();
+```
+
+`tracker.read` 返回检测到的语言或 `null`。文本只增长时它保持同一个结论，文本被替换时重新开始。传给 `createCodeLanguageTracker` 的回调在文本静止后执行，此时应再读取一次。React 应用可以使用 `@ai-markdown/react/components/code/plain` 导出的 `useCodeFrame` 和 `useDetectedLanguage`，它们是这两个函数的封装。
+
+<span id="a-diagram-renderer"></span>
+
+### 图表渲染器
+
+`createDiagramController` 实现了 [React](#react) 一节描述的渲染策略：流式期间不报错，结束后做一次纠正渲染，下载重试次数有上限，输入不变时不重复渲染。宿主把输入的每次变化传给 `update`，并按收到的状态绘制。
+
+```ts
+import { createDiagramController } from '@ai-markdown/core/components';
+
+const controller = createDiagramController(
+  () => import('mermaid').then((module) => module.default),
+  ({ view, loadFailed }) => {
+    if (view.kind === 'diagram') {
+      host.innerHTML = view.svg;
+      view.bind?.(host);
+    } else if (view.kind === 'error') {
+      showError(view.message); // 纯文本
+    } else {
+      showSource(); // 还没有渲染出任何图表
+    }
+    showRetry(loadFailed || view.kind === 'error');
+  }
+);
+
+controller.update({ code, dark, streaming, active, interval: 300 });
+controller.retry(); // 由重试按钮调用
+controller.dispose(); // 卸载时调用
+```
+
+`view.svg` 是 Mermaid 在 `strict` 或 `sandbox` 安全级别下的输出，应作为 HTML 插入。`view.message` 是文本，应作为文本节点插入。`active: false` 表示宿主正在显示别的内容，期间不进行渲染尝试。下载重试用尽后 `loadFailed` 为 true，`retry()` 会以新的重试次数重新开始。
+
+<span id="calling-mermaid-yourself"></span>
+
+### 自己调用 Mermaid
+
+Mermaid 只有一份全局配置和一个全局渲染器。如果页面在这些组件之外也渲染 Mermaid，请把那部分工作放进同一个队列，否则它的 `initialize` 可能在我们的初始化和渲染之间改掉主题：
+
+```ts
+import mermaid from 'mermaid';
+import { ensureMermaidInitialized, getMermaidMaxTextSize, mermaidRenderQueue } from '@ai-markdown/core/components';
+
+const owner = {}; // 每个图表实例一个
+await mermaidRenderQueue.enqueue(owner, async () => {
+  ensureMermaidInitialized(mermaid, dark);
+  if (code.length > getMermaidMaxTextSize(mermaid)) throw new Error('Diagram source is too large.');
+  const { svg } = await mermaid.render(id, code);
+  draw(svg);
+});
+// 卸载时：
+mermaidRenderQueue.cancel(owner);
+```
+
+- 队列一次只运行一个任务，每个 owner 最多保留一个等待中的任务。同一个 owner 再次入队会替换等待中的任务，被替换的那次调用不执行任务，直接完成。
+- `ensureMermaidInitialized` 保留应用传给 `mermaid.initialize` 的配置，把 `loose`、`antiscript` 或未设置的 `securityLevel` 提升为 `strict`，不改动 `sandbox`，并且只在应用没有选择主题时跟随明暗配色。没有需要修改的配置项时它什么也不做。
+- `getMermaidMaxTextSize` 返回实际生效的 `maxTextSize`。渲染前请先检查：超过上限时 `mermaid.render` 会返回一张占位图，不会抛出错误。
+- 队列属于一份 `@ai-markdown/core`。只有打包器把组件和应用解析到同一份 core 时，它才能让两边的工作串行执行。

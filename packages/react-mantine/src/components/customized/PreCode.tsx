@@ -12,7 +12,6 @@ import { useMantineCodeBlockOptions } from '../../hooks/useMantineCodeBlockOptio
 import MantineAIMMermaidCode from './MermaidCode';
 import { CopyButton } from '@mantine/core';
 import { MantineLanguageFormat, type MantineCodeBlockOptions } from '../../defs';
-export { jsonLooksComplete, prettyPrintJson } from '@ai-markdown/core/components';
 
 /**
  * Loads mermaid ahead of time. It is otherwise loaded on demand by the

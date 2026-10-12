@@ -16,7 +16,6 @@ type TableProjection = {
 };
 export declare function projectTable(node?: Element): TableProjection;
 export declare function serializeTable(rows: readonly (readonly string[])[], delimiter?: ',' | '\t'): string;
-export declare function codeBody(code: string): string;
 export declare function extendsCode(next: string, previous: string): boolean;
 export declare function createCodeLanguageTracker(onSettle: () => void): {
     read(code: string, streaming: boolean): CodeLanguage | null;
@@ -36,10 +35,6 @@ export declare function createCodeFrame(initial: CodeFrame, publish: (frame: Cod
 export declare function prettyPrintJson(text: string, expandNested?: boolean): string;
 export declare function createJsonCompletenessScanner(): (text: string) => boolean;
 export declare function jsonLooksComplete(text: string): boolean;
-export declare function createRenderQueue(): {
-    enqueue(owner: object, run: () => Promise<void>): Promise<void>;
-    cancel(owner: object): void;
-};
 export declare const mermaidRenderQueue: {
     enqueue(owner: object, run: () => Promise<void>): Promise<void>;
     cancel(owner: object): void;
@@ -59,8 +54,6 @@ type MermaidInitTarget = {
         getConfig?: () => MermaidConfig;
     };
 };
-export declare const resetMermaidInitializationForTests: () => void;
-export declare const MERMAID_DEFAULT_MAX_TEXT_SIZE = 50000;
 export declare const getMermaidMaxTextSize: (mermaid: MermaidInitTarget) => number;
 export declare const ensureMermaidInitialized: (mermaid: MermaidInitTarget, isDark: boolean) => void;
 interface DiagramEngine extends MermaidInitTarget {

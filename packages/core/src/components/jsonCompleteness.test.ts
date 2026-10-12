@@ -1,5 +1,5 @@
-import { expect, test } from 'vitest';
-import { createJsonCompletenessScanner } from './jsonCompleteness';
+import { describe, expect, test } from 'vitest';
+import { createJsonCompletenessScanner, jsonLooksComplete } from './jsonCompleteness';
 
 // Independent full-scan oracle, including a terminal escape at a frame seam.
 function fullScan(text: string) {
@@ -46,4 +46,26 @@ test('append and replacement frames match the full-scan oracle', () => {
       expect(scan(text), JSON.stringify(text)).toBe(fullScan(text));
     }
   }
+});
+
+describe('jsonLooksComplete, the pretty-print gate', () => {
+  test('balanced values pass', () => {
+    expect(jsonLooksComplete('{"a":{"b":1}}')).toBe(true);
+    expect(jsonLooksComplete('[1, [2, 3]]\n')).toBe(true);
+    expect(jsonLooksComplete('{\n  "a": {\n    "b": 1\n  }\n}')).toBe(true);
+  });
+  test('an in-progress pretty-printed prefix ending on a closing bracket does not pass', () => {
+    expect(jsonLooksComplete('{\n  "a": {\n    "b": 1\n  }')).toBe(false);
+    expect(jsonLooksComplete('{\n  "items": [\n    {"x": 1}')).toBe(false);
+  });
+  test('brackets inside strings are ignored; unterminated strings fail', () => {
+    expect(jsonLooksComplete('{"a": "}"}')).toBe(true);
+    expect(jsonLooksComplete('{"a": "\\"}"}')).toBe(true);
+    expect(jsonLooksComplete('{"a": "}')).toBe(false);
+  });
+  test('shapes without a closing bracket at the end never pass', () => {
+    expect(jsonLooksComplete('{"a": 1')).toBe(false);
+    expect(jsonLooksComplete('42')).toBe(false);
+    expect(jsonLooksComplete('')).toBe(false);
+  });
 });
