@@ -190,6 +190,8 @@ const finished = ref(false);
 
 `AIMarkdownSmoothStream` 将上述结果应用于内部的 `AIMarkdown`。其扩展属性为 `pacing`（默认 `balanced`）与 `coordinate`（默认 `true`），并通过模板引用暴露 `flush()`。组件本身不派发完成事件；若应用需监听展示排空完成，建议在自定义组合式函数中观察返回的计算状态。
 
+`useAIMarkdownDocument()` 供 `AIMarkdown` 渲染出的组件使用，例如 `components` 里注册的组件，在它们的 setup 中调用。它返回 `{ documentId, scope }`，两者都是计算属性引用：解析后的文档 ID，以及标识这篇文档的对象。在 `AIMarkdownDocuments` 内共用同一个 `documentId` 的渲染器共享同一个 `scope`，其他渲染器各有自己的对象。在 `AIMarkdown` 之外调用会抛出错误。
+
 ## 插槽与上下文类型
 
 | 插槽                                   | 上下文与行为                                                                                      |

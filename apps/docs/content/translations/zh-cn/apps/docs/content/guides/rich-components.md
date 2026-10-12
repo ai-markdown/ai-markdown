@@ -153,9 +153,9 @@ const AppImage = createMarkdownImage({
 
 React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/components/image` 导出，接受 Vue 组件或 `h(...)` 创建的 VNode。Mantine 从 `@ai-markdown/react-mantine/components` 导出工厂，与 React 共用 rc-image 预览。未配置的图标保留默认值，`null` 可以隐藏图标。图标仅作装饰，按钮保留无障碍名称；自定义图标内不要放交互控件。
 
-默认将最近 Markdown 排版根节点内已加载、可预览的图片组成画廊，顺序与页面一致。加载中、加载失败和链接中的图片不会加入；不同 Markdown 根节点互不混组。预览支持上/下一张、左右方向键、缩放、旋转和翻转。选中图片被移除时关闭预览，Esc 关闭后焦点回到最初打开预览的图片。
+默认将同一文档内已加载、可预览的图片组成画廊，顺序与页面一致。单独使用的 Markdown 实例是一篇文档；在 `AIMarkdownDocuments` 内共用同一个显式 `documentId` 的实例也是一篇文档，所以协调输出的各个分段共用一个画廊。加载中、加载失败和链接中的图片不会加入；不同文档互不混组。预览支持上/下一张、左右方向键、缩放、旋转和翻转。选中图片被移除时关闭预览，Esc 关闭后焦点回到最初打开预览的图片。
 
-`group: false` 可关闭分组；`group: '[data-photo-album]'` 可指定业务容器作为分组边界。自定义排版根节点可添加 `data-aimd-image-scope` 来启用自动分组；找不到分组容器时按单图处理。`preview: false` 仅关闭预览，保留加载/错误反馈。
+`group: false` 可关闭分组；`group: '[data-photo-album]'` 可按最近的、匹配业务选择器的祖先元素分组，找不到匹配祖先时按单图处理。排版根节点不参与分组，自定义 `Typography` 组件不需要任何标记。`preview: false` 仅关闭预览，保留加载/错误反馈。
 
 可选默认样式提供 `.aimd-image`、`.aimd-image-cover`、`.aimd-image-feedback`、`.aimd-image-icon`，水合后的缩略图状态由 `data-status="loading|ready|error"` 标记，可直接覆盖样式。
 
@@ -167,17 +167,17 @@ React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/component
 
 `@ai-markdown/core/components` 包含 React、Vue 和 Mantine 组件共用的逻辑，不含任何框架或 DOM 类型。编写自定义语言渲染器、替换某个自带组件，或者为其他框架编写组件时，都可以使用它。`@ai-markdown/core` 因语言检测函数而依赖 `@ai-markdown/code-language-detector`。
 
-| 用途                       | 导出                                                                                                            |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 读取 `pre` 节点            | `extractCode`、`normalizeRenderers`                                                                             |
-| 区分追加和替换             | `extendsCode`                                                                                                   |
-| 对显示的代码节流           | `nextCodeFrame`、`createCodeFrame`                                                                              |
-| 检测未标注的语言           | `createCodeLanguageTracker`                                                                                     |
-| 格式化 JSON                | `createJsonCompletenessScanner`、`jsonLooksComplete`、`prettyPrintJson`                                         |
-| 渲染 Mermaid 图表          | `createDiagramController`                                                                                       |
-| 在内置图表之外调用 Mermaid | `mermaidRenderQueue`、`ensureMermaidInitialized`、`getMermaidMaxTextSize`                                       |
-| 导出表格                   | `projectTable`、`serializeTable`                                                                                |
-| 图片分组和变换             | `getImageGallery`、`imageGroupSelector`、`zoomImage`、`reboundImage`、`imagePinchCenter`、`imageTransformStyle` |
+| 用途                       | 导出                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
+| 读取 `pre` 节点            | `extractCode`、`normalizeRenderers`                                                       |
+| 区分追加和替换             | `extendsCode`                                                                             |
+| 对显示的代码节流           | `nextCodeFrame`、`createCodeFrame`                                                        |
+| 检测未标注的语言           | `createCodeLanguageTracker`                                                               |
+| 格式化 JSON                | `createJsonCompletenessScanner`、`jsonLooksComplete`、`prettyPrintJson`                   |
+| 渲染 Mermaid 图表          | `createDiagramController`                                                                 |
+| 在内置图表之外调用 Mermaid | `mermaidRenderQueue`、`ensureMermaidInitialized`、`getMermaidMaxTextSize`                 |
+| 导出表格                   | `projectTable`、`serializeTable`                                                          |
+| 图片分组和变换             | `getImageGallery`、`zoomImage`、`reboundImage`、`imagePinchCenter`、`imageTransformStyle` |
 
 <span id="append-or-rewrite"></span>
 

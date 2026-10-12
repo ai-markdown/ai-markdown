@@ -10,7 +10,7 @@ import {
   isFootnoteSection,
   type RegistryController,
 } from '@ai-markdown/engine';
-import { useDocumentScope } from './documents';
+import { provideDocumentInfo, useDocumentScope } from './documents';
 import { useMarkdownChunk } from './useMarkdownChunk';
 import { deriveTailSignal } from '@ai-markdown/core';
 import { AIMarkdownStreamingCursor } from './cursor';
@@ -49,6 +49,14 @@ export const AIMarkdown = defineComponent({
     const id = useId();
     const documentId = computed(() => props.documentId ?? id);
     const clobberPrefix = computed(() => `aimd-${encodeURIComponent(shortenDocumentId(documentId.value))}-`);
+    // Coordinated renderers share the wrapper's token; a standalone one keeps its own.
+    const ownScope = {};
+    provideDocumentInfo({
+      documentId,
+      scope: computed(() =>
+        scope && props.documentId !== undefined ? scope.acquireScope(props.documentId) : ownScope
+      ),
+    });
     // Whether a next frame can follow this one. A server render is one
     // shot, so it takes the full pipeline and retains no incremental state;
     // a client mount seeds the retained prefix from its first frame. Decided

@@ -8,11 +8,22 @@
  * @module context
  */
 
-import { PropsWithChildren, createContext, useContext, useId, useMemo, useRef, type Context, type FC } from 'react';
+import {
+  PropsWithChildren,
+  createContext,
+  useContext,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type Context,
+  type FC,
+} from 'react';
 import { AIMarkdownMetadata, AIMarkdownVariant, AIMarkdownColorScheme } from './defs';
 import { hasLoneSurrogate, shortenDocumentId } from '@ai-markdown/engine';
 import { SHIPPED_BEHAVIOR_DEFAULTS } from './resolveFlatProps';
 import useReferenceFlipWarning from './hooks/useReferenceFlipWarning';
+import { useDocumentScope } from './components/AIMarkdownDocuments';
 
 const AIMarkdownMetadataContext = createContext<AIMarkdownMetadata | undefined>(undefined);
 
@@ -32,6 +43,13 @@ export interface AIMarkdownDocumentInfo {
   documentIdExplicit: boolean;
   /** Canonical URI-safe id prefix for clobberable attributes; never reconstruct locally. */
   clobberPrefix: string;
+  /**
+   * Identity of this document, for state that belongs to the document rather
+   * than to one renderer (a `WeakMap` key, for example). Renderers that share
+   * an explicit `documentId` inside `<AIMarkdownDocuments>` share one object;
+   * any other renderer has its own.
+   */
+  scope: object;
 }
 
 /** Payload of the theme context (value tier of the Theme system). */
@@ -482,9 +500,14 @@ const AIMarkdownProvider = ({
     [resolvedDocumentId]
   );
 
+  // Coordinated renderers share the wrapper's token; a standalone one keeps its own.
+  const sharedScope = useDocumentScope(resolvedDocumentId, documentIdExplicit);
+  const [ownScope] = useState(() => ({}));
+  const scope = sharedScope ?? ownScope;
+
   const documentInfo = useMemo<AIMarkdownDocumentInfo>(
-    () => Object.freeze({ documentId: resolvedDocumentId, documentIdExplicit, clobberPrefix }),
-    [resolvedDocumentId, documentIdExplicit, clobberPrefix]
+    () => Object.freeze({ documentId: resolvedDocumentId, documentIdExplicit, clobberPrefix, scope }),
+    [resolvedDocumentId, documentIdExplicit, clobberPrefix, scope]
   );
   const themeInfo = useMemo<AIMarkdownThemeInfo>(
     () => Object.freeze({ fontSize, variant, colorScheme }),

@@ -45,7 +45,12 @@ function renderWithProbe<T>(
 describe('narrow hooks — payloads field-by-field', () => {
   test('useAIMarkdownDocument with explicit id', () => {
     const doc = renderWithProbe(useAIMarkdownDocument, { documentId: 'doc-1' });
-    expect(doc).toEqual({ documentId: 'doc-1', documentIdExplicit: true, clobberPrefix: 'doc-1-user-content-' });
+    expect(doc).toEqual({
+      documentId: 'doc-1',
+      documentIdExplicit: true,
+      clobberPrefix: 'doc-1-user-content-',
+      scope: {},
+    });
     expect(Object.isFrozen(doc)).toBe(true);
   });
 

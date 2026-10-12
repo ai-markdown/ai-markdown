@@ -125,9 +125,9 @@ Vue exposes `createMarkdownImage` from `@ai-markdown/vue/components/image`. The 
 
 Toolbar icons are configurable through the same `icons` option: `close`, `prev`, `next`, `flipX`, `flipY`, `rotateLeft`, `rotateRight`, `zoomIn`, and `zoomOut`.
 
-By default, loaded previewable images within the nearest Markdown typography root form a gallery in DOM order. Linked images, failed images and pending images are excluded. The dialog provides Previous/Next buttons and left/right arrow keys, and closes if its selected image disappears. Escape restores focus to the image that opened the gallery. Separate Markdown roots stay isolated.
+By default, the loaded previewable images of one document form a gallery in DOM order. A standalone Markdown instance is one document; instances that share an explicit `documentId` inside `AIMarkdownDocuments` are one document too, so the sections of a coordinated answer share a gallery. Linked images, failed images and pending images are excluded. The dialog provides Previous/Next buttons and left/right arrow keys, and closes if its selected image disappears. Escape restores focus to the image that opened the gallery. Separate documents stay isolated.
 
-Use `group: false` for independent previews, or `group: '[data-photo-album]'` to choose a business-owned ancestor as the group boundary. A custom typography root can carry `data-aimd-image-scope` to opt into automatic grouping. Without a matching root, the image previews independently. `preview: false` retains loading/error feedback without adding a preview button.
+Use `group: false` for independent previews, or `group: '[data-photo-album]'` to group by the nearest ancestor that matches a selector you own; an image with no matching ancestor previews independently. The typography root plays no part in grouping, so a custom `Typography` component needs no marker. `preview: false` retains loading/error feedback without adding a preview button.
 
 Import the optional component stylesheet to get the supplied fullscreen preview layout, or provide equivalent styles for `.aimd-image-preview-*`.
 
@@ -153,17 +153,17 @@ A `pre` override owns ordinary fenced code. A separate `code` override still app
 
 `@ai-markdown/core/components` holds the logic the React, Vue and Mantine components share. It has no framework or DOM types. Use it to write a custom language renderer, to replace one of the supplied components, or to write the components for another framework. `@ai-markdown/core` depends on `@ai-markdown/code-language-detector` for the language helper.
 
-| Task                             | Exports                                                                                                         |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| Read a `pre` node                | `extractCode`, `normalizeRenderers`                                                                             |
-| Tell an append from a rewrite    | `extendsCode`                                                                                                   |
-| Throttle displayed code          | `nextCodeFrame`, `createCodeFrame`                                                                              |
-| Detect an unlabelled language    | `createCodeLanguageTracker`                                                                                     |
-| Format JSON                      | `createJsonCompletenessScanner`, `jsonLooksComplete`, `prettyPrintJson`                                         |
-| Render a Mermaid diagram         | `createDiagramController`                                                                                       |
-| Call Mermaid next to our diagram | `mermaidRenderQueue`, `ensureMermaidInitialized`, `getMermaidMaxTextSize`                                       |
-| Export a table                   | `projectTable`, `serializeTable`                                                                                |
-| Group and transform images       | `getImageGallery`, `imageGroupSelector`, `zoomImage`, `reboundImage`, `imagePinchCenter`, `imageTransformStyle` |
+| Task                             | Exports                                                                                   |
+| -------------------------------- | ----------------------------------------------------------------------------------------- |
+| Read a `pre` node                | `extractCode`, `normalizeRenderers`                                                       |
+| Tell an append from a rewrite    | `extendsCode`                                                                             |
+| Throttle displayed code          | `nextCodeFrame`, `createCodeFrame`                                                        |
+| Detect an unlabelled language    | `createCodeLanguageTracker`                                                               |
+| Format JSON                      | `createJsonCompletenessScanner`, `jsonLooksComplete`, `prettyPrintJson`                   |
+| Render a Mermaid diagram         | `createDiagramController`                                                                 |
+| Call Mermaid next to our diagram | `mermaidRenderQueue`, `ensureMermaidInitialized`, `getMermaidMaxTextSize`                 |
+| Export a table                   | `projectTable`, `serializeTable`                                                          |
+| Group and transform images       | `getImageGallery`, `zoomImage`, `reboundImage`, `imagePinchCenter`, `imageTransformStyle` |
 
 ### Append or rewrite
 

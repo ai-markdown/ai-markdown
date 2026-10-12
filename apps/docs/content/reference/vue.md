@@ -180,6 +180,8 @@ Controllers and watchers are created on mount and released on unmount. Initial/S
 
 `AIMarkdownSmoothStream` applies these results to `AIMarkdown`. Its extra props are `pacing` (default `balanced`) and `coordinate` (default `true`), and its template ref exposes `flush()`. It does not emit a completion event; use the returned computed state in a custom composable wrapper when your application needs to observe reveal completion.
 
+`useAIMarkdownDocument()` is for components rendered by `AIMarkdown`, such as an entry in `components`. Call it in their setup. It returns `{ documentId, scope }`, both computed refs: the resolved document ID, and an object that identifies the document. Renderers that share a `documentId` inside `AIMarkdownDocuments` share one `scope`; any other renderer has its own. It throws outside `AIMarkdown`.
+
 ## Slots and context types
 
 | Slot                                         | Context and behavior                                                                                                                               |

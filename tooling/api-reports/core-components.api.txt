@@ -100,7 +100,6 @@ type ImageActionIconName = 'rotateLeft' | 'rotateRight' | 'zoomIn' | 'zoomOut' |
 type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery' | ImageActionIconName;
 type ImageLoadStatus = 'loading' | 'ready' | 'error';
 export declare const imageIconPaths: Record<ImageIconName, readonly string[]>;
-export declare const imageGroupSelector = "[data-aimd-image-scope], .aim-typography-root, .aimd-vue, .mantine-Typography-root";
 interface ImageGalleryItem {
     id: object;
     src: string;

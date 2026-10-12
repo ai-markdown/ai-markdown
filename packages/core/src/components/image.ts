@@ -44,7 +44,6 @@ export const imageIconPaths: Record<ImageIconName, readonly string[]> = {
     'M11 9a2 2 0 1 1-4 0 2 2 0 0 1 4 0',
   ],
 };
-export const imageGroupSelector = '[data-aimd-image-scope], .aim-typography-root, .aimd-vue, .mantine-Typography-root';
 export interface ImageGalleryItem {
   id: object;
   src: string;

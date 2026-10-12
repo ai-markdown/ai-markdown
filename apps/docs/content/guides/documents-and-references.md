@@ -21,6 +21,8 @@ Use stable component keys. Supply `documentIndex` when your sections can reorder
 
 Different document IDs and different provider instances remain independent. Changing a section's document ID or unmounting it releases its old registration. Keep a provider scoped to the application area that owns those documents.
 
+The optional image component follows the same boundary: the images of one document form one preview gallery, across its sections. A component of your own can do the same with `useAIMarkdownDocument().scope`, an object that is shared by the renderers of one coordinated document and private to a standalone renderer. React and Vue both export the function; in Vue `scope` is a computed ref.
+
 ## Late definitions and footnotes
 
 A reference can appear before its definition is available. Once mounted contributions commit, the registry supplies shared destinations and global footnote numbering. Updating or removing a definition updates its readers. The last chunk in registry order owns the aggregate footnote footer; `documentIndex` can change that order.

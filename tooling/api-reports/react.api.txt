@@ -28,6 +28,7 @@ interface AIMarkdownDocumentInfo {
     documentId: string;
     documentIdExplicit: boolean;
     clobberPrefix: string;
+    scope: object;
 }
 interface AIMarkdownThemeInfo {
     fontSize: string;

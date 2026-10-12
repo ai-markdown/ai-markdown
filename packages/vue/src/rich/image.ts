@@ -16,9 +16,9 @@ import {
 } from 'vue';
 import type { Element } from 'hast';
 import type { MarkdownComponentProps } from './types';
+import { useOptionalAIMarkdownDocument } from '../documents';
 import {
   getImageGallery,
-  imageGroupSelector,
   imageIconPaths,
   type ImageGallery,
   type ImageGalleryItem,
@@ -29,7 +29,7 @@ export type { ImageIconName } from '@ai-markdown/core/components';
 export type MarkdownImageIcon = VNodeChild | Component;
 export interface MarkdownImageOptions {
   icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
-  /** Nearest ancestor selector; defaults to the Markdown root. false disables grouping. */
+  /** Images of one document form a gallery. A selector groups by the nearest matching ancestor instead; false disables grouping. */
   group?: string | false;
   preview?: boolean;
 }
@@ -69,6 +69,7 @@ export function createMarkdownImage({
     inheritAttrs: false,
     props: { node: Object as PropType<Element>, streaming: Boolean, metadata: null },
     setup(_, { attrs }) {
+      const markdownDocument = useOptionalAIMarkdownDocument();
       const image = ref<HTMLImageElement>(),
         trigger = ref<HTMLButtonElement>();
       const mounted = ref(false);
@@ -123,14 +124,28 @@ export function createMarkdownImage({
         }
       );
       watch(
-        () => [enabled.value, status.value, attrs.src, attrs.srcset, attrs.srcSet, attrs.alt, loadedSource.value],
+        () => [
+          enabled.value,
+          status.value,
+          attrs.src,
+          attrs.srcset,
+          attrs.srcSet,
+          attrs.alt,
+          loadedSource.value,
+          markdownDocument?.scope.value,
+        ],
         (_, __, onCleanup) => {
           const element = image.value;
           if (!element || !enabled.value || status.value !== 'ready') {
             multi.value = false;
             return;
           }
-          const scope = group === false ? element : (element.closest(group ?? imageGroupSelector) ?? element);
+          const scope =
+            group === undefined
+              ? (markdownDocument?.scope.value ?? element)
+              : group === false
+                ? element
+                : (element.closest(group) ?? element);
           const gallery = getImageGallery(scope);
           // Every ready image hears each change, but only the open one materializes the list.
           const sync = () => {

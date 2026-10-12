@@ -15,7 +15,7 @@ import {
   type ReactNode,
 } from 'react';
 import RcImageImport from '@rc-component/image';
-import { useAIMarkdownTheme } from '@ai-markdown/react';
+import { useAIMarkdownDocument, useAIMarkdownTheme } from '@ai-markdown/react';
 const subscribeClient = () => () => {};
 const clientSnapshot = () => true;
 const serverSnapshot = () => false;
@@ -27,7 +27,6 @@ const RcImage =
 import type { Element as HastElement } from 'hast';
 import {
   getImageGallery,
-  imageGroupSelector,
   imageIconPaths,
   imageActionLabels,
   type ImageActionIconName,
@@ -45,7 +44,7 @@ export interface ImageIconProps {
 export type MarkdownImageIcon = ReactNode | ComponentType<ImageIconProps>;
 export interface MarkdownImageOptions {
   icons?: Partial<Record<ImageIconName, MarkdownImageIcon>>;
-  /** Nearest ancestor selector; defaults to the Markdown root. false disables grouping. */
+  /** Images of one document form a gallery. A selector groups by the nearest matching ancestor instead; false disables grouping. */
   group?: string | false;
   preview?: boolean;
 }
@@ -132,6 +131,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
   return function MarkdownImage({ node: _node, ...props }: MarkdownImageProps) {
     const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
     const { colorScheme } = useAIMarkdownTheme();
+    const { scope: documentScope } = useAIMarkdownDocument();
     const image = useRef<HTMLImageElement>(null),
       trigger = useRef<HTMLButtonElement>(null);
     const [enabled, setEnabled] = useState(false),
@@ -178,7 +178,8 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
         setMulti(false);
         return;
       }
-      const scope = group === false ? element : (element.closest(group ?? imageGroupSelector) ?? element);
+      const scope =
+        group === undefined ? documentScope : group === false ? element : (element.closest(group) ?? element);
       const gallery = getImageGallery(scope);
       // Every ready image hears each change, but only the open one materializes the list.
       const sync = () => {
@@ -200,7 +201,7 @@ export function createMarkdownImage({ icons, group, preview: allowPreview = true
         gallery.remove(element);
         if (galleryRef.current === gallery) galleryRef.current = undefined;
       };
-    }, [enabled, status, props.src, props.srcSet, props.alt, loadedSource]);
+    }, [enabled, status, props.src, props.srcSet, props.alt, loadedSource, documentScope]);
     useEffect(() => {
       selectedRef.current = selected;
       if (selected) setItems(galleryRef.current?.items() ?? []);

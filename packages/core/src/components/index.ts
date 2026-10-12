@@ -34,7 +34,7 @@ export interface CodeBlockOptions {
 export { createDiagramController } from './diagram';
 export type { DiagramEngine, DiagramState, DiagramRequest, DiagramView } from './diagram';
 export { lockImagePreviewScroll } from './scroll';
-export { imageIconPaths, imageActionLabels, imageGroupSelector, getImageGallery } from './image';
+export { imageIconPaths, imageActionLabels, getImageGallery } from './image';
 export type { ImageIconName, ImageActionIconName, ImageLoadStatus, ImageGalleryItem, ImageGallery } from './image';
 export {
   initialImageTransform,

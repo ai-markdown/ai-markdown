@@ -1,6 +1,7 @@
 export { AIMarkdown, AIMarkdown as default } from './AIMarkdown';
 export { AIMarkdownStreamingCursor } from './cursor';
-export { AIMarkdownDocuments } from './documents';
+export { AIMarkdownDocuments, useAIMarkdownDocument } from './documents';
+export type { AIMarkdownDocumentInfo } from './documents';
 export { AIMarkdownSmoothStream, useSmoothStream, useDocumentSmoothStream } from './smooth';
 export type { SmoothStreamInput, DocumentSmoothStreamInput } from './smooth';
 export type {

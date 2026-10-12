@@ -12,7 +12,7 @@
 | ------------------------------------ | ------------------------------------------------------------------------ |
 | `useAIMarkdownState()`               | `{ streaming, …扩展状态组 }`                                             |
 | `useAIMarkdownTheme()`               | `{ fontSize, variant, colorScheme }`                                     |
-| `useAIMarkdownDocument()`            | `{ documentId, documentIdExplicit, clobberPrefix }`                      |
+| `useAIMarkdownDocument()`            | `{ documentId, documentIdExplicit, clobberPrefix, scope }`               |
 | `useAIMarkdownBehaviors()`           | `{ blockMemo, incrementalParse, preserveOrphanReferences, …扩展行为组 }` |
 | `useAIMarkdownMetadata<TMetadata>()` | `TMetadata \| undefined`                                                 |
 
@@ -42,6 +42,7 @@ function CustomCodeBlock({ children }: PropsWithChildren) {
 | `documentId`                                                  | `useAIMarkdownDocument()`  | `string`                | 逻辑 Markdown 文档的稳定 ID，由调用方显式传入或通过 `useId()` 自动生成。                                                                                                                                                                                                                  |
 | `documentIdExplicit`                                          | `useAIMarkdownDocument()`  | `boolean`               | `documentId` 是否为调用方显式传入（而非自动生成）。用于内部协调信号，`useDocumentRegistry` 借此确保自动生成的 ID 不会将独立片段纳入跨片段协调。大多数自定义组件可忽略此字段。                                                                                                             |
 | `clobberPrefix`                                               | `useAIMarkdownDocument()`  | `string`                | 源自 `documentId` 的 URI 安全 ID 前缀（超过 16 字符的 ID 会经过 MurmurHash3 → Base62 缩写处理），用于所有防覆盖的 HTML 属性（`id=…` / `href="#…"`）。编写输出锚点的组件时，请从 Hook 中读取此值，不要在本地自行重新计算——该前缀的具体字节格式属于内部实现细节，在版本升级中可能发生调整。 |
+| `scope`                                                       | `useAIMarkdownDocument()`  | `object`                | 文档的身份对象，用于保存属于文档而不属于某个渲染器的状态（例如作为 `WeakMap` 的键）。在 `<AIMarkdownDocuments>` 内共用同一个显式 `documentId` 的渲染器共享同一个对象，其他渲染器各有自己的对象。自带的图片组件按它划分图片组。                                                            |
 | `blockMemo` / `incrementalParse` / `preserveOrphanReferences` | `useAIMarkdownBehaviors()` | `boolean`               | 解析后的行为开关，名称与平铺属性保持一致。                                                                                                                                                                                                                                                |
 
 ### `useAIMarkdown()` — 聚合 Hook

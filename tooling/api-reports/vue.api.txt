@@ -1,5 +1,5 @@
 // Generated from the built public declaration. Review changes before updating.
-import { Component, DefineComponent, VNodeChild } from "vue";
+import { Component, ComputedRef, DefineComponent, VNodeChild } from "vue";
 import { AIMDContentPreprocessor, AIMDContentPreprocessor as AIMDContentPreprocessor$1, AIMarkdownEnginePlugin, AIMarkdownEnginePlugin as AIMarkdownEnginePlugin$1, SanitizeSchema, SanitizeSchema as SanitizeSchema$1, SmoothStreamPacing, SmoothStreamPacing as SmoothStreamPacing$1, UrlTransform, UrlTransform as UrlTransform$1, createRemendPreprocessor, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, highlight, pangu, preprocessLaTeX, removeComments, smartypants } from "@ai-markdown/engine";
 import "@ai-markdown/core";
 import { Element } from "hast";
@@ -32,6 +32,11 @@ interface AIMarkdownDocumentsProps {
 }
 export declare const AIMarkdown: DefineComponent<AIMarkdownProps>;
 export declare const AIMarkdownStreamingCursor: DefineComponent;
+interface AIMarkdownDocumentInfo {
+    documentId: ComputedRef<string>;
+    scope: ComputedRef<object>;
+}
+export declare function useAIMarkdownDocument(): AIMarkdownDocumentInfo;
 export declare const AIMarkdownDocuments: DefineComponent<AIMarkdownDocumentsProps>;
 interface SmoothStreamInput {
     content: string;
@@ -59,4 +64,4 @@ export declare const AIMarkdownSmoothStream: DefineComponent<AIMarkdownProps & {
 }, {
     flush: () => void;
 }>;
-export { type AIMDContentPreprocessor, type AIMarkdownDocumentsProps, type AIMarkdownEnginePlugin, type AIMarkdownProps, type DocumentSmoothStreamInput, type MarkdownComponents, type MarkdownElementContext, type MarkdownElementSlot, type SanitizeSchema, type SmoothStreamInput, type SmoothStreamPacing, type UrlTransform, createRemendPreprocessor, AIMarkdown as default, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, highlight, pangu, preprocessLaTeX, removeComments, smartypants };
+export { type AIMDContentPreprocessor, type AIMarkdownDocumentInfo, type AIMarkdownDocumentsProps, type AIMarkdownEnginePlugin, type AIMarkdownProps, type DocumentSmoothStreamInput, type MarkdownComponents, type MarkdownElementContext, type MarkdownElementSlot, type SanitizeSchema, type SmoothStreamInput, type SmoothStreamPacing, type UrlTransform, createRemendPreprocessor, AIMarkdown as default, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, highlight, pangu, preprocessLaTeX, removeComments, smartypants };

@@ -27,6 +27,8 @@ interface AIMarkdownDocumentsContextValue {
    *  callers (`MarkdownContent`, tests via `__internalGetContext`) keep
    *  the wider view. */
   getRegistry: (documentId: string) => RegistryController;
+  /** Identity token of a document in this wrapper; see `AIMarkdownDocumentInfo.scope`. */
+  getScope: (documentId: string) => object;
   preserveOrphanReferences: boolean;
 }
 
@@ -75,14 +77,17 @@ const AIMarkdownDocumentsRoot: FC<
   // onEmpty still evicts promptly after the final committed registration.
   const [registries] = useState(() => createDocumentScopeCache(createRegistry));
   const [coordinators] = useState(() => createDocumentScopeCache(createSmoothCoordinator));
+  // A token has no registrations to count, so it never reports itself empty:
+  // it is dropped when the last renderer holding it is collected.
+  const [scopes] = useState(() => createDocumentScopeCache<object>(() => ({})));
 
   const smoothValue = useMemo<SmoothCoordinatorContextValue | null>(
     () => (smoothTurnTaking ? { getCoordinator: coordinators.get } : null),
     [smoothTurnTaking, coordinators]
   );
   const value = useMemo<AIMarkdownDocumentsContextValue>(
-    () => ({ preserveOrphanReferences, getRegistry: registries.get }),
-    [preserveOrphanReferences, registries]
+    () => ({ preserveOrphanReferences, getRegistry: registries.get, getScope: scopes.get }),
+    [preserveOrphanReferences, registries, scopes]
   );
 
   return (
@@ -160,6 +165,14 @@ export function useDocumentRegistry(documentId: string | undefined, documentIdEx
   const ctx = useContext(AIMarkdownDocumentsContext);
   if (!ctx || !documentId || !documentIdExplicit) return null;
   return ctx.getRegistry(documentId);
+}
+
+/** The identity token shared by the renderers of one coordinated document, or
+ *  null where a renderer stands alone (same rule as {@link useDocumentRegistry}). */
+export function useDocumentScope(documentId: string, documentIdExplicit: boolean): object | null {
+  const ctx = useContext(AIMarkdownDocumentsContext);
+  if (!ctx || !documentIdExplicit) return null;
+  return ctx.getScope(documentId);
 }
 
 /** Returns the effective preserveOrphanReferences for this position in the tree:
