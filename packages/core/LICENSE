@@ -68,7 +68,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 ---
-Image gesture calculations are adapted from @rc-component/image 1.10.0.
+Image gesture calculations and the preview interaction rules are adapted from @rc-component/image 1.10.0.
 
 MIT License
 

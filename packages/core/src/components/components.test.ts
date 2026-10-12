@@ -69,3 +69,25 @@ test('image scroll locks are shared and released once per owner', async () => {
   second();
   expect(body.style.overflow).toBe('auto');
 });
+test('a scroll lock pads the page by the scrollbar it removes, and restores what was there', async () => {
+  const { lockImagePreviewScroll } = await import('./scroll');
+  const body = { style: { overflow: '', paddingRight: '' } };
+  const first = lockImagePreviewScroll(body, 15);
+  expect(body.style).toEqual({ overflow: 'hidden', paddingRight: '15px' });
+  // A second owner does not pad again.
+  const second = lockImagePreviewScroll(body, 15);
+  expect(body.style.paddingRight).toBe('15px');
+  first();
+  expect(body.style.paddingRight).toBe('15px');
+  second();
+  expect(body.style).toEqual({ overflow: '', paddingRight: '' });
+  const padded = { style: { overflow: 'auto', paddingRight: '8px' } };
+  const release = lockImagePreviewScroll(padded, 15);
+  expect(padded.style.paddingRight).toBe('calc(8px + 15px)');
+  release();
+  expect(padded.style).toEqual({ overflow: 'auto', paddingRight: '8px' });
+  // No scrollbar width: the padding is not touched.
+  const plain = { style: { overflow: '', paddingRight: '' } };
+  lockImagePreviewScroll(plain)();
+  expect(plain.style.paddingRight).toBe('');
+});

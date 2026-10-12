@@ -21,6 +21,43 @@ describe('rc-image transform contract', () => {
     expect(imageWheelRatio(-10)).toBe(1.05);
     expect(imageWheelRatio(100)).toBe(1 / 1.5);
   });
+  it('treats line and page wheel deltas as notches, and a trackpad pinch as continuous', () => {
+    // Three lines, or one page, are the 100 pixels of one notch.
+    expect(imageWheelRatio(3, 1)).toBe(1 / 1.5);
+    expect(imageWheelRatio(-3, 1)).toBe(1.5);
+    expect(imageWheelRatio(1, 1)).toBeCloseTo(1 / (1 + 1 / 6), 12);
+    expect(imageWheelRatio(-1, 2)).toBe(1.5);
+    expect(imageWheelRatio(-10, 0, true)).toBeCloseTo(Math.exp(0.1), 12);
+    expect(imageWheelRatio(10, 0, true)).toBeCloseTo(Math.exp(-0.1), 12);
+    expect(imageWheelRatio(-5000, 0, true)).toBe(1.5);
+    expect(imageWheelRatio(0)).toBe(1);
+    expect(imageWheelRatio(Number.NaN)).toBe(1);
+  });
+  it('keeps the point under the pointer fixed when the image is rotated or flipped', () => {
+    // The image point under a viewport point P is found by undoing translate, scale/flip and rotation
+    // about the layout centre. Zooming about P must leave that image point under P.
+    const centre = { x: box.left + box.width / 2, y: box.top + box.height / 2 };
+    const imagePoint = (t: ReturnType<typeof initialImageTransform>, px: number, py: number) => {
+      const dx = (px - centre.x - t.x) / (t.scale * (t.flipX ? -1 : 1));
+      const dy = (py - centre.y - t.y) / (t.scale * (t.flipY ? -1 : 1));
+      const angle = (-t.rotate * Math.PI) / 180;
+      return { x: dx * Math.cos(angle) - dy * Math.sin(angle), y: dx * Math.sin(angle) + dy * Math.cos(angle) };
+    };
+    for (const rotate of [0, 90, 180, 270, -90])
+      for (const [flipX, flipY] of [
+        [false, false],
+        [true, false],
+        [false, true],
+        [true, true],
+      ]) {
+        const before = { ...initialImageTransform(), rotate, flipX, flipY, x: 40, y: -25, scale: 2 };
+        const after = zoomImage(before, 1.5, box, 640, 310);
+        const a = imagePoint(before, 640, 310),
+          b = imagePoint(after, 640, 310);
+        expect(b.x).toBeCloseTo(a.x, 9);
+        expect(b.y).toBeCloseTo(a.y, 9);
+      }
+  });
   it('allows a pinch below 1x then rebounds at gesture end', () => {
     const pinched = zoomImage(initialImageTransform(), 0.5, box, 600, 500, true);
     expect(pinched.scale).toBe(0.5);

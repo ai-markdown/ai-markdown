@@ -20,10 +20,8 @@ import {
   extractCode,
   normalizeRenderers,
   resolveLabels,
-  type CodeBlockLabels,
   type CodeRendererInput,
   type CodeBlockOptions,
-  type LabelsOption,
 } from '@ai-markdown/core/components';
 import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
 import { useCodeBlock } from './useCodeBlock';

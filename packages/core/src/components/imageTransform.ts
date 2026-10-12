@@ -1,5 +1,5 @@
-/** Transform rules adapted from @rc-component/image 1.10.0 (MIT).
- * Keep the Vue adapter's gestures aligned with the upstream React engine. */
+/** Transform rules adapted from @rc-component/image 1.10.0 (MIT, Copyright (c) 2019-present react-component; see LICENSE).
+ * Pure functions; `createImagePreviewController` applies them. */
 export interface ImageTransform {
   x: number;
   y: number;
@@ -50,9 +50,20 @@ export function zoomImage(
     x = y = 0;
   return { ...transform, x, y, scale };
 }
-export function imageWheelRatio(delta: number): number {
-  const ratio = 1 + Math.min(Math.abs(delta / 100), 1) * 0.5;
-  return delta > 0 ? 1 / ratio : ratio;
+/**
+ * The zoom factor for one wheel event. A full notch (100 pixels) is one 1.5x
+ * step, and a smaller delta a proportional part of it.
+ * - `mode` is `WheelEvent.deltaMode`. Some browsers and mice report lines or
+ *   pages, not pixels: three lines or one page count as a notch.
+ * - `pinch` is a trackpad pinch, which arrives as a wheel event with the
+ *   control key set and small deltas. It scales continuously with the delta.
+ */
+export function imageWheelRatio(delta: number, mode = 0, pinch = false): number {
+  if (!Number.isFinite(delta) || delta === 0) return 1;
+  if (pinch) return Math.min(1.5, Math.max(1 / 1.5, Math.exp(-delta / 100)));
+  const pixels = mode === 1 ? (delta * 100) / 3 : mode === 2 ? delta * 100 : delta;
+  const ratio = 1 + Math.min(Math.abs(pixels / 100), 1) * 0.5;
+  return pixels > 0 ? 1 / ratio : ratio;
 }
 /** Snap a moved image back inside the viewport, taking quarter turns into account. */
 export function reboundImage(

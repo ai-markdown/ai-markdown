@@ -15,7 +15,7 @@ const meta: MantineMeta = {
     docs: {
       description: {
         component:
-          'Register pre/img/table directly on MantineAIMarkdown. Code keeps the Mantine highlighter; images share the rc-image preview. Tables and image feedback follow the resolved Mantine theme.',
+          'Register pre/img/table directly on MantineAIMarkdown. Code keeps the Mantine highlighter; images use the same preview dialog as React. Tables and image feedback follow the resolved Mantine theme.',
       },
     },
   },

@@ -33,6 +33,14 @@ vi.mock('mermaid', () => {
   };
 });
 
+// jsdom has the dialog element but not its modal methods.
+HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
+  this.setAttribute('open', '');
+};
+HTMLDialogElement.prototype.close ??= function close(this: HTMLDialogElement) {
+  this.removeAttribute('open');
+};
+
 let root: Root | undefined;
 let container: HTMLElement | undefined;
 afterEach(() => {
@@ -151,7 +159,7 @@ test('table: the toolbar and the reason an export is refused use the supplied te
   expect((scope.querySelector('.aimd-toolbar button') as HTMLButtonElement).title).toBe('含合并单元格');
 });
 
-test('image: the thumbnail and the preview toolbar use the supplied text', async () => {
+test('image: the thumbnail and the preview dialog use the supplied text', async () => {
   const Image = createMarkdownImage({
     labels: { loading: '图片加载中…', open: (alt) => `预览图片：${alt}`, close: '关闭预览', zoomIn: '放大' },
   });
@@ -163,12 +171,13 @@ test('image: the thumbnail and the preview toolbar use the supplied text', async
   const trigger = scope.querySelector('button.aimd-image-trigger') as HTMLButtonElement;
   expect(trigger.getAttribute('aria-label')).toBe('预览图片：一只猫');
   await act(async () => trigger.click());
-  const names = [...document.querySelectorAll('.aimd-image-preview [aria-label]')].map((node) =>
-    node.getAttribute('aria-label')
-  );
-  // The close button is named by text for screen readers, not by an attribute.
-  expect(document.querySelector('.aimd-image-preview-close')?.textContent).toBe('关闭预览');
+  const dialog = document.querySelector('dialog.aimd-image-preview') as HTMLDialogElement;
+  expect(dialog.open).toBe(true);
+  expect(dialog.getAttribute('aria-label')).toBe('一只猫');
+  const names = [...dialog.querySelectorAll('button')].map((node) => node.getAttribute('aria-label'));
+  expect(names).toContain('关闭预览');
   expect(names).toContain('放大');
   // An entry that was not overridden keeps its default.
   expect(names).toContain('Zoom out');
+  expect(dialog.querySelector('[role="group"]')?.getAttribute('aria-label')).toBe('Image preview actions');
 });

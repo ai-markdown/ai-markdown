@@ -1,4 +1,4 @@
-import { ImagePreview } from './imagePreview';
+import { useImagePreview } from './imagePreview';
 import {
   defineComponent,
   h,
@@ -6,7 +6,6 @@ import {
   onBeforeUnmount,
   onMounted,
   ref,
-  shallowRef,
   watch,
   nextTick,
   type Component,
@@ -21,7 +20,6 @@ import {
   getImageGallery,
   imageIconPaths,
   type ImageGallery,
-  type ImageGalleryItem,
   type ImageIconName,
   type ImageLabels,
   type ImageLoadStatus,
@@ -81,12 +79,16 @@ export function createMarkdownImage({
         trigger = ref<HTMLButtonElement>();
       const mounted = ref(false);
       const enabled = ref(false),
-        selected = shallowRef<object | null>(null),
-        items = shallowRef<readonly ImageGalleryItem[]>([]),
         multi = ref(false),
         status = ref<ImageLoadStatus>('loading'),
         loadedSource = ref('');
       let currentGallery: ImageGallery | undefined;
+      // The preview follows the gallery by itself; it closes when its image leaves it.
+      const preview = useImagePreview({
+        renderIcon: (name) => icon(name, icons),
+        labels: () => resolveLabels(defaultImageLabels, configuredLabels),
+        onClosed: () => trigger.value?.focus(),
+      });
       let observer: MutationObserver | undefined;
       const update = () => {
         const parent = image.value?.closest('.aimd-image');
@@ -94,7 +96,7 @@ export function createMarkdownImage({
           allowPreview &&
           Boolean(attrs.src || attrs.srcset || attrs.srcSet) &&
           !parent?.closest('a,button,[role="link"],[role="button"]');
-        if (!enabled.value) selected.value = null;
+        if (!enabled.value) preview.close();
       };
       const observe = () => {
         observer?.disconnect();
@@ -122,7 +124,7 @@ export function createMarkdownImage({
       watch(
         () => [attrs.src, attrs.srcset, attrs.srcSet],
         () => {
-          selected.value = null;
+          preview.close();
           status.value = 'loading';
           void nextTick(() => {
             observe();
@@ -154,11 +156,9 @@ export function createMarkdownImage({
                 ? element
                 : (element.closest(group) ?? element);
           const gallery = getImageGallery(scope);
-          // Every ready image hears each change, but only the open one materializes the list.
+          // Every ready image hears each change; none of them sorts the list for it.
           const sync = () => {
             multi.value = gallery.size() > 1;
-            // The host owns the open preview; after navigation its selection may name another image.
-            if (selected.value) items.value = gallery.items();
           };
           const unsubscribe = gallery.subscribe(sync);
           currentGallery = gallery;
@@ -177,20 +177,8 @@ export function createMarkdownImage({
         },
         { flush: 'post' }
       );
-      const close = () => {
-        selected.value = null;
-      };
-      const current = () => items.value.find((item) => item.id === selected.value);
-      watch(
-        () => current(),
-        (item) => {
-          if (selected.value && !item) close();
-        }
-      );
       onBeforeUnmount(() => observer?.disconnect());
       return () => {
-        const item = current(),
-          index = items.value.findIndex((entry) => entry.id === selected.value);
         const labels = resolveLabels(defaultImageLabels, configuredLabels);
         const feedback = (state: ImageLoadStatus, alt = '') =>
           mounted.value &&
@@ -208,15 +196,12 @@ export function createMarkdownImage({
             (event: Event) => {
               status.value = 'ready';
               loadedSource.value = (event.currentTarget as HTMLImageElement).currentSrc;
-              if (selected.value === image.value && item?.src !== (event.currentTarget as HTMLImageElement).currentSrc)
-                close();
             },
           ],
           onError: [
             attrs.onError,
             () => {
               status.value = 'error';
-              close();
             },
           ],
         });
@@ -242,9 +227,7 @@ export function createMarkdownImage({
                       class: 'aimd-image-trigger',
                       'aria-label': labels.open(String(attrs.alt ?? '')),
                       onClick: () => {
-                        // The list is materialized before `selected`, so the current() watch sees the entry.
-                        items.value = currentGallery?.items() ?? [];
-                        selected.value = image.value ?? null;
+                        if (currentGallery && image.value) preview.open(currentGallery, image.value);
                       },
                     },
                     content
@@ -252,23 +235,7 @@ export function createMarkdownImage({
                 ]
               : content
           ),
-          enabled.value &&
-            h(ImagePreview, {
-              open: Boolean(item),
-              items: items.value,
-              current: index,
-              renderIcon: (name: ImageIconName) => icon(name, icons),
-              labels,
-              onCurrentChange: (next: number) => {
-                selected.value = items.value[next]?.id ?? null;
-              },
-              onClose: close,
-              afterClose: () => {
-                // Skip the clear if the preview has been opened again since the close began.
-                if (!selected.value) items.value = [];
-                trigger.value?.focus();
-              },
-            }),
+          preview.render(),
         ];
       };
     },

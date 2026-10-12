@@ -54,6 +54,14 @@ export type {
   TableExportReason,
 } from './labels';
 export { lockImagePreviewScroll } from './scroll';
+export { createImagePreviewController } from './imagePreview';
+export type {
+  ImagePreviewPhase,
+  ImagePreviewState,
+  ImagePreviewHost,
+  ImagePreviewOptions,
+  ImagePointer,
+} from './imagePreview';
 export { imageIconPaths, imageActionNames, getImageGallery } from './image';
 export type { ImageIconName, ImageActionIconName, ImageLoadStatus, ImageGalleryItem, ImageGallery } from './image';
 export {

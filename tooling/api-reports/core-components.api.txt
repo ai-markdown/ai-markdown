@@ -183,8 +183,9 @@ export declare function createDiagramController(load: () => Promise<DiagramEngin
 export declare function lockImagePreviewScroll(target: {
     style: {
         overflow: string;
+        paddingRight?: string;
     };
-}): () => void;
+}, scrollbarWidth?: number): () => void;
 interface ImageTransform {
     x: number;
     y: number;
@@ -204,7 +205,7 @@ interface ImageGeometry {
 export declare const initialImageTransform: () => ImageTransform;
 export declare function imageTransformStyle(transform: ImageTransform): string;
 export declare function zoomImage(transform: ImageTransform, ratio: number, geometry: ImageGeometry, centerX?: number, centerY?: number, touch?: boolean): ImageTransform;
-export declare function imageWheelRatio(delta: number): number;
+export declare function imageWheelRatio(delta: number, mode?: number, pinch?: boolean): number;
 export declare function reboundImage(transform: ImageTransform, geometry: ImageGeometry, bounds: {
     left: number;
     top: number;
@@ -225,6 +226,55 @@ export declare function imagePinchCenter(oldA: {
     x: number;
     y: number;
 };
+type ImagePreviewPhase = 'closed' | 'opening' | 'open' | 'closing';
+interface ImagePreviewState {
+    phase: ImagePreviewPhase;
+    items: readonly ImageGalleryItem[];
+    current: number;
+    item: ImageGalleryItem | undefined;
+    transform: ImageTransform;
+    status: ImageLoadStatus;
+    moving: boolean;
+    canPrevious: boolean;
+    canNext: boolean;
+    canZoomIn: boolean;
+    canZoomOut: boolean;
+}
+interface ImagePreviewHost {
+    geometry(): ImageGeometry | undefined;
+    frame(callback: () => void): () => void;
+}
+interface ImagePreviewOptions {
+    closeDuration?: number | (() => number);
+}
+interface ImagePointer {
+    id: number;
+    x: number;
+    y: number;
+    button?: number;
+}
+export declare function createImagePreviewController(host: ImagePreviewHost, publish: (state: ImagePreviewState) => void, options?: ImagePreviewOptions): {
+    state: () => ImagePreviewState;
+    open(gallery: ImageGallery, id: object): boolean;
+    close: () => void;
+    go: (delta: number) => void;
+    action(name: ImageActionIconName): void;
+    loaded(): void;
+    failed(): void;
+    pointerDown(pointer: ImagePointer): boolean;
+    pointerMove(pointer: ImagePointer): void;
+    pointerUp(id: number): void;
+    wheel(input: {
+        deltaY: number;
+        x: number;
+        y: number;
+        mode?: number;
+        pinch?: boolean;
+    }): boolean;
+    doubleClick(x: number, y: number): void;
+    key(key: string): boolean;
+    dispose(): void;
+};
 export interface CodeRendererInput {
     code: string;
     language: string;
@@ -242,4 +292,4 @@ export interface CodeBlockOptions {
     mermaidIntervalMs?: number;
     labels?: LabelsOption<CodeBlockLabels>;
 }
-export type { CodeBlockInput, CodeBlockLabels, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImageTransform, LabelsOption, MermaidInitTarget, TableExportReason, TableLabels, TableProjection };
+export type { CodeBlockInput, CodeBlockLabels, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImagePointer, ImagePreviewHost, ImagePreviewOptions, ImagePreviewPhase, ImagePreviewState, ImageTransform, LabelsOption, MermaidInitTarget, TableExportReason, TableLabels, TableProjection };

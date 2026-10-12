@@ -97,7 +97,7 @@ The same paths exist under `@ai-markdown/vue`. Plain code supports custom render
 
 ## Image preview
 
-Server-rendered images remain visible before JavaScript loads. After hydration, loading/error feedback is enabled and a ready ordinary image becomes a keyboard-operable preview trigger. Enter opens a fullscreen preview; Escape or Close dismisses it and restores focus. The dialog is portalled to the document body so inline images never create invalid paragraph markup. The preview follows [rc-image](https://github.com/react-component/image): a dark fullscreen mask, side navigation, and a floating toolbar with vertical/horizontal flip, left/right rotation and zoom. Zoom ranges from 1× to 50× in 1.5× steps; wheel and double-click zoom around the pointer, dragging rebounds at viewport edges, and touch supports panning and pinch zoom. Switching images resets the transform. Loading/error feedback, focus trapping and scroll locking are preserved. React and Mantine use `@rc-component/image`; Vue implements the same interaction rules with a native dialog. Images inside links/buttons or matching interactive roles keep their original behavior, including dynamically changed roles.
+Server-rendered images remain visible before JavaScript loads. After hydration, loading/error feedback is enabled and a ready ordinary image becomes a keyboard-operable preview trigger. Enter opens a fullscreen preview; Escape or Close dismisses it and restores focus. The preview is a native modal `<dialog>` attached to the document body, so inline images never create invalid paragraph markup, and the browser supplies focus containment, the top layer and Escape. It has a dark fullscreen mask, side navigation, and a floating toolbar with vertical/horizontal flip, left/right rotation and zoom. Zoom ranges from 1× to 50× in 1.5× steps; the wheel, a trackpad pinch and a double click zoom around the pointer. Mouse, pen and touch are handled alike: one pointer drags, two pinch, and an image moved past the viewport edges rebounds. Switching images resets the transform. The page behind does not scroll while the preview is open, and it keeps its width when its scrollbar disappears. Opening and closing fade over 0.3 s, or not at all when the user prefers reduced motion. React, Vue and Mantine share one implementation: the rules live in `@ai-markdown/core/components` (`createImagePreviewController`) and each framework renders the dialog. The interaction rules are adapted from [rc-image](https://github.com/react-component/image) 1.10.0; no package depends on it. Images inside links/buttons or matching interactive roles keep their original behavior, including dynamically changed roles.
 
 The preview uses the browser's selected `currentSrc` (or sanitized `src`), preserving responsive images. Changing `src`/`srcSet` closes the preview. Attributes and image events stay on the actual image. There is no separate high-resolution URL resolver or second URL-policy pass.
 
@@ -121,7 +121,7 @@ const AppImage = createMarkdownImage({
 // customComponents={{ img: AppImage }}
 ```
 
-Vue exposes `createMarkdownImage` from `@ai-markdown/vue/components/image`. The same keys accept Vue components or VNodes such as `h(AssetUnavailableIcon)`. Mantine exports its factory from `@ai-markdown/react-mantine/components`, using the same rc-image preview as React. Omitted keys retain their defaults; `null` hides an icon. Icons are decorative; preview buttons retain their accessible labels. Custom icons should not contain interactive controls.
+Vue exposes `createMarkdownImage` from `@ai-markdown/vue/components/image`. The same keys accept Vue components or VNodes such as `h(AssetUnavailableIcon)`. Mantine exports its factory from `@ai-markdown/react-mantine/components`, with the same preview as React. Omitted keys retain their defaults; `null` hides an icon. Icons are decorative; preview buttons retain their accessible labels. Custom icons should not contain interactive controls.
 
 Toolbar icons are configurable through the same `icons` option: `close`, `prev`, `next`, `flipX`, `flipY`, `rotateLeft`, `rotateRight`, `zoomIn`, and `zoomOut`.
 
@@ -193,7 +193,7 @@ Two texts come from elsewhere and are not labels. A Mermaid parse error is merma
 
 ## Mantine and styling
 
-`@ai-markdown/react-mantine/components` exports the same three registration components and its `createMarkdownCodeBlock` / `createMarkdownImage` / `createMarkdownTable` factories. Its code block and Mermaid block have their own labels, `labels` and `mermaidLabels` in the `codeBlock` options; see [Mantine code blocks](mantine-code-blocks.md#text-and-translation). Its ordinary code and built-in Mermaid retain Mantine's existing highlighter provider, JSON defaults and diagram interactions. Explicit language extensions use the neutral source/copy shell. The image preview uses the same rc-image engine and skin as React; the table uses the shared React component; import `@ai-markdown/react/components/styles.css` for their neutral skin alongside the usual Mantine styles.
+`@ai-markdown/react-mantine/components` exports the same three registration components and its `createMarkdownCodeBlock` / `createMarkdownImage` / `createMarkdownTable` factories. Its code block and Mermaid block have their own labels, `labels` and `mermaidLabels` in the `codeBlock` options; see [Mantine code blocks](mantine-code-blocks.md#text-and-translation). Its ordinary code and built-in Mermaid retain Mantine's existing highlighter provider, JSON defaults and diagram interactions. Explicit language extensions use the neutral source/copy shell. The image and its preview are the React ones; the table uses the shared React component; import `@ai-markdown/react/components/styles.css` for their neutral skin alongside the usual Mantine styles.
 
 The neutral CSS is optional and scoped to `aimd-*` classes. Code, table and image feedback surfaces expose `--aimd-border`, `--aimd-surface`, and `--aimd-text`. React components follow the Markdown theme, including the resolved Mantine theme. Vue code follows its factory option; Vue tables and image feedback inherit a `[data-color-scheme="dark"]` or `[data-mantine-color-scheme="dark"]` ancestor. HTML controls remain usable without this CSS. Override the classes and variables in application styles rather than wrapping the components solely to restyle them.
 
@@ -203,18 +203,19 @@ A `pre` override owns ordinary fenced code. A separate `code` override still app
 
 `@ai-markdown/core/components` holds the logic the React, Vue and Mantine components share. It has no framework or DOM types. Use it to write a custom language renderer, to replace one of the supplied components, or to write the components for another framework. `@ai-markdown/core` depends on `@ai-markdown/code-language-detector` for the language helper.
 
-| Task                             | Exports                                                                                   |
-| -------------------------------- | ----------------------------------------------------------------------------------------- |
-| Read a `pre` node                | `extractCode`, `normalizeRenderers`                                                       |
-| Tell an append from a rewrite    | `extendsCode`                                                                             |
-| Build a code block               | `createCodeBlockSession`                                                                  |
-| Throttle displayed code          | `nextCodeFrame`, `createCodeFrame`                                                        |
-| Detect an unlabelled language    | `createCodeLanguageTracker`                                                               |
-| Format JSON                      | `createJsonCompletenessScanner`, `jsonLooksComplete`, `prettyPrintJson`                   |
-| Render a Mermaid diagram         | `createDiagramController`                                                                 |
-| Call Mermaid next to our diagram | `mermaidRenderQueue`, `ensureMermaidInitialized`, `getMermaidMaxTextSize`                 |
-| Export a table                   | `projectTable`, `serializeTable`                                                          |
-| Group and transform images       | `getImageGallery`, `zoomImage`, `reboundImage`, `imagePinchCenter`, `imageTransformStyle` |
+| Task                             | Exports                                                                         |
+| -------------------------------- | ------------------------------------------------------------------------------- |
+| Read a `pre` node                | `extractCode`, `normalizeRenderers`                                             |
+| Tell an append from a rewrite    | `extendsCode`                                                                   |
+| Build a code block               | `createCodeBlockSession`                                                        |
+| Throttle displayed code          | `nextCodeFrame`, `createCodeFrame`                                              |
+| Detect an unlabelled language    | `createCodeLanguageTracker`                                                     |
+| Format JSON                      | `createJsonCompletenessScanner`, `jsonLooksComplete`, `prettyPrintJson`         |
+| Render a Mermaid diagram         | `createDiagramController`                                                       |
+| Call Mermaid next to our diagram | `mermaidRenderQueue`, `ensureMermaidInitialized`, `getMermaidMaxTextSize`       |
+| Export a table                   | `projectTable`, `serializeTable`                                                |
+| Group images                     | `getImageGallery`                                                               |
+| Preview an image                 | `createImagePreviewController`, `imageTransformStyle`, `lockImagePreviewScroll` |
 
 ### Append or rewrite
 
@@ -294,6 +295,60 @@ controller.dispose(); // on unmount
 ```
 
 `view.svg` is mermaid's output under the `strict` or `sandbox` security level and is meant to be inserted as HTML. An error view carries a `reason` and no sentence of the library's own: `tooLarge` has the `length` and the `limit`, while `parse` and `render` have mermaid's `message`, which can be empty. `diagramErrorText(view, labels)` turns it into text with your labels; insert the result as a text node. `active: false` pauses attempts while the host shows something else. `loadFailed` is true once the download retries are spent, and `retry()` starts over with a new budget.
+
+### An image preview
+
+`createImagePreviewController` is the preview without a framework or a DOM: which image of a gallery is shown, how it is transformed, and where it is in opening and closing. The host forwards its events as numbers and draws the state it receives.
+
+```ts
+import {
+  createImagePreviewController,
+  getImageGallery,
+  imageTransformStyle,
+  lockImagePreviewScroll,
+} from '@ai-markdown/core/components';
+
+const controller = createImagePreviewController(
+  {
+    // Layout box of the previewed image before its transform, and the viewport.
+    geometry: () => ({
+      width: img.width,
+      height: img.height,
+      left: img.offsetLeft,
+      top: img.offsetTop,
+      viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: document.documentElement.clientHeight,
+    }),
+    frame: (callback) => {
+      const id = requestAnimationFrame(callback);
+      return () => cancelAnimationFrame(id);
+    },
+  },
+  (state) => draw(state),
+  { closeDuration: () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300) }
+);
+
+controller.open(getImageGallery(scope), thumbnail); // the id the thumbnail registered with
+img.addEventListener('pointerdown', (event) => {
+  if (controller.pointerDown({ id: event.pointerId, x: event.clientX, y: event.clientY, button: event.button })) {
+    event.preventDefault();
+    img.setPointerCapture(event.pointerId);
+  }
+});
+img.addEventListener('pointermove', (event) =>
+  controller.pointerMove({ id: event.pointerId, x: event.clientX, y: event.clientY })
+);
+img.addEventListener('pointerup', (event) => controller.pointerUp(event.pointerId));
+```
+
+- `state.phase` is `closed`, `opening`, `open` or `closing`. Render while it is not `closed`; `opening` and `closing` are the states to style a transition from and to. `closeDuration` is how long `closing` lasts.
+- `state.items`, `state.current` and `state.item` follow the gallery while the preview is open. The preview closes when the image shown leaves the gallery.
+- `state.transform` goes through `imageTransformStyle`; `state.moving` is true during a drag or a pinch, when the image should follow without a transition; `state.status` is the load state you report with `loaded()` and `failed()`.
+- `pointerDown`, `wheel` and `key` return true when they used the event: prevent its default action then. Listen to the wheel with `{ passive: false }`.
+- `action(name)` runs a toolbar action; `canPrevious`, `canNext`, `canZoomIn` and `canZoomOut` say which buttons to disable.
+- `lockImagePreviewScroll(document.body, window.innerWidth - document.documentElement.clientWidth)` stops the page from scrolling and pads it by the scrollbar it loses. Call the function it returns when the preview has closed.
+
+The supplied React and Vue previews are this controller in a native modal `<dialog>`. `zoomImage`, `reboundImage`, `imagePinchCenter` and `imageWheelRatio` are the calculations it applies, exported for a host that needs one of them alone.
 
 ### Calling Mermaid yourself
 

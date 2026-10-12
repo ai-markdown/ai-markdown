@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, test } from 'vitest';
+import { afterEach, beforeEach, describe, expect, test } from 'vitest';
 import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 // Imported by package name, like the component itself, so both share one React context.
@@ -8,6 +8,14 @@ import type { ReactNode } from 'react';
 import { MarkdownImage, createMarkdownImage } from './image';
 
 (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+// jsdom has the dialog element but not its modal methods.
+HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
+  this.setAttribute('open', '');
+};
+HTMLDialogElement.prototype.close ??= function close(this: HTMLDialogElement) {
+  this.removeAttribute('open');
+};
 
 let root: Root | undefined;
 let container: HTMLElement | undefined;
@@ -57,6 +65,136 @@ describe('image preview', () => {
     await render(images(4));
     await loadAll(scope);
     expect(counter()).toBe('2 / 4');
+  });
+});
+
+describe('preview dialog', () => {
+  // The user prefers reduced motion: closing does not wait for a transition.
+  beforeEach(() => {
+    window.matchMedia = (() => ({ matches: true })) as unknown as typeof window.matchMedia;
+  });
+  const dialog = () => document.querySelector('dialog.aimd-image-preview') as HTMLDialogElement | null;
+  const shown = () => dialog()?.querySelector('img.aimd-image-preview-img') as HTMLImageElement;
+  const open = async (scope: HTMLElement, index = 0) => {
+    await act(async () => (scope.querySelectorAll('button.aimd-image-trigger')[index] as HTMLButtonElement).click());
+    // Two frames take the preview out of its opening phase.
+    await act(
+      async () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())))
+    );
+    await act(async () => shown().dispatchEvent(new Event('load')));
+  };
+  const pointer = (type: string, x: number, y: number) => {
+    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 });
+    Object.defineProperty(event, 'pointerId', { value: 1 });
+    return event;
+  };
+
+  test('opens as a modal dialog on the image that was activated', async () => {
+    const { container: scope } = await mount(images(3));
+    await loadAll(scope);
+    expect(dialog()).toBeNull();
+    await open(scope, 1);
+    expect(dialog()?.open).toBe(true);
+    expect(dialog()?.getAttribute('data-phase')).toBe('open');
+    expect(dialog()?.getAttribute('aria-label')).toBe('photo 1');
+    expect(shown().src).toContain('photo-1.png');
+    expect(counter()).toBe('2 / 3');
+    // The page behind it does not scroll.
+    expect(document.body.style.overflow).toBe('hidden');
+  });
+
+  test('arrow keys move through the gallery and the buttons at the ends are disabled', async () => {
+    const { container: scope } = await mount(images(2));
+    await loadAll(scope);
+    await open(scope, 0);
+    const previous = () => dialog()!.querySelector('.aimd-image-preview-switch-prev') as HTMLButtonElement;
+    expect(previous().disabled).toBe(true);
+    await act(async () => dialog()!.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })));
+    expect(counter()).toBe('2 / 2');
+    expect(shown().src).toContain('photo-1.png');
+    expect(previous().disabled).toBe(false);
+    expect((dialog()!.querySelector('.aimd-image-preview-switch-next') as HTMLButtonElement).disabled).toBe(true);
+  });
+
+  test('Escape, the mask and the close button close it, and focus returns to the trigger', async () => {
+    const { container: scope } = await mount(images(2));
+    await loadAll(scope);
+    const trigger = scope.querySelectorAll('button.aimd-image-trigger')[1] as HTMLButtonElement;
+    for (const close of [
+      () => dialog()!.dispatchEvent(new Event('cancel', { cancelable: true })),
+      () => (dialog()!.querySelector('.aimd-image-preview-mask') as HTMLElement).click(),
+      () => (dialog()!.querySelector('.aimd-image-preview-close') as HTMLElement).click(),
+    ]) {
+      await open(scope, 1);
+      expect(dialog()).not.toBeNull();
+      await act(async () => void close());
+      expect(dialog()).toBeNull();
+      expect(document.activeElement).toBe(trigger);
+      expect(document.body.style.overflow).toBe('');
+    }
+  });
+
+  test('a drag moves the image without a transition, and the toolbar transforms it', async () => {
+    const { container: scope } = await mount(images(1));
+    await loadAll(scope);
+    await open(scope);
+    await act(async () => void shown().dispatchEvent(pointer('pointerdown', 100, 100)));
+    expect(dialog()!.className).toContain('aimd-image-preview-moving');
+    await act(async () => {
+      shown().dispatchEvent(pointer('pointermove', 130, 120));
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    });
+    expect(shown().style.transform).toContain('translate3d(30px, 20px, 0)');
+    await act(async () => void shown().dispatchEvent(pointer('pointerup', 130, 120)));
+    expect(dialog()!.className).not.toContain('aimd-image-preview-moving');
+    // jsdom lays nothing out, so the image "fits" and returns to the centre.
+    expect(shown().style.transform).toContain('translate3d(0px, 0px, 0)');
+    await act(async () =>
+      (dialog()!.querySelector('.aimd-image-preview-actions-action-rotateRight') as HTMLElement).click()
+    );
+    await act(async () => (dialog()!.querySelector('.aimd-image-preview-actions-action-flipX') as HTMLElement).click());
+    expect(shown().style.transform).toContain('scale3d(-1, 1, 1) rotate(90deg)');
+    expect((dialog()!.querySelector('.aimd-image-preview-actions-action-zoomOut') as HTMLButtonElement).disabled).toBe(
+      true
+    );
+  });
+
+  test('focus returns to the dialog when the focused toolbar button becomes disabled', async () => {
+    const { container: scope } = await mount(images(1));
+    await loadAll(scope);
+    await open(scope);
+    const zoomOut = dialog()!.querySelector('.aimd-image-preview-actions-action-zoomOut') as HTMLButtonElement;
+    await act(async () =>
+      (dialog()!.querySelector('.aimd-image-preview-actions-action-zoomIn') as HTMLElement).click()
+    );
+    zoomOut.focus();
+    expect(document.activeElement).toBe(zoomOut);
+    // Back at the natural size the button is disabled, and a disabled button receives no keys.
+    await act(async () => zoomOut.click());
+    expect(zoomOut.disabled).toBe(true);
+    expect(document.activeElement).toBe(dialog());
+  });
+
+  test('the preview closes when the source of its image changes', async () => {
+    const { render, container: scope } = await mount(images(1));
+    await loadAll(scope);
+    await open(scope);
+    await render('![photo 0](https://example.test/p/other.png)\n\n');
+    expect(dialog()).toBeNull();
+  });
+
+  test('the toolbar is disabled until the previewed image has loaded, and a failure is reported', async () => {
+    const { container: scope } = await mount(images(1));
+    await loadAll(scope);
+    await act(async () => (scope.querySelector('button.aimd-image-trigger') as HTMLButtonElement).click());
+    const zoomIn = () => dialog()!.querySelector('.aimd-image-preview-actions-action-zoomIn') as HTMLButtonElement;
+    expect(zoomIn().disabled).toBe(true);
+    expect(dialog()!.querySelector('.aimd-image-feedback')?.textContent).toBe('Loading image…');
+    await act(async () => shown().dispatchEvent(new Event('error')));
+    expect(dialog()!.querySelector('.aimd-image-feedback[role="alert"]')?.textContent).toBe(
+      'Image could not be loaded.'
+    );
+    expect(zoomIn().disabled).toBe(true);
   });
 });
 

@@ -431,7 +431,7 @@ try {
   const mantineTrigger = page.locator('#mantine').getByRole('button', { name: 'Preview image: mantine' });
   await mantineTrigger.click();
   await page.getByRole('dialog', { name: 'mantine', exact: true }).waitFor();
-  check(await page.locator('dialog[open]').count(), 0, 'Mantine shares the rc-image portal');
+  check(await page.locator('dialog[open]').count(), 1, 'Mantine uses the same native dialog');
   await page.getByRole('button', { name: 'Zoom in', exact: true }).click();
   await page.keyboard.press('Escape');
   await page.getByRole('dialog', { name: 'mantine', exact: true }).waitFor({ state: 'hidden' });

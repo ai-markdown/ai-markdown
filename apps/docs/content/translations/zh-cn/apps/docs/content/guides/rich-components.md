@@ -107,7 +107,7 @@ Vue 提供相同子路径。普通代码入口仍支持自定义语言渲染器�
 
 ## 图片预览
 
-普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；预览按 [rc-image](https://github.com/react-component/image) 的体验实现：全屏暗色遮罩、两侧切图、底部悬浮工具栏，支持水平/垂直翻转、左右旋转、缩放。缩放范围为 1–50 倍，每步乘/除 1.5；滚轮和双击围绕指针缩放，拖拽越界后回弹，触摸支持平移和双指缩放。切图会重置变换，保留独立加载/错误反馈、焦点限制和背景滚动锁。React/Mantine 直接使用 rc-image 内核，Vue 通过原生 dialog 实现同一套交互规则。预览挂到 body，不破坏段落结构。
+普通图片在 hydration 后变成可用键盘操作的预览触发器。Enter 打开弹层，Escape 或关闭按钮退出并恢复焦点；预览是一个原生的模态 `<dialog>`，由浏览器负责焦点限制、顶层显示和 Escape。它有全屏暗色遮罩、两侧切图、底部悬浮工具栏，支持水平/垂直翻转、左右旋转、缩放。缩放范围为 1–50 倍，每步乘/除 1.5；滚轮、触控板捏合和双击围绕指针缩放。鼠标、手写笔和触摸的处理方式相同：一个指针拖拽，两个指针捏合，拖出视口边界后回弹。切图会重置变换。预览打开期间页面不滚动，滚动条消失时页面宽度保持不变。打开和关闭有 0.3 秒的淡入淡出，用户设置了“减少动画”时没有。React、Vue 和 Mantine 共用一份实现：规则在 `@ai-markdown/core/components` 里（`createImagePreviewController`），各框架只负责渲染对话框。交互规则改编自 [rc-image](https://github.com/react-component/image) 1.10.0，但没有任何包依赖它。预览挂到 body，不破坏段落结构。
 
 链接、按钮以及对应交互 role 内的图片保留原有行为，动态修改 role 也会重新判断。预览使用浏览器实际选中的 `currentSrc`，没有时才用已清洗的 `src`，支持响应式图片。`src`/`srcSet` 变化会关闭预览；图片属性和事件仍落在实际 img 上。没有新增高清地址解析器或第二次 URL 策略处理。
 
@@ -177,7 +177,7 @@ const Table = createMarkdownTable({ labels: { copy: '复制表格', download: '�
 
 ## Mantine 与默认样式
 
-`@ai-markdown/react-mantine/components` 提供同名的三个注册组件，以及代码块、图片和表格的工厂。它的代码块和 Mermaid 图表块有自己的文案，即 `codeBlock` 选项里的 `labels` 和 `mermaidLabels`，见 [Mantine 代码块](mantine-code-blocks.md#text-and-translation)。普通代码和内置 Mermaid 保留原来的高亮 provider、JSON 默认值及图表交互；显式语言扩展使用中性源码/复制外框。图片与 React 使用相同的 rc-image 内核和预览样式，表格使用共享 React 组件；除原有 Mantine 样式外，可导入 `@ai-markdown/react/components/styles.css`。
+`@ai-markdown/react-mantine/components` 提供同名的三个注册组件，以及代码块、图片和表格的工厂。它的代码块和 Mermaid 图表块有自己的文案，即 `codeBlock` 选项里的 `labels` 和 `mermaidLabels`，见 [Mantine 代码块](mantine-code-blocks.md#text-and-translation)。普通代码和内置 Mermaid 保留原来的高亮 provider、JSON 默认值及图表交互；显式语言扩展使用中性源码/复制外框。图片及其预览就是 React 的组件，表格使用共享 React 组件；除原有 Mantine 样式外，可导入 `@ai-markdown/react/components/styles.css`。
 
 默认 CSS 是可选的，以 `aimd-*` 类限定范围。代码块、表格和图片反馈区域暴露 `--aimd-border`、`--aimd-surface`、`--aimd-text`。React 组件跟随 Markdown 主题，也会使用 Mantine 解析后的主题；Vue 代码块使用工厂主题配置，表格和图片反馈区域继承上层 `[data-color-scheme="dark"]` 或 `[data-mantine-color-scheme="dark"]`。应用可以直接覆盖类和变量，不需要为改样式再包组件。
 
@@ -203,7 +203,7 @@ const AppImage = createMarkdownImage({
 // customComponents={{ img: AppImage }}
 ```
 
-React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/components/image` 导出，接受 Vue 组件或 `h(...)` 创建的 VNode。Mantine 从 `@ai-markdown/react-mantine/components` 导出工厂，与 React 共用 rc-image 预览。未配置的图标保留默认值，`null` 可以隐藏图标。图标仅作装饰，按钮保留无障碍名称；自定义图标内不要放交互控件。
+React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/components/image` 导出，接受 Vue 组件或 `h(...)` 创建的 VNode。Mantine 从 `@ai-markdown/react-mantine/components` 导出工厂，预览与 React 相同。未配置的图标保留默认值，`null` 可以隐藏图标。图标仅作装饰，按钮保留无障碍名称；自定义图标内不要放交互控件。
 
 默认将同一文档内已加载、可预览的图片组成画廊，顺序与页面一致。单独使用的 Markdown 实例是一篇文档；在 `AIMarkdownDocuments` 内共用同一个显式 `documentId` 的实例也是一篇文档，所以协调输出的各个分段共用一个画廊。加载中、加载失败和链接中的图片不会加入；不同文档互不混组。预览支持上/下一张、左右方向键、缩放、旋转和翻转。选中图片被移除时关闭预览，Esc 关闭后焦点回到最初打开预览的图片。
 
@@ -219,18 +219,19 @@ React 支持节点或组件；Vue 的同名工厂从 `@ai-markdown/vue/component
 
 `@ai-markdown/core/components` 包含 React、Vue 和 Mantine 组件共用的逻辑，不含任何框架或 DOM 类型。编写自定义语言渲染器、替换某个自带组件，或者为其他框架编写组件时，都可以使用它。`@ai-markdown/core` 因语言检测函数而依赖 `@ai-markdown/code-language-detector`。
 
-| 用途                       | 导出                                                                                      |
-| -------------------------- | ----------------------------------------------------------------------------------------- |
-| 读取 `pre` 节点            | `extractCode`、`normalizeRenderers`                                                       |
-| 区分追加和替换             | `extendsCode`                                                                             |
-| 编写代码块                 | `createCodeBlockSession`                                                                  |
-| 对显示的代码节流           | `nextCodeFrame`、`createCodeFrame`                                                        |
-| 检测未标注的语言           | `createCodeLanguageTracker`                                                               |
-| 格式化 JSON                | `createJsonCompletenessScanner`、`jsonLooksComplete`、`prettyPrintJson`                   |
-| 渲染 Mermaid 图表          | `createDiagramController`                                                                 |
-| 在内置图表之外调用 Mermaid | `mermaidRenderQueue`、`ensureMermaidInitialized`、`getMermaidMaxTextSize`                 |
-| 导出表格                   | `projectTable`、`serializeTable`                                                          |
-| 图片分组和变换             | `getImageGallery`、`zoomImage`、`reboundImage`、`imagePinchCenter`、`imageTransformStyle` |
+| 用途                       | 导出                                                                            |
+| -------------------------- | ------------------------------------------------------------------------------- |
+| 读取 `pre` 节点            | `extractCode`、`normalizeRenderers`                                             |
+| 区分追加和替换             | `extendsCode`                                                                   |
+| 编写代码块                 | `createCodeBlockSession`                                                        |
+| 对显示的代码节流           | `nextCodeFrame`、`createCodeFrame`                                              |
+| 检测未标注的语言           | `createCodeLanguageTracker`                                                     |
+| 格式化 JSON                | `createJsonCompletenessScanner`、`jsonLooksComplete`、`prettyPrintJson`         |
+| 渲染 Mermaid 图表          | `createDiagramController`                                                       |
+| 在内置图表之外调用 Mermaid | `mermaidRenderQueue`、`ensureMermaidInitialized`、`getMermaidMaxTextSize`       |
+| 导出表格                   | `projectTable`、`serializeTable`                                                |
+| 图片分组                   | `getImageGallery`                                                               |
+| 预览图片                   | `createImagePreviewController`、`imageTransformStyle`、`lockImagePreviewScroll` |
 
 <span id="append-or-rewrite"></span>
 
@@ -316,6 +317,62 @@ controller.dispose(); // 卸载时调用
 ```
 
 `view.svg` 是 Mermaid 在 `strict` 或 `sandbox` 安全级别下的输出，应作为 HTML 插入。错误状态带有 `reason`，不带库自己写的句子：`tooLarge` 带 `length` 和 `limit`，`parse` 和 `render` 带 Mermaid 的 `message`（可能为空）。`diagramErrorText(view, labels)` 用你的文案把它变成文字，结果应作为文本节点插入。`active: false` 表示宿主正在显示别的内容，期间不进行渲染尝试。下载重试用尽后 `loadFailed` 为 true，`retry()` 会以新的重试次数重新开始。
+
+<span id="an-image-preview"></span>
+
+### 图片预览
+
+`createImagePreviewController` 是不依赖框架和 DOM 的预览：显示图片组里的哪一张、它如何变换、处在打开和关闭的哪个阶段。宿主把事件以数字的形式传给它，并按收到的状态绘制。
+
+```ts
+import {
+  createImagePreviewController,
+  getImageGallery,
+  imageTransformStyle,
+  lockImagePreviewScroll,
+} from '@ai-markdown/core/components';
+
+const controller = createImagePreviewController(
+  {
+    // 被预览图片在变换之前的布局盒，以及视口尺寸。
+    geometry: () => ({
+      width: img.width,
+      height: img.height,
+      left: img.offsetLeft,
+      top: img.offsetTop,
+      viewportWidth: document.documentElement.clientWidth,
+      viewportHeight: document.documentElement.clientHeight,
+    }),
+    frame: (callback) => {
+      const id = requestAnimationFrame(callback);
+      return () => cancelAnimationFrame(id);
+    },
+  },
+  (state) => draw(state),
+  { closeDuration: () => (matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 300) }
+);
+
+controller.open(getImageGallery(scope), thumbnail); // 缩略图注册时使用的 id
+img.addEventListener('pointerdown', (event) => {
+  if (controller.pointerDown({ id: event.pointerId, x: event.clientX, y: event.clientY, button: event.button })) {
+    event.preventDefault();
+    img.setPointerCapture(event.pointerId);
+  }
+});
+img.addEventListener('pointermove', (event) =>
+  controller.pointerMove({ id: event.pointerId, x: event.clientX, y: event.clientY })
+);
+img.addEventListener('pointerup', (event) => controller.pointerUp(event.pointerId));
+```
+
+- `state.phase` 为 `closed`、`opening`、`open` 或 `closing`。不是 `closed` 时渲染；`opening` 和 `closing` 是过渡动画的起点和终点状态。`closeDuration` 决定 `closing` 持续多久。
+- 预览打开期间，`state.items`、`state.current` 和 `state.item` 跟随图片组变化。正在显示的图片离开图片组时预览关闭。
+- `state.transform` 交给 `imageTransformStyle`；拖拽或捏合期间 `state.moving` 为 true，此时图片应当不带过渡地跟随指针；`state.status` 是加载状态，由你通过 `loaded()` 和 `failed()` 报告。
+- `pointerDown`、`wheel` 和 `key` 在使用了事件时返回 true，此时应阻止事件的默认行为。监听滚轮时要传 `{ passive: false }`。
+- `action(name)` 执行一个工具栏动作；`canPrevious`、`canNext`、`canZoomIn` 和 `canZoomOut` 表示哪些按钮应当禁用。
+- `lockImagePreviewScroll(document.body, window.innerWidth - document.documentElement.clientWidth)` 阻止页面滚动，并按消失的滚动条宽度给页面加内边距。预览关闭后调用它返回的函数。
+
+自带的 React 和 Vue 预览就是把这个控制器放在原生模态 `<dialog>` 里。`zoomImage`、`reboundImage`、`imagePinchCenter` 和 `imageWheelRatio` 是它使用的计算函数，单独导出，供只需要其中一项的宿主使用。
 
 <span id="calling-mermaid-yourself"></span>
 

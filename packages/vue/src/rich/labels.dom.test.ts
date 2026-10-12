@@ -29,6 +29,14 @@ vi.mock('mermaid', () => {
   };
 });
 
+// jsdom has the dialog element but not its modal methods.
+HTMLDialogElement.prototype.showModal ??= function showModal(this: HTMLDialogElement) {
+  this.setAttribute('open', '');
+};
+HTMLDialogElement.prototype.close ??= function close(this: HTMLDialogElement) {
+  this.removeAttribute('open');
+};
+
 let app: App | undefined;
 let container: HTMLElement | undefined;
 afterEach(() => {

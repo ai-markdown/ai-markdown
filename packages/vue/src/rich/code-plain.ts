@@ -22,8 +22,6 @@ import {
   defaultCodeBlockLabels,
   resolveLabels,
   type CodeBlockInput,
-  type CodeBlockLabels,
-  type LabelsOption,
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
