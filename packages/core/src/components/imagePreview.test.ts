@@ -649,3 +649,143 @@ describe('events', () => {
     expect(log.slice(2)).toEqual(['change:1->0']);
   });
 });
+
+describe('listeners that act or fail', () => {
+  test('closing from inside onOpenChange(true) wins over the opening', () => {
+    const log: string[] = [];
+    const ref: { controller?: ReturnType<typeof page>['controller'] } = {};
+    const view = page(1, undefined, {
+      onOpenChange: (open) => {
+        log.push(`open:${open}`);
+        if (open) ref.controller?.close();
+      },
+      afterOpenChange: (open) => log.push(`after:${open}`),
+    });
+    ref.controller = view.controller;
+    view.controller.open(view.gallery, view.images[0].id);
+    view.frame();
+    view.frame();
+    expect(view.state().phase).toBe('closing');
+    vi.advanceTimersByTime(300);
+    expect(view.state()).toMatchObject({ phase: 'closed', current: -1 });
+    expect(log).toEqual(['open:true', 'open:false', 'after:false']);
+    expect(view.pending()).toBe(0);
+  });
+
+  test('the same with no close duration leaves a controller that opens normally again', () => {
+    const ref: { controller?: ReturnType<typeof page>['controller'] } = {};
+    let closeOnOpen = true;
+    const view = page(1, 0, { onOpenChange: (open) => void (open && closeOnOpen && ref.controller?.close()) });
+    ref.controller = view.controller;
+    view.controller.open(view.gallery, view.images[0].id);
+    view.frame();
+    view.frame();
+    expect(view.state()).toMatchObject({ phase: 'closed', items: [] });
+    closeOnOpen = false;
+    view.controller.open(view.gallery, view.images[0].id);
+    expect(view.state().phase).toBe('opening');
+    view.frame();
+    view.frame();
+    expect(view.state()).toMatchObject({ phase: 'open', current: 0 });
+  });
+
+  test('a listener that throws while the preview closes does not leave it half closed', () => {
+    for (const duration of [300, 0]) {
+      const view = page(1, duration, {
+        onOpenChange: (open) => {
+          if (!open) throw new Error('listener failed');
+        },
+      });
+      view.show();
+      expect(() => view.controller.close()).toThrow('listener failed');
+      vi.advanceTimersByTime(300);
+      expect(view.state().phase, `duration ${duration}`).toBe('closed');
+    }
+  });
+
+  test('a change that was waiting for its frame is not reported for a view that is gone', () => {
+    const log: string[] = [];
+    const view = page(2, 0, { onTransform: ({ action }) => log.push(action) });
+    view.show();
+    // A new source for the image resets the view before the wheel's frame.
+    view.controller.wheel({ deltaY: -100, x: 500, y: 400 });
+    view.gallery.set({ ...view.images[0], src: 'other.png' });
+    view.frame();
+    expect(log).toEqual([]);
+    // Closing before a drag's frame.
+    view.controller.loaded();
+    view.controller.pointerDown({ id: 1, x: 500, y: 400, button: 0 });
+    view.controller.pointerMove({ id: 1, x: 560, y: 400 });
+    view.controller.close();
+    view.frame();
+    expect(log).toEqual([]);
+    // Disposing before a drag's frame, then opening again.
+    view.show();
+    view.controller.pointerDown({ id: 1, x: 500, y: 400, button: 0 });
+    view.controller.pointerMove({ id: 1, x: 560, y: 400 });
+    view.controller.dispose();
+    view.show();
+    view.frame();
+    expect(log).toEqual([]);
+  });
+
+  test('a listener may navigate or transform from inside its callback', () => {
+    const log: string[] = [];
+    const ref: { controller?: ReturnType<typeof page>['controller'] } = {};
+    const view = page(3, 0, {
+      onChange: (current, previous) => {
+        log.push(`change:${previous}->${current}`);
+        if (current === 1) ref.controller?.go(1);
+      },
+      onTransform: ({ action, transform }) => {
+        log.push(`${action}:${transform.scale}`);
+        if (action === 'zoomIn' && transform.scale < 2) ref.controller?.action('zoomIn');
+      },
+    });
+    ref.controller = view.controller;
+    view.show(0);
+    view.controller.go(1);
+    expect(view.state().current).toBe(2);
+    view.controller.loaded();
+    view.controller.action('zoomIn');
+    expect(view.state().transform.scale).toBe(2.25);
+    expect(log).toEqual(['change:0->1', 'change:1->2', 'zoomIn:1.5', 'zoomIn:2.25']);
+  });
+});
+
+describe('limits that exclude the natural size', () => {
+  test('an image starts at the nearest allowed scale, and a double click returns there', () => {
+    const big = page(2, 0, { minScale: 2 });
+    big.show();
+    expect(big.state()).toMatchObject({ transform: { scale: 2 }, canZoomOut: false, canZoomIn: true });
+    big.controller.wheel({ deltaY: 100, x: 500, y: 400 });
+    expect(big.state().transform.scale).toBe(2);
+    big.controller.doubleClick(500, 400);
+    expect(big.state().transform.scale).toBe(3);
+    big.controller.doubleClick(500, 400);
+    expect(big.state().transform.scale).toBe(2);
+    big.controller.go(1);
+    expect(big.state().transform.scale).toBe(2);
+
+    const small = page(1, 0, { minScale: 0.2, maxScale: 0.8 });
+    small.show();
+    expect(small.state()).toMatchObject({ transform: { scale: 0.8 }, canZoomIn: false, canZoomOut: true });
+    small.controller.doubleClick(500, 400);
+    expect(small.state().transform.scale).toBe(0.8);
+  });
+});
+
+describe('the point an opening starts from', () => {
+  test('is measured again once the host has drawn, before anything has scaled', () => {
+    const { controller, gallery, images, frame, state, anchors } = page(1);
+    anchors.set(images[0].id, { x: 100, y: 200 });
+    controller.open(gallery, images[0].id);
+    expect(state().origin).toEqual({ x: 100, y: 200 });
+    // Locking the page moved the thumbnail by the width of a scrollbar.
+    anchors.set(images[0].id, { x: 115, y: 200 });
+    frame();
+    expect(state()).toMatchObject({ phase: 'opening', origin: { x: 115, y: 200 } });
+    frame();
+    expect(state()).toMatchObject({ phase: 'open', origin: { x: 115, y: 200 } });
+  });
+});

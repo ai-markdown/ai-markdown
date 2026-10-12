@@ -147,7 +147,7 @@ const AppImage = createMarkdownImage({
 });
 ```
 
-The values shown are the defaults; every entry is optional. `onOpenChange` runs when the preview starts to open or to close and `afterOpenChange` when that has finished. `onChange` runs when the user moves to another image of the gallery. `onTransform` reports each zoom, rotation, flip, drag and rebound with the action that caused it (`zoomIn`, `zoomOut`, `rotateLeft`, `rotateRight`, `flipX`, `flipY`, `wheel`, `doubleClick`, `move`, `pinch`, `rebound`, `prev`, `next`); a drag or a wheel burst reports once per frame. The Vue and Mantine factories take the same object.
+The values shown are the defaults; every entry is optional. `onOpenChange` runs when the preview starts to open or to close, and `afterOpenChange` when an opening or a closing has run to its end; one that is interrupted, by reopening while it closes or by unmounting the image, reports no end. With `minScale` above 1 or `maxScale` below 1, an image starts at the nearest allowed scale. `onChange` runs when the user moves to another image of the gallery. `onTransform` reports each zoom, rotation, flip, drag and rebound with the action that caused it (`zoomIn`, `zoomOut`, `rotateLeft`, `rotateRight`, `flipX`, `flipY`, `wheel`, `doubleClick`, `move`, `pinch`, `rebound`, `prev`, `next`); a drag or a wheel burst reports once per frame. The Vue and Mantine factories take the same object.
 
 Import the optional component stylesheet to get the supplied fullscreen preview layout, or provide equivalent styles for `.aimd-image-preview-*`.
 

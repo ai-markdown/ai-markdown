@@ -229,7 +229,7 @@ const AppImage = createMarkdownImage({
 });
 ```
 
-示例里的值就是默认值，每一项都可以省略。`onOpenChange` 在预览开始打开或开始关闭时调用，`afterOpenChange` 在打开或关闭完成后调用。`onChange` 在用户切换到图片组里的另一张图片时调用。`onTransform` 报告每一次缩放、旋转、翻转、拖拽和回弹，以及引起它的动作（`zoomIn`、`zoomOut`、`rotateLeft`、`rotateRight`、`flipX`、`flipY`、`wheel`、`doubleClick`、`move`、`pinch`、`rebound`、`prev`、`next`）；拖拽或连续滚轮每帧只报告一次。Vue 和 Mantine 的工厂接受同样的对象。
+示例里的值就是默认值，每一项都可以省略。`onOpenChange` 在预览开始打开或开始关闭时调用，`afterOpenChange` 在一次打开或关闭完整结束后调用；被打断的过程（关闭途中重新打开，或图片组件被卸载）不会报告结束。`minScale` 大于 1 或 `maxScale` 小于 1 时，图片从允许范围内最接近原始大小的倍数开始。`onChange` 在用户切换到图片组里的另一张图片时调用。`onTransform` 报告每一次缩放、旋转、翻转、拖拽和回弹，以及引起它的动作（`zoomIn`、`zoomOut`、`rotateLeft`、`rotateRight`、`flipX`、`flipY`、`wheel`、`doubleClick`、`move`、`pinch`、`rebound`、`prev`、`next`）；拖拽或连续滚轮每帧只报告一次。Vue 和 Mantine 的工厂接受同样的对象。
 
 可选默认样式提供 `.aimd-image`、`.aimd-image-cover`、`.aimd-image-feedback`、`.aimd-image-icon`，水合后的缩略图状态由 `data-status="loading|ready|error"` 标记，可直接覆盖样式。
 

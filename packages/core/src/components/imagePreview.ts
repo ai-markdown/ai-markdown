@@ -70,7 +70,8 @@ export interface ImagePreviewOptions {
   wheel?: boolean;
   /** The preview started to open (true) or to close (false). */
   onOpenChange?(open: boolean, info: { current: number; item: ImageGalleryItem | undefined }): void;
-  /** The opening or closing has finished. */
+  /** An opening or a closing ran to its end. One that was interrupted, by reopening while it closed or by
+   * `dispose`, reports nothing. */
   afterOpenChange?(open: boolean): void;
   /** The user moved to another image of the gallery. */
   onChange?(current: number, previous: number): void;
@@ -153,6 +154,8 @@ export function createImagePreviewController(
 ) {
   const limits = { min: positive(options.minScale, 1), max: 0 };
   limits.max = Math.max(limits.min, positive(options.maxScale, 50));
+  /** The natural size, or the nearest scale the limits allow: where an image starts and what a double click returns to. */
+  const baseScale = Math.min(limits.max, Math.max(limits.min, 1));
   const scaleStep = positive(options.scaleStep, 0.5);
   const movable = options.movable ?? true;
   const wheelZoom = options.wheel ?? true;
@@ -161,7 +164,7 @@ export function createImagePreviewController(
   let items: readonly ImageGalleryItem[] = [];
   let selected: object | undefined;
   let current = -1;
-  let transform = initialImageTransform();
+  let transform = { ...initialImageTransform(), scale: baseScale };
   let status: ImageLoadStatus = 'loading';
   let moving = false;
   let origin: { x: number; y: number } | undefined;
@@ -238,7 +241,9 @@ export function createImagePreviewController(
   };
   /** A new image, or the same image with another source: start from a clean view. */
   const startImage = () => {
-    transform = initialImageTransform();
+    transform = { ...initialImageTransform(), scale: baseScale };
+    // A change that was waiting for its frame belonged to the view that is gone.
+    reported = undefined;
     status = 'loading';
     endGesture();
   };
@@ -282,6 +287,7 @@ export function createImagePreviewController(
     selected = undefined;
     origin = undefined;
     current = -1;
+    reported = undefined;
     emit();
     options.afterOpenChange?.(false);
   };
@@ -292,19 +298,25 @@ export function createImagePreviewController(
     unsubscribe?.();
     unsubscribe = undefined;
     endGesture();
+    // A drag that was waiting for its frame is not reported once the preview is leaving.
+    reported = undefined;
     // Back into the thumbnail of the image on screen now, which may not be the one that opened the preview.
     origin = selected ? anchorOf(selected) : undefined;
     phase = 'closing';
     const info = { current, item: items[current] };
     const duration =
       typeof options.closeDuration === 'function' ? options.closeDuration() : (options.closeDuration ?? CLOSE_MS);
+    // The closing is fully under way before the listener hears of it: one that throws cannot leave it half done.
     if (duration > 0) {
       emit();
-      options.onOpenChange?.(false, info);
       closeTimer = setTimeout(finishClosing, duration);
-    } else {
       options.onOpenChange?.(false, info);
-      finishClosing();
+    } else {
+      try {
+        options.onOpenChange?.(false, info);
+      } finally {
+        if (phase === 'closing') finishClosing();
+      }
     }
   };
   const go = (delta: number) => {
@@ -312,7 +324,7 @@ export function createImagePreviewController(
     if (phase === 'closed' || phase === 'closing' || target < 0 || target >= items.length || target === current) return;
     const previous = current;
     const { x, y, scale, rotate, flipX, flipY } = transform;
-    const transformed = x !== 0 || y !== 0 || scale !== 1 || rotate !== 0 || flipX || flipY;
+    const transformed = x !== 0 || y !== 0 || scale !== baseScale || rotate !== 0 || flipX || flipY;
     current = target;
     selected = items[target].id;
     startImage();
@@ -359,9 +371,15 @@ export function createImagePreviewController(
       const starting = phase !== 'opening';
       phase = 'opening';
       emit();
-      if (starting) options.onOpenChange?.(true, { current, item: items[current] });
       // Two frames: the first paints the starting style, the second may leave it.
       cancelOpening = host.frame(() => {
+        // The host has drawn and locked the page by now, which can move the thumbnail by a scrollbar's width.
+        // Nothing has scaled yet, so the point can still be corrected.
+        const measured = selected ? anchorOf(selected) : undefined;
+        if (measured?.x !== origin?.x || measured?.y !== origin?.y) {
+          origin = measured;
+          emit();
+        }
         cancelOpening = host.frame(() => {
           cancelOpening = undefined;
           phase = 'open';
@@ -369,6 +387,8 @@ export function createImagePreviewController(
           options.afterOpenChange?.(true);
         });
       });
+      // Last, so a listener that closes or reopens finds the opening complete and can cancel it.
+      if (starting) options.onOpenChange?.(true, { current, item: items[current] });
       return true;
     },
     close,
@@ -449,10 +469,10 @@ export function createImagePreviewController(
       emitNextFrame();
       return true;
     },
-    /** Returns to the natural size, or zooms one step about the point when already there. */
+    /** Returns to the starting size, or zooms one step about the point when already there. */
     doubleClick(x: number, y: number): void {
       if (phase !== 'open' || status !== 'ready') return;
-      if (transform.scale !== 1) apply({ ...transform, x: 0, y: 0, scale: 1 }, 'doubleClick');
+      if (transform.scale !== baseScale) apply({ ...transform, x: 0, y: 0, scale: baseScale }, 'doubleClick');
       else zoom('doubleClick', 1 + scaleStep, x, y);
       emit();
     },
@@ -477,6 +497,7 @@ export function createImagePreviewController(
       selected = undefined;
       origin = undefined;
       current = -1;
+      reported = undefined;
     },
   };
 }
