@@ -10,8 +10,11 @@ import {
   createMarkdownCodeBlock,
 } from '@ai-markdown/vue/components';
 import '@ai-markdown/vue/components/styles.css';
+import '@ai-markdown/storybook-kit/common/highlight.css';
+import { highlightHtml } from '@ai-markdown/storybook-kit/common/highlight';
 import {
   CODE_EXPAND_COLLAPSE_EXAMPLE,
+  CODE_HIGHLIGHT_EXAMPLE,
   RICH_COMPONENTS_EXAMPLE,
   IMAGE_GALLERY_EXAMPLE,
 } from '@ai-markdown/storybook-kit/common/richComponents';
@@ -83,6 +86,42 @@ export const CodeExpandAndCollapse: StoryObj<typeof AIMarkdown> = {
       await userEvent.click(expand);
       await waitFor(() => expect(height()).toBe(full));
     }
+  },
+};
+
+/**
+ * Syntax highlighting is an option of the code block factory. The adapter
+ * packages ship no highlighter, so `MarkdownCodeBlock` as exported shows plain
+ * text, which is what the other stories on this page render.
+ *
+ * Here `createMarkdownCodeBlock({ highlight })` is given highlight.js: the
+ * callback receives the code and its language and returns what to draw. The
+ * token colors come from a stylesheet of the application; this one follows the
+ * color scheme of the block. A fence with no language is highlighted in the
+ * language the block detects.
+ */
+export const CodeSyntaxHighlighting: StoryObj<typeof AIMarkdown> = {
+  args: { content: CODE_HIGHLIGHT_EXAMPLE },
+  render: (args, { globals }) => ({
+    setup() {
+      const highlightedCode = createMarkdownCodeBlock({
+        colorScheme: () => (globals.theme === 'dark' ? 'dark' : 'light'),
+        highlight(code, language) {
+          const html = highlightHtml(code, language);
+          return html === undefined ? code : h('span', { innerHTML: html });
+        },
+      });
+      return () => h(AIMarkdown, { ...args, components: { ...args.components, pre: highlightedCode } });
+    },
+  }),
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(canvasElement.querySelectorAll('.aimd-code')).toHaveLength(4));
+    // Every block has tokens, the one without a fence language once it is detected.
+    await waitFor(() =>
+      canvasElement
+        .querySelectorAll('.aimd-code')
+        .forEach((block) => expect(block.querySelector('[class^="hljs-"]')).not.toBeNull())
+    );
   },
 };
 

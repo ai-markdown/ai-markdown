@@ -79,3 +79,31 @@ export const CODE_EXPAND_COLLAPSE_EXAMPLE = [
   '}',
   '```',
 ].join('\n');
+
+/** Fences in three named languages and one with no language, which the code block detects. */
+export const CODE_HIGHLIGHT_EXAMPLE = [
+  '## Syntax highlighting',
+  '```ts',
+  'export async function total(urls: readonly string[]): Promise<number> {',
+  '  const sizes = await Promise.all(urls.map(async (url) => (await fetch(url)).headers.get("content-length")));',
+  '  return sizes.reduce((sum, size) => sum + Number(size ?? 0), 0); // bytes',
+  '}',
+  '```',
+  '```python',
+  'def summarize(chunks: list[str]) -> str:',
+  '    """Join streamed chunks and trim the trailing partial word."""',
+  '    head, _, tail = "".join(chunks).rpartition(" ")',
+  '    return head if tail.endswith("...") else head + " " + tail',
+  '```',
+  '```json',
+  '{ "model": "claude", "stream": true, "max_tokens": 1024 }',
+  '```',
+  'No language on the fence below; the code block detects one:',
+  '```',
+  'SELECT author, COUNT(*) AS posts',
+  'FROM articles',
+  "WHERE published_at >= '2026-01-01'",
+  'GROUP BY author',
+  'ORDER BY posts DESC;',
+  '```',
+].join('\n');

@@ -1,0 +1,37 @@
+/* Token colors for the highlighted code block stories: GitHub's light and dark palettes (the light comment
+   color is one step darker, for contrast on the code background of both adapters), following the
+   color scheme of the code block. */
+.aimd-code {
+  --hl-keyword: #cf222e;
+  --hl-string: #0a3069;
+  --hl-number: #0550ae;
+  --hl-title: #8250df;
+  --hl-comment: #57606a;
+  --hl-built-in: #953800;
+}
+.aimd-code[data-color-scheme='dark'] {
+  --hl-keyword: #ff7b72;
+  --hl-string: #a5d6ff;
+  --hl-number: #79c0ff;
+  --hl-title: #d2a8ff;
+  --hl-comment: #8b949e;
+  --hl-built-in: #ffa657;
+}
+.aimd-code :is(.hljs-keyword, .hljs-doctag, .hljs-meta .hljs-keyword, .hljs-template-tag, .hljs-type) {
+  color: var(--hl-keyword);
+}
+.aimd-code :is(.hljs-string, .hljs-regexp, .hljs-meta .hljs-string) {
+  color: var(--hl-string);
+}
+.aimd-code :is(.hljs-number, .hljs-literal, .hljs-attr, .hljs-attribute, .hljs-variable, .hljs-meta, .hljs-operator) {
+  color: var(--hl-number);
+}
+.aimd-code :is(.hljs-title, .hljs-title.class_, .hljs-title.function_) {
+  color: var(--hl-title);
+}
+.aimd-code :is(.hljs-comment, .hljs-code, .hljs-formula) {
+  color: var(--hl-comment);
+}
+.aimd-code :is(.hljs-built_in, .hljs-symbol) {
+  color: var(--hl-built-in);
+}

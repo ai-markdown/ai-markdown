@@ -1,10 +1,19 @@
 import AIMarkdown from '@ai-markdown/react';
-import { MarkdownCodeBlock, MarkdownImage, MarkdownTable, createMarkdownImage } from '@ai-markdown/react/components';
+import {
+  MarkdownCodeBlock,
+  MarkdownImage,
+  MarkdownTable,
+  createMarkdownCodeBlock,
+  createMarkdownImage,
+} from '@ai-markdown/react/components';
 import '@ai-markdown/react/components/styles.css';
 import { WithScheme } from '@ai-markdown/storybook-kit/react/colorScheme';
 import { expect, userEvent, waitFor, within } from 'storybook/test';
+import '@ai-markdown/storybook-kit/common/highlight.css';
+import { highlightHtml } from '@ai-markdown/storybook-kit/common/highlight';
 import {
   CODE_EXPAND_COLLAPSE_EXAMPLE,
+  CODE_HIGHLIGHT_EXAMPLE,
   RICH_COMPONENTS_EXAMPLE,
   IMAGE_GALLERY_EXAMPLE,
 } from '@ai-markdown/storybook-kit/common/richComponents';
@@ -66,6 +75,36 @@ export const CodeExpandAndCollapse: ReactStory = {
       await userEvent.click(expand);
       await waitFor(() => expect(height()).toBe(full));
     }
+  },
+};
+
+const HighlightedCode = createMarkdownCodeBlock({
+  highlight(code, language) {
+    const html = highlightHtml(code, language);
+    return html === undefined ? code : <span dangerouslySetInnerHTML={{ __html: html }} />;
+  },
+});
+/**
+ * Syntax highlighting is an option of the code block factory. The adapter
+ * packages ship no highlighter, so `MarkdownCodeBlock` as exported shows plain
+ * text, which is what the other stories on this page render.
+ *
+ * Here `createMarkdownCodeBlock({ highlight })` is given highlight.js: the
+ * callback receives the code and its language and returns what to draw. The
+ * token colors come from a stylesheet of the application; this one follows the
+ * color scheme of the block. A fence with no language is highlighted in the
+ * language the block detects.
+ */
+export const CodeSyntaxHighlighting: ReactStory = {
+  args: { content: CODE_HIGHLIGHT_EXAMPLE, customComponents: { ...components, pre: HighlightedCode } },
+  play: async ({ canvasElement }) => {
+    await waitFor(() => expect(canvasElement.querySelectorAll('.aimd-code')).toHaveLength(4));
+    // Every block has tokens, the one without a fence language once it is detected.
+    await waitFor(() =>
+      canvasElement
+        .querySelectorAll('.aimd-code')
+        .forEach((block) => expect(block.querySelector('[class^="hljs-"]')).not.toBeNull())
+    );
   },
 };
 
