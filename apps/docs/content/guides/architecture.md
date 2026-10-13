@@ -86,7 +86,7 @@ Preprocessed source
   │    remark parse → remark transforms → remark-rehype
   │    → raw HTML expansion → engine-tag provenance check
   │    → sanitize schema → footer adornment → hash rebasing
-  │    → KaTeX → image unwrapping
+  │    → image unwrapping → KaTeX
   │
 Full-document mdast + hast
   │
@@ -112,7 +112,7 @@ Caller preprocessors receive the normalized complete string and run in order. Th
 
 `remark-rehype` converts Markdown nodes to HTML nodes. Custom handlers preserve orphan footnote bodies when requested and emit coordinated reference placeholders when a registry is present. Phantom definitions allow the Markdown parser to recognize references whose definitions are currently supplied by another chunk. They are auxiliary parser input, not caller-authored content.
 
-The rehype chain expands raw HTML, checks engine-placeholder provenance, sanitizes, normalizes footnote presentation, rebases hash links, renders KaTeX, and unwraps image-only paragraphs. Sanitization precedes KaTeX: the schema preserves the math marker classes that KaTeX consumes, not a full allowlist of the generated formula markup.
+The rehype chain expands raw HTML, checks engine-placeholder provenance, sanitizes, normalizes footnote presentation, rebases hash links, unwraps image-only paragraphs, and renders KaTeX. Sanitization precedes KaTeX: the schema preserves the math marker classes that KaTeX consumes, not a full allowlist of the generated formula markup.
 
 With incremental parsing enabled, `advanceIncrementalParse` owns both parse and transform. It may retain a verified prefix and run these stages only for the tail. On a failed gate or unsupported seam, it returns a full parse. The output contract includes node positions, because downstream cache keys and custom components can read them.
 

@@ -162,11 +162,18 @@ export function buildCoreRehypePlugins(
     // rehype-sanitize just clobbered. Must use the SAME prefix as the schema
     // above.
     [rehypeRebaseHashLinks, { prefix: clobberPrefix }],
-    rehypeKatex,
+    // Both unwraps run BEFORE KaTeX. KaTeX turns each formula into dozens of
+    // elements, and a pass placed after it walks all of them: on a
+    // math-heavy document the tree is about four times larger. The result is
+    // the same in either order. A paragraph is unwrapped only when it holds
+    // nothing but images, and a formula counts as other content whether it
+    // is still the `<code>` marker or already KaTeX's `<span>`; KaTeX itself
+    // emits neither `<p>` nor `<img>`.
     rehypeUnwrapImages,
     // Same unwrap for `<cross-chunk-image>` placeholders (coordinated mode);
     // no-op on standalone documents.
     rehypeUnwrapCrossChunkImages,
+    rehypeKatex,
   ] as RehypePlugins;
 }
 

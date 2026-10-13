@@ -5,12 +5,19 @@
  * construction; this test keeps it holding through future refactors.
  */
 import { describe, expect, test } from 'vitest';
+import { h } from 'hastscript';
+import rehypeKatex from 'rehype-katex';
+import rehypeUnwrapImages from 'rehype-unwrap-images';
+import remarkParse from 'remark-parse';
+import remarkRehype from 'remark-rehype';
+import { unified } from 'unified';
 import rehypeRawGuard from './rehypeRawGuard';
 import rehypeSanitize from 'rehype-sanitize';
 import remarkPangu from 'remark-pangu';
 import remarkSmartypants from 'remark-smartypants';
 import type { Root as HastRoot, RootContent as HastContent } from 'hast';
-import { buildCoreRehypePlugins, buildCoreRemarkPlugins } from './pluginChain';
+import { buildCoreRehypePlugins, buildCoreRemarkPlugins, buildCoreRemarkRehypeOptions } from './pluginChain';
+import { rehypeUnwrapCrossChunkImages } from './rehypeUnwrapCrossChunkImages';
 import { parseStage, transformStage } from './markdown';
 import { rehypeVerifyEngineTags } from './rehypeVerifyEngineTags';
 import { sanitizeSchema } from './sanitizeSchema';
@@ -125,5 +132,72 @@ describe('buildCoreRehypePlugins — provenance verifier placement and compatibi
       documentId: 'd',
     };
     expect(opts.provenance).toBeUndefined();
+  });
+});
+
+describe('buildCoreRehypePlugins — image unwrapping runs before KaTeX', () => {
+  // KaTeX multiplies the element count, so the passes after it are the
+  // expensive ones. These cases pin that the cheaper order changes nothing.
+  const CASES = [
+    '![a](x.png)',
+    '![a](x.png) $$x^2$$',
+    '$$x^2$$ ![a](x.png)',
+    '[![a](x.png)](u)',
+    '[![a](x.png) $$y$$](u)',
+    '[$$y$$](u) ![a](x.png)',
+    '```math\nx^2\n```\n\n![a](x.png)',
+    '> ![a](x.png)\n> $$z$$',
+    '- ![a](x.png)\n- $$q$$\n- ![a](x.png) $$q$$',
+    '| ![a](x.png) | $$t$$ |\n|---|---|\n| $$u$$ | ![b](y.png) |',
+    '<p><code class="math-inline">x</code><img src="a.png"></p>',
+    '$$\\bad$$ ![a](x.png)',
+    '$$\\includegraphics{x.png}$$',
+  ];
+  const render = (plugins: ReturnType<typeof buildCoreRehypePlugins>, content: string) => {
+    const processor = unified().use(remarkParse);
+    for (const entry of buildCoreRemarkPlugins(defaultEnginePlugins))
+      processor.use(...((Array.isArray(entry) ? entry : [entry]) as [never]));
+    processor.use(remarkRehype, buildCoreRemarkRehypeOptions(true) as never);
+    for (const entry of plugins) processor.use(...((Array.isArray(entry) ? entry : [entry]) as [never]));
+    return processor.runSync(processor.parse(content));
+  };
+
+  test('KaTeX is the last plugin and both unwraps precede it', () => {
+    const chain = buildCoreRehypePlugins(sanitizeSchema, '');
+    expect(chain.slice(-3)).toEqual([rehypeUnwrapImages, rehypeUnwrapCrossChunkImages, rehypeKatex]);
+  });
+
+  test.each(CASES)('same tree as with KaTeX first: %j', (content) => {
+    const shipped = buildCoreRehypePlugins(sanitizeSchema, '');
+    const katexFirst = [...shipped.slice(0, -3), rehypeKatex, rehypeUnwrapImages, rehypeUnwrapCrossChunkImages];
+    expect(render(shipped, content)).toEqual(render(katexFirst as typeof shipped, content));
+  });
+
+  test('coordinated-mode placeholders unwrap the same in either order', () => {
+    const math = () => h('code', { className: ['math-inline'] }, 'x^2');
+    const trees = (): HastRoot[] =>
+      [
+        h('p', [h('cross-chunk-image')]),
+        h('p', [h('cross-chunk-image'), math()]),
+        h('p', [h('cross-chunk-link', [h('img', { src: 'a' })])]),
+        h('p', [h('cross-chunk-link', [h('img', { src: 'a' }), math()])]),
+        h('p', [h('cross-chunk-link', [math()]), h('cross-chunk-image')]),
+      ].map((node) => ({ type: 'root', children: [node] }));
+    const run = (plugins: unknown[]) =>
+      trees().map((tree) => {
+        const processor = unified();
+        for (const plugin of plugins) processor.use(plugin as never);
+        return processor.runSync(tree) as HastRoot;
+      });
+    const shipped = run([rehypeUnwrapImages, rehypeUnwrapCrossChunkImages, rehypeKatex]);
+    expect(shipped).toEqual(run([rehypeKatex, rehypeUnwrapImages, rehypeUnwrapCrossChunkImages]));
+    // The first and third hold nothing but an image, so the paragraph is gone.
+    expect(shipped.map((tree) => (tree.children[0] as { tagName: string }).tagName)).toEqual([
+      'cross-chunk-image',
+      'p',
+      'cross-chunk-link',
+      'p',
+      'p',
+    ]);
   });
 });

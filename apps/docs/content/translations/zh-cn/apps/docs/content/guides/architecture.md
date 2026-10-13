@@ -96,7 +96,7 @@ Preprocessed source
   │    remark parse → remark transforms → remark-rehype
   │    → raw HTML expansion → engine-tag provenance check
   │    → sanitize schema → footer adornment → hash rebasing
-  │    → KaTeX → image unwrapping
+  │    → image unwrapping → KaTeX
   │
 Full-document mdast + hast
   │
@@ -126,7 +126,7 @@ React 适配器为每个挂载的实例创建一个专属的增量 LaTeX 预处�
 
 `remark-rehype` 将 Markdown 语法树节点转换为 HTML 语法树节点。自定义处理器在调用方要求时保留孤立脚注的主体内容，并在注册表存在时输出跨片段协调占位符。幻影定义（Phantom definitions）允许 Markdown 解析器能够合法识别那些当前由文档其他片段所定义的跨片段引用。它们属于流水线内部的辅助解析输入，绝非调用方书写的实际正文。
 
-rehype 插件链负责展开原始 HTML、校验 engine 占位符的合法来源凭据（Provenance）、执行安全清洗、规范化脚注展示、重定址哈希锚点、调用 KaTeX 渲染数学公式、并解包仅包含单张图片的孤立段落。安全清洗严格发生在 KaTeX 之前：清洗 Schema 仅放行 KaTeX 所使用的数学标记类名，而非对 KaTeX 生成的深层公式 HTML 进行全盘盲目放行。
+rehype 插件链负责展开原始 HTML、校验 engine 占位符的合法来源凭据（Provenance）、执行安全清洗、规范化脚注展示、重定址哈希锚点、解包仅包含单张图片的孤立段落、并调用 KaTeX 渲染数学公式。安全清洗严格发生在 KaTeX 之前：清洗 Schema 仅放行 KaTeX 所使用的数学标记类名，而非对 KaTeX 生成的深层公式 HTML 进行全盘盲目放行。
 
 当开启增量解析时，`advanceIncrementalParse` 统揽语法解析与转换全过程。它会验证并复用已确认安全的冻结前缀，仅对末尾的新增尾部重跑上述阶段。一旦前置门禁未通过或遇到不支持的语法接缝，它会自动平滑退回全量解析。输出的严格契约包含每个语法树节点的行列与偏移量位置，以供下游缓存 key 与自定义组件精准使用。
 

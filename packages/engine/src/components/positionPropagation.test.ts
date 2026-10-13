@@ -46,8 +46,8 @@ function runFullPipeline(content: string): Root {
     .use(rehypeRaw, { passThrough: [] })
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeRebaseHashLinks)
-    .use(rehypeKatex)
-    .use(rehypeUnwrapImages);
+    .use(rehypeUnwrapImages)
+    .use(rehypeKatex);
 
   const file = processor.parse(content);
   return processor.runSync(file, content) as Root;
@@ -84,8 +84,8 @@ function runProductionPipeline(content: string): Root {
     .use(rehypeSanitize, sanitizeSchema)
     .use(rehypeFooterAdorn)
     .use(rehypeRebaseHashLinks)
-    .use(rehypeKatex)
-    .use(rehypeUnwrapImages);
+    .use(rehypeUnwrapImages)
+    .use(rehypeKatex);
 
   const file = processor.parse(content);
   return processor.runSync(file, content) as Root;

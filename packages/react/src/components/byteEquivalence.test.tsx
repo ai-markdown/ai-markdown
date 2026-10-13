@@ -246,6 +246,9 @@ function legacyPlugins(config: PluginConfig) {
       [rehypeSanitize, { ...sanitizeSchema, clobberPrefix: TEST_CLOBBER_PREFIX }],
       rehypeFooterAdorn,
       [rehypeRebaseHashLinks, { prefix: TEST_CLOBBER_PREFIX }],
+      // The shipped chain unwraps images before KaTeX, for speed. The
+      // reference keeps the original order on purpose: every comparison in
+      // this file then also checks that the two orders give the same bytes.
       rehypeKatex,
       rehypeUnwrapImages,
     ] as never,
