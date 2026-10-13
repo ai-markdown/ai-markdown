@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ai-markdown/react": "workspace:*",
-    "katex": "^0.17.0",
+    "katex": "^0.18.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
