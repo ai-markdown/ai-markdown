@@ -13,14 +13,14 @@
   },
   "devDependencies": {
     "@bench/corpus": "workspace:*",
-    "@storybook/addon-docs": "10.6.0",
-    "@storybook/react-vite": "10.6.0",
+    "@storybook/addon-docs": "10.6.1",
+    "@storybook/react-vite": "10.6.1",
     "@types/react": "^19.2.18",
     "react": "^19",
     "react-dom": "^19",
     "react-scan": "^0.5.7",
     "remark-gfm": "4.0.1",
-    "storybook": "10.6.0",
-    "vue": "^3.5.0"
+    "storybook": "10.6.1",
+    "vue": "^3.5.43"
   }
 }
