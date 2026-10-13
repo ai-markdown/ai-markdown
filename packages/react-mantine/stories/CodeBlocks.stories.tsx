@@ -1,7 +1,8 @@
 import React from 'react';
+import { expect, userEvent, waitFor, within } from 'storybook/test';
 import MantineAIMarkdown from '../src/index';
 import { baseMantineMeta, type MantineMeta, type MantineStory } from './_shared/meta';
-import { JSON_PAYLOAD_DOC, LONG_CODE_DOC, UNLABELED_CODE_DOC } from './_shared/fixtures';
+import { EXPAND_COLLAPSE_DOC, JSON_PAYLOAD_DOC, LONG_CODE_DOC, UNLABELED_CODE_DOC } from './_shared/fixtures';
 import { CODE_SAMPLES_DOC } from '@ai-markdown/storybook-kit/common/fixtures';
 import { SideBySide } from '@ai-markdown/storybook-kit/react/layouts';
 import { docsLink } from '@ai-markdown/storybook-kit/common/docsLinks';
@@ -86,13 +87,56 @@ export default meta;
  * reset what the reader opened.
  *
  * The `codeBlock` control in the panel is live. Set `defaultExpanded` back to
- * `true` and the cap disappears entirely; there is no expand button on an
- * already-expanded block that fits.
+ * `true` and the block starts at its full height, with the control reading
+ * "Collapse code".
  */
 export const CollapsedByDefault: MantineStory = {
   args: {
     content: LONG_CODE_DOC,
     codeBlock: { defaultExpanded: false },
+  },
+};
+
+/**
+ * The control in the top-right corner of a block, on a block where it has an
+ * effect and on one where it has none.
+ *
+ * Both blocks start expanded, which is the default. Click the control on the
+ * **long block** and it is cut to 320px, with an "Expand code" bar across its
+ * lower edge; click either one and it returns to its full height.
+ *
+ * Click the control on the **short block** and its height stays the same: the
+ * collapsed state is a maximum height, and the block is already under it. Only
+ * the label of the control and the bar change. `@mantine/code-highlight` shows
+ * the control on every block when `withExpandButton` is set and does not
+ * measure the content, so a block of a few lines carries a control that does
+ * nothing visible.
+ */
+export const ExpandAndCollapse: MantineStory = {
+  args: {
+    content: EXPAND_COLLAPSE_DOC,
+  },
+  parameters: {
+    controls: { include: ['content'] },
+  },
+  play: async ({ canvasElement }) => {
+    // The element Mantine caps, which also holds the controls of its block.
+    const frameOf = (pre: HTMLElement) => pre.closest('[class*="-codeHighlight"]') as HTMLElement;
+    const height = (pre: HTMLElement) => frameOf(pre).getBoundingClientRect().height;
+    const blocks = await waitFor(() => {
+      const found = [...canvasElement.querySelectorAll<HTMLElement>('pre')];
+      expect(found).toHaveLength(2);
+      return found;
+    });
+    for (const [index, pre] of blocks.entries()) {
+      const frame = frameOf(pre);
+      const full = height(pre);
+      await userEvent.click(within(frame).getByRole('button', { name: 'Collapse code' }));
+      // The short block keeps its height; the long one is cut to the cap.
+      await waitFor(() => (index === 0 ? expect(height(pre)).toBe(full) : expect(height(pre)).toBeLessThan(full)));
+      await userEvent.click(within(frame).getAllByRole('button', { name: 'Expand code' })[0]);
+      await waitFor(() => expect(height(pre)).toBe(full));
+    }
   },
 };
 

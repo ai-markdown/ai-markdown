@@ -67,6 +67,23 @@ export const JSON_PAYLOAD_DOC: string = [
   '```',
 ].join('\n');
 
+/** A block that fits under the collapsed height and one that does not. */
+export const EXPAND_COLLAPSE_DOC: string = [
+  '# Expand and collapse',
+  '',
+  'A short block. It fits under the 320px cap, so collapsing it changes nothing:',
+  '',
+  '```typescript',
+  'export function clamp(value: number, min: number, max: number): number {',
+  '  return Math.min(max, Math.max(min, value));',
+  '}',
+  '```',
+  '',
+  'A long block. Collapsing it cuts it to 320px:',
+  '',
+  LONG_CODE_DOC.slice(LONG_CODE_DOC.indexOf('```typescript')),
+].join('\n');
+
 export const UNLABELED_CODE_DOC: string = [
   '# A fence with no language',
   '',
