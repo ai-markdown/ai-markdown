@@ -73,6 +73,26 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v5
 
+  # The organization site is built and deployed by ai-markdown.github.io. Its
+  # own schedule can run hours late, so a push here starts that workflow
+  # directly. Needs SITE_PUBLISH_TOKEN, a token allowed to run workflows in
+  # that repository; without it the step is skipped and the schedule remains
+  # the only trigger.
+  publish-site:
+    if: github.repository == 'ai-markdown/ai-markdown' && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Start the organization site workflow
+        env:
+          GH_TOKEN: ${{ secrets.SITE_PUBLISH_TOKEN }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo '::notice::SITE_PUBLISH_TOKEN is not set; the site will publish on its schedule.'
+            exit 0
+          fi
+          gh workflow run publish.yml --repo ai-markdown/ai-markdown.github.io --ref main
+
   project-redirect:
     if: github.repository == 'ai-markdown/ai-markdown' && github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
