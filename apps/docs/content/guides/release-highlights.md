@@ -6,6 +6,31 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.4.2 — Image paragraphs unwrap before KaTeX renders
+
+### 3.4.2
+
+This release aligns engine, core, React, Mantine and Vue at `3.4.2`. `@ai-markdown/code-language-detector` remains at `1.1.1` and the highlight plugin at `1.0.3`; neither has changes and neither is republished. It changes the order of the built-in rehype plugins, which makes rendering faster and leaves the output as it was. No component, prop, default or peer range changes.
+
+#### Plugin order
+
+- **The two image unwrapping passes run before KaTeX.** The rehype chain ended with KaTeX, then `rehypeUnwrapImages`, then the cross-chunk unwrapping pass. It now ends with the two unwrapping passes and then KaTeX. KaTeX turns each formula into a large subtree, about four times the node count of the whole tree on a document with a lot of math, and the unwrapping passes used to walk all of it to find paragraphs that hold only images. They now walk the tree before it grows.
+- **`buildCoreRehypePlugins` returns the new order.** The function is public in `@ai-markdown/engine`, so this is stated here although it carries a patch number, by maintainer decision. It concerns an adapter assembled by hand from the engine's builders, as in the adapter guide: one that inserts its own plugin by position near the end of the returned array has to adjust, and a plugin appended after the array sees the same tree as before. The React, Vue and Mantine components build the chain themselves and take no rehype plugins, so their users have nothing to change.
+- **The output is the same.** The two orders produce identical trees for the 145 Markdown files tracked in the repository and for 20 edge cases (images next to inline and display math, images inside links, formulas inside image paragraphs, placeholders of the coordinated streaming mode), with every optional plugin on and with every one off. The React byte-equivalence suite keeps the old order as its reference chain on purpose, so its 70 cases compare the two orders on every run.
+- **Measured effect.** A production build renders a 25 KB document that mixes prose, code, tables, images and math in 109 to 113 ms, down from about 128 ms, which is 12 to 15 percent. A document with no math gains nothing.
+
+#### Development dependencies
+
+- Twenty-three development dependencies move forward, among them Storybook 10.6.1, Vitest 5.0.3, Vite 7.3.7, fast-check 4.10.2, jsdom 30.1.2, sass 1.105.1, shiki 4.5.0 and prettier 3.9.9. The Vue peer range stays at `^3.5.0`; the workspace tests against Vue 3.5.43. The override that let Storybook accept Vitest 5 is removed, since Storybook 10.6.1 supports it.
+- Three dependencies of the documentation site, `sharp`, `smol-toml` and `postcss-selector-parser`, are moved past published advisories. None of them is a dependency of a published package.
+- KaTeX stays on the 0.16 line. Published dependency lists are unchanged.
+
+#### Verification
+
+Local preflight passes 22 of 23 steps; the last one stops at the WebKit leg because the build host lacks WebKit's system libraries, after the Firefox leg passes. All 3,298 unit tests pass, together with the React (118) and Vue (46) Storybook suites, the packed-consumer tests, the public declaration snapshots and the 20 visual baselines. WebKit and the packed-consumer Node matrix (20, 22 and 24) pass in CI on the commit before the plugin order change and are left to CI for this one.
+
+The soak impact check requires a full campaign for this range, because the plugin chain, the engine manifest and the dependency graph changed. The release-profile soak with seed base `202610130` passes all six legs and 84 of 84 logical shards in about 3 hours 3 minutes (run `release-c657769-20261013T050446Z-c657769-854165`), and `pnpm check:release-soak --evidence` accepts it. The toolchain smoke replay passes its 12 shards. The reused-version check reports both independent packages unchanged since publication.
+
 ## 3.4.1 — Image preview transitions, options and callbacks
 
 ### 3.4.1
