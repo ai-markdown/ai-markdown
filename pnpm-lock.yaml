@@ -85,8 +85,8 @@ importers:
         specifier: ^7.0.1
         version: 7.0.1(eslint@10.1.0(jiti@2.7.0)(supports-color@8.1.1))(supports-color@8.1.1)
       katex:
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.18.2
+        version: 0.18.2
       playwright:
         specifier: ^1.63.0
         version: 1.63.0
@@ -236,8 +236,8 @@ importers:
         specifier: 10.6.1
         version: 10.6.1(storybook@10.6.1(@types/react@19.2.18)(prettier@3.9.10)(react@19.2.8))(typescript@6.0.3)(vite@8.2.1(@types/node@25.9.9)(esbuild@0.28.2)(jiti@2.7.0)(sass-embedded@1.105.1)(sass@1.105.1)(yaml@2.9.1))(vue@3.5.43(typescript@6.0.3))
       katex:
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.18.2
+        version: 0.18.2
       react:
         specifier: ^19
         version: 19.2.8
@@ -266,8 +266,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/react
       katex:
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.18.2
+        version: 0.18.2
       react:
         specifier: ^19.2.0
         version: 19.2.8
@@ -312,8 +312,8 @@ importers:
         specifier: ^11.11.2
         version: 11.12.0
       katex:
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.18.2
+        version: 0.18.2
       react:
         specifier: ^19.2.0
         version: 19.2.8
@@ -380,8 +380,8 @@ importers:
         specifier: ^30.1.2
         version: 30.1.2
       katex:
-        specifier: ^0.17.0
-        version: 0.17.0
+        specifier: ^0.18.2
+        version: 0.18.2
       mermaid:
         specifier: ^11.17.2
         version: 11.17.2
@@ -5454,6 +5454,10 @@ packages:
 
   katex@0.17.0:
     resolution: {integrity: sha512-Vdw0ATsQ9V+LuegM/BTwQqV/6cTl5lbGcIrU+BCgLxyf6bo38ybOr372tuSIxir3CN720flu1meYR6XzNMwQnw==}
+    hasBin: true
+
+  katex@0.18.2:
+    resolution: {integrity: sha512-3snve4y0SXTMequLim1FMiPvLGElySam0blN5xQZBqEY3lOJz1TnuaaiugnBZBqHzlSAGmFTYL7MCQkORuLKCA==}
     hasBin: true
 
   keyv@4.5.4:
@@ -12556,6 +12560,10 @@ snapshots:
       commander: 8.3.0
 
   katex@0.17.0:
+    dependencies:
+      commander: 8.3.0
+
+  katex@0.18.2:
     dependencies:
       commander: 8.3.0
 
