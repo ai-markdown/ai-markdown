@@ -17,6 +17,15 @@
  * test pins the engine-level behaviour so a future dependency change that
  * silently swaps the chain back to upstream turns the crash into a red test
  * instead of a production incident.
+ *
+ * The guard reads the parse5 node (`'content' in node`), not the namespace.
+ * A namespace check alone is not enough: `hastscript` reads a tag name as a
+ * selector, so an HTML-namespace `<template.x>` becomes a hast `template`
+ * whose parse5 node has no `content`. Markdown does not accept `.` or `#` in a
+ * tag name, so those shapes reach the HTML parser only inside a raw HTML
+ * block, which is why they are wrapped in a `<div>`. They come from
+ * syntax-tree/hast-util-from-parse5#15; keep them when the fork is replaced
+ * by an upstream release.
  */
 import { describe, expect, test } from 'vitest';
 import { CATALOG } from './incrementalParse/testPluginCatalog';
@@ -29,6 +38,10 @@ const SHAPES = [
   '<svg><template>',
   'prose <svg><template>x</template></svg> after',
   '<svg>\n<template>y</template>\n</svg>',
+  '<div>\n<template.x>hi</template.x>\n</div>',
+  '<div>\n<template#a>hi</template#a>\n</div>',
+  '<div>\n<svg><template#a>hi</template#a></svg>\n</div>',
+  '<div>\n<math><template.y>hi</template.y></math>\n</div>',
 ];
 
 describe('svg/math template does not crash the render', () => {
