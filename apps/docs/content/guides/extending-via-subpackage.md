@@ -417,7 +417,7 @@ Match the shape of `@ai-markdown/react-mantine`'s barrel for consistency. Re-exp
 // packages/your-integration/package.json
 {
   "peerDependencies": {
-    "@ai-markdown/react": "^3.4.2",
+    "@ai-markdown/react": "^3.5.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "your-design-system": "^1.0.0",

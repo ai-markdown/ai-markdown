@@ -6,6 +6,45 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.5.0 — Shared highlighting and optional diagram engines
+
+### 3.5.0
+
+This release aligns engine, core, React, Vue and Mantine at `3.5.0`. The independently versioned code-language detector stays at `1.1.1` and the highlight plugin at `1.0.3`. The release stays on the 3.x line by maintainer decision, including the dependency installation change below.
+
+#### Upgrade: install Mermaid explicitly
+
+Mantine now declares Mermaid as an optional peer instead of installing it as a runtime dependency. Applications using the default diagram renderer, or Mermaid fallback from another renderer, must install `mermaid` explicitly. Upgrade `@ai-markdown/react` and `@ai-markdown/react-mantine` together; Mantine requires React adapter `^3.5.0`.
+
+```sh
+pnpm add @ai-markdown/react@3.5.0 @ai-markdown/react-mantine@3.5.0 mermaid
+```
+
+Applications that intentionally omit Mermaid can use the documented independent entries with an explicit alternative engine loader or `mermaidEngine: false`. See the [diagram setup and independent-entry examples](rich-components.md) before changing imports.
+
+#### Highlighting
+
+- Core owns the highlight session and language conversion rules; React and Vue manage framework lifecycles, and Mantine consumes the React integration. Existing highlight callbacks remain supported. A configured `highlighter` adapter takes precedence over a legacy callback.
+- The optional Pierre adapter supports native incremental tokenization while streaming, light/dark themes, retry after failed loading and full-frame correction when streaming finishes. Static blocks use full-frame highlighting. Applications supply the runtime loader; core does not depend on Pierre's WASM runtime.
+- SSR and initial hydration render source consistently, including when an asynchronous adapter has already loaded elsewhere. Loading begins after mounting. Document changes, source replacement and disposal isolate stale work; unsupported languages preserve plain source.
+
+#### Diagrams
+
+- Mermaid remains the default. Pele and Ondine are optional engines supplied through loader factories. Core owns the state machine, loading rules and SVG binding lifecycle; React and Vue expose the diagram integration, and Mantine reuses React while retaining its controls and layout.
+- Normal entries enable `mermaidFallback` by default. Fallback runs once for an engine's identified unsupported diagram type; syntax errors, loading failures and resource limits do not silently switch engines. There is no separately maintained static support table. Set `mermaidFallback: false` to disable it, or `mermaidEngine: false` to show source without diagram rendering.
+- Independent entries omit the default Mermaid runtime and require an explicit loader or disabled rendering. They do not provide an implicit Mermaid fallback.
+- Loader identity and `resetKey` delimit sessions. Old tasks cannot publish into a new session; retries use the current request. Failed downloads can be loaded again without discarding a shared successful loader. SSR does not start loading, and React StrictMode and Vue mount/unmount lifecycles are covered.
+- Pele and Ondine use their native light/dark palette options. Their supported syntax and output differ from Mermaid; this is not complete Mermaid theme or interaction parity. Native engine options remain available through their factories.
+- SVG replacement and unmount clean up bindings, including custom binding cleanup. Mantine exposes load failure and retry, and centres the shared SVG viewport correctly.
+
+#### Documentation and verification
+
+The React, Vue and Mantine Storybooks include optional-engine, loading, retry, streaming, theme and lifecycle demonstrations. The guides and API references document installation, fallback boundaries, independent entries and the cost of retaining Pierre live state until document streaming ends.
+
+Local preflight passed 3,361 unit tests with one existing todo, all 239 Storybook tests (168 React/Mantine and 71 Vue), package builds, type checks, lint/format, public API checks, packed-consumer and package validation, static and development Storybook acceptance, document lifetime checks, and Vue browser contracts in Chromium, Firefox and WebKit. WebKit used additional runtime libraries in the local browser cache. These are local candidate results; the release workflow verifies the tagged artifacts separately.
+
+The release-profile soak on source commit `2abfc44c50bbb08da1a35b5507a94a971bda16a9`, seed base `202611220`, passed all six legs and 84/84 logical shards in 12,577 seconds (about 3 hours 29 minutes). Evidence is recorded in run `v350-release-2abfc44-202611220`; the release evidence validator accepted it and the toolchain smoke passed 12/12 shards. The release preparation changes only versions and documentation; the final candidate must still pass evidence validation before its tag is pushed.
+
 ## 3.4.2 — Image paragraphs unwrap before KaTeX renders
 
 ### 3.4.2
