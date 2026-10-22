@@ -35,3 +35,19 @@
 .aimd-code :is(.hljs-built_in, .hljs-symbol) {
   color: var(--hl-built-in);
 }
+
+/* Diagnostics belong to the demos, not the shipped code block UI. */
+.aimd-highlight-demo [data-highlight-status]::before {
+  content: attr(data-highlight-status) ' · ' attr(data-highlight-language);
+  display: block;
+  font:
+    12px/1.8 system-ui,
+    sans-serif;
+  color: inherit;
+  opacity: 0.85;
+  border-bottom: 1px solid #8c959f;
+  margin-bottom: 8px;
+}
+.aimd-highlight-demo [data-highlight-status='error']::before {
+  color: #cf222e;
+}

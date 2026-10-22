@@ -1,6 +1,64 @@
 // Generated from the built public declaration. Review changes before updating.
 import { CodeLanguage } from "@ai-markdown/code-language-detector";
 import { Element } from "hast";
+export declare enum CodeLanguageFormat {
+    HighlightJs = "highlight-js",
+    Shiki = "shiki",
+    Pierre = "pierre"
+}
+type CodeLanguageResolver = CodeLanguageFormat | ((language: string) => string);
+export declare function resolveCodeHighlightLanguage(language: string, format?: CodeLanguageResolver): string;
+export declare function resolveCodeHighlightInterval(value: number | undefined, fallback?: number): number;
+interface CodeHighlightToken {
+    text: string;
+    color?: string;
+    backgroundColor?: string;
+    fontStyle?: number;
+}
+type CodeHighlightResult = {
+    html: string;
+} | {
+    tokens: readonly CodeHighlightToken[];
+};
+interface CodeHighlightRequest {
+    code: string;
+    language: string;
+    colorScheme: 'light' | 'dark';
+    streaming?: boolean;
+}
+interface CodeHighlightBackend {
+    highlight(request: CodeHighlightRequest): CodeHighlightResult | undefined;
+    dispose(): void;
+}
+interface CodeHighlightAdapter {
+    languageFormat: CodeLanguageResolver;
+    createSession?(): CodeHighlightBackend;
+    supports?(language: string): boolean;
+    isReady?(request: CodeHighlightRequest): boolean;
+    prepare?(request: CodeHighlightRequest): void | Promise<void>;
+    highlight(request: CodeHighlightRequest): CodeHighlightResult | undefined;
+}
+interface CodeHighlightInput {
+    adapter?: CodeHighlightAdapter;
+    code: string;
+    language: string;
+    colorScheme: 'light' | 'dark';
+    streaming?: boolean;
+    generation: number;
+    active?: boolean;
+}
+interface CodeHighlightSnapshot {
+    language: string;
+    status: 'plain' | 'loading' | 'ready' | 'error';
+    result?: CodeHighlightResult;
+    error?: unknown;
+}
+export declare function createCodeHighlightSession(onChange: () => void): {
+    read(input: CodeHighlightInput): CodeHighlightSnapshot;
+    commit(input: CodeHighlightInput): void;
+    retry(): void;
+    dispose(): void;
+};
 type ImageActionIconName = 'rotateLeft' | 'rotateRight' | 'zoomIn' | 'zoomOut' | 'close' | 'prev' | 'next' | 'flipX' | 'flipY';
 type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery' | ImageActionIconName;
 type ImageLoadStatus = 'loading' | 'ready' | 'error';
@@ -62,6 +120,20 @@ interface TableLabels extends Record<TableExportReason, string> {
     scrollRegion: string;
 }
 export declare const defaultTableLabels: Readonly<TableLabels>;
+interface CodeBlockOptions {
+    languageFormat?: CodeLanguageResolver;
+    highlighter?: CodeHighlightAdapter;
+    defaultExpanded?: boolean;
+    autoDetectUnknownLanguage?: boolean;
+    formatJson?: boolean;
+    expandNestedJson?: boolean;
+    highlightIntervalMs?: number;
+    mermaidIntervalMs?: number;
+    labels?: LabelsOption<CodeBlockLabels>;
+}
+type CodeBlockPolicy = Required<Pick<CodeBlockOptions, 'defaultExpanded' | 'autoDetectUnknownLanguage' | 'formatJson' | 'expandNestedJson' | 'highlightIntervalMs'>>;
+export declare const defaultCodeBlockPolicy: Readonly<CodeBlockPolicy>;
+export declare function resolveCodeBlockPolicy(overrides?: Partial<CodeBlockPolicy>, inherited?: Partial<CodeBlockPolicy>, defaults?: Partial<CodeBlockPolicy>): CodeBlockPolicy;
 interface CodeSource {
     code: string;
     language: string;
@@ -303,6 +375,64 @@ export declare function createImagePreviewController(host: ImagePreviewHost, pub
     key(key: string): boolean;
     dispose(): void;
 };
+interface PierreHighlightToken {
+    content: string;
+    offset: number;
+    color?: string;
+    bgColor?: string;
+    fontStyle?: number;
+}
+interface PierreLiveTokenizer {
+    readonly lineCount: number;
+    getLineLength(line: number): number;
+    getLineTokens(line: number): {
+        tokens: readonly PierreHighlightToken[];
+    };
+    applyEdits(edits: readonly {
+        range: {
+            start: {
+                line: number;
+                character: number;
+            };
+            end: {
+                line: number;
+                character: number;
+            };
+        };
+        newText: string;
+    }[]): {
+        lineChanges: readonly {
+            oldStartLine: number;
+            oldEndLine: number;
+            newStartLine: number;
+            newEndLine: number;
+        }[];
+    };
+    dispose(): void;
+}
+interface PierreHighlightRuntime<Language extends string, Theme> {
+    isSupportedLanguage(language: string): boolean;
+    codeToTokens(code: string, options: {
+        lang: Language;
+        theme: NoInfer<Theme>;
+    }): {
+        tokens: readonly (readonly PierreHighlightToken[])[];
+        fg?: string;
+    };
+    LiveTokenizer?: new (options: {
+        code: string;
+        lang: Language;
+        theme: NoInfer<Theme>;
+    }) => PierreLiveTokenizer;
+    themes: {
+        light: Theme;
+        dark: Theme;
+    };
+}
+export declare function createPierreHighlightAdapter<Language extends string, Theme>(options: {
+    load: () => Promise<PierreHighlightRuntime<Language, Theme>>;
+    incremental?: boolean;
+}): CodeHighlightAdapter;
 export interface CodeRendererInput {
     code: string;
     language: string;
@@ -311,13 +441,4 @@ export interface CodeRendererInput {
     active: boolean;
     resetKey: string;
 }
-export interface CodeBlockOptions {
-    defaultExpanded?: boolean;
-    autoDetectUnknownLanguage?: boolean;
-    formatJson?: boolean;
-    expandNestedJson?: boolean;
-    highlightIntervalMs?: number;
-    mermaidIntervalMs?: number;
-    labels?: LabelsOption<CodeBlockLabels>;
-}
-export type { CodeBlockInput, CodeBlockLabels, CodeBlockSnapshot, CodeFrame, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImagePointer, ImagePreviewAction, ImagePreviewHost, ImagePreviewOptions, ImagePreviewPhase, ImagePreviewState, ImageTransform, LabelsOption, MermaidInitTarget, TableExportReason, TableLabels, TableProjection };
+export type { CodeBlockInput, CodeBlockLabels, CodeBlockOptions, CodeBlockPolicy, CodeBlockSnapshot, CodeFrame, CodeHighlightAdapter, CodeHighlightBackend, CodeHighlightInput, CodeHighlightRequest, CodeHighlightResult, CodeHighlightSnapshot, CodeHighlightToken, CodeLanguageResolver, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImagePointer, ImagePreviewAction, ImagePreviewHost, ImagePreviewOptions, ImagePreviewPhase, ImagePreviewState, ImageTransform, LabelsOption, MermaidInitTarget, PierreHighlightRuntime, PierreHighlightToken, PierreLiveTokenizer, TableExportReason, TableLabels, TableProjection };

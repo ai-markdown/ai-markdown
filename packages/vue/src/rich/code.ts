@@ -21,3 +21,16 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
   });
 }
 export const MarkdownCodeBlock = createMarkdownCodeBlock();
+
+export {
+  CodeLanguageFormat,
+  resolveCodeHighlightLanguage,
+  createPierreHighlightAdapter,
+} from '@ai-markdown/core/components';
+export type {
+  CodeHighlightAdapter,
+  CodeHighlightResult,
+  CodeHighlightRequest,
+  CodeHighlightToken,
+  CodeLanguageResolver,
+} from '@ai-markdown/core/components';

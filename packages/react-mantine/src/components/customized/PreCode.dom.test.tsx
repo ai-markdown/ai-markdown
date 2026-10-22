@@ -230,3 +230,57 @@ test('mid-line chunks are throttled like any other append', async () => {
   expect(frames).toBeGreaterThan(60);
   expect(calls - before).toBeLessThan(3);
 });
+
+test('custom renderer source uses the consumer provider and the shared Shiki mapping', async () => {
+  const { adapter, loadLanguageCalls } = createRecordingAdapter();
+  const Custom = createMarkdownCodeBlock({
+    renderers: { tsx: () => <output>Preview</output> },
+    languageFormat: MantineLanguageFormat.Shiki,
+  });
+  const container = await harness.mount(
+    <MantineAIMarkdown content={'```tsx\nconst view = <Widget />;\n```'} customComponents={{ pre: Custom }} />,
+    adapter
+  );
+  const button = [...container.querySelectorAll('button')].find((node) => node.textContent === 'Show source');
+  expect(button).toBeDefined();
+  await act(async () => button!.click());
+  await flushEffects();
+  await flushEffects();
+  expect(loadLanguageCalls).toContain('tsx');
+  expect(container.querySelector('.recording-hl')?.getAttribute('data-lang')).toBe('tsx');
+});
+
+test('injected highlighter reuses React block sessions without loading the consumer provider', async () => {
+  const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+  const { adapter, loadLanguageCalls } = createRecordingAdapter();
+  const disposed = vi.fn();
+  const requests: string[] = [];
+  const highlighter: import('@ai-markdown/core/components').CodeHighlightAdapter = {
+    languageFormat: CodeLanguageFormat.Pierre,
+    highlight: () => {
+      throw new Error('stateless path');
+    },
+    createSession: () => ({
+      highlight: ({ code, language, streaming }) => {
+        requests.push(`${language}:${streaming}`);
+        return { tokens: [{ text: code, color: '#123456', fontStyle: 3 }] };
+      },
+      dispose: disposed,
+    }),
+  };
+  const container = await harness.mount(
+    <MantineAIMarkdown
+      content={'```tsx\n<Widget />\n```\n\n```vue\n<template>Hello</template>\n```'}
+      streaming
+      codeBlock={{ highlighter }}
+    />,
+    adapter
+  );
+  expect(requests).toContain('tsx:true');
+  expect(requests).toContain('vue:true');
+  expect(loadLanguageCalls).toEqual([]);
+  expect(container.querySelector('Widget')).toBeNull();
+  expect(container.querySelectorAll('[data-highlight-status="ready"]')).toHaveLength(2);
+  await harness.cleanup();
+  expect(disposed).toHaveBeenCalledTimes(2);
+});

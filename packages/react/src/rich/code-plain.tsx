@@ -23,7 +23,9 @@ import {
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
-import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
+import { resolveCodeHighlightLanguage, resolveCodeBlockPolicy } from '@ai-markdown/core/components';
+import { useCodeHighlight } from './useCodeHighlight';
+export { useCodeHighlight } from './useCodeHighlight';
 import { useCodeBlock } from './useCodeBlock';
 
 // The Mantine code block is built on the same hook.
@@ -46,8 +48,7 @@ class RendererBoundary extends Component<{ children: ReactNode; fallback: ReactN
     return this.state.failed ? this.props.fallback : this.props.children;
   }
 }
-const interval = (value: unknown, fallback: number) =>
-  typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : fallback;
+
 const subscribeClient = () => () => {};
 const clientSnapshot = () => true;
 const serverSnapshot = () => false;
@@ -59,8 +60,7 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
     const { colorScheme } = useAIMarkdownTheme();
     const document = useAIMarkdownDocument();
     const group = useAIMarkdownBehaviors().codeBlock as CodeBlockOptions | undefined;
-    const option = <K extends keyof CodeBlockOptions>(key: K, fallback: NonNullable<CodeBlockOptions[K]>) =>
-      options[key] ?? group?.[key] ?? fallback;
+    const config = resolveCodeBlockPolicy(options, group);
     const parsed = extractCode(node);
     const code = parsed?.code ?? '';
     const language = parsed?.language ?? '';
@@ -70,15 +70,15 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
       language,
       identity,
       streaming,
-      autoDetect: option('autoDetectUnknownLanguage', true),
-      formatJson: option('formatJson', false),
-      expandNestedJson: option('expandNestedJson', false),
-      highlightIntervalMs: interval(option('highlightIntervalMs', 50), 50),
+      autoDetect: config.autoDetectUnknownLanguage,
+      formatJson: config.formatJson,
+      expandNestedJson: config.expandNestedJson,
+      highlightIntervalMs: config.highlightIntervalMs,
     });
     const { generation, text: displayed, language: detected } = block;
     const mounted = useSyncExternalStore(subscribeClient, clientSnapshot, serverSnapshot);
     const [source, setSource] = useState(false);
-    const [expanded, setExpanded] = useState(option('defaultExpanded', true));
+    const [expanded, setExpanded] = useState(config.defaultExpanded);
     const [feedback, setFeedback] = useState<'' | 'copied' | 'copyFailed'>('');
     const labels = resolveLabels(defaultCodeBlockLabels, options.labels ?? group?.labels);
     // A rewritten block starts over: React discards this state with an abandoned render.
@@ -89,18 +89,54 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
       setFeedback('');
     }
     const Renderer = renderers[language];
+    const highlighter = options.highlighter ?? group?.highlighter;
+    const languageFormat = options.languageFormat ?? group?.languageFormat;
+    const highlightState = useCodeHighlight({
+      adapter: highlighter,
+      streaming,
+      code: displayed,
+      language: detected,
+      colorScheme: colorScheme === 'dark' ? 'dark' : 'light',
+      generation,
+      active: !(Renderer && mounted && !source),
+    });
     const highlighted = useMemo(() => {
       if (Renderer && mounted && !source) return displayed;
+      if (highlighter) {
+        const result = highlightState.result;
+        if (!result) return displayed;
+        if ('html' in result) return <span dangerouslySetInnerHTML={{ __html: result.html }} />;
+        return result.tokens.map((token, index) => (
+          <span
+            key={index}
+            style={{
+              color: token.color,
+              backgroundColor: token.backgroundColor,
+              fontStyle: (token.fontStyle ?? 0) & 1 ? 'italic' : undefined,
+              fontWeight: (token.fontStyle ?? 0) & 2 ? 'bold' : undefined,
+              textDecoration: (token.fontStyle ?? 0) & 4 ? 'underline' : undefined,
+            }}
+          >
+            {token.text}
+          </span>
+        ));
+      }
       try {
-        return options.highlight?.(displayed, normalizeHighlightJsLanguage(detected)) ?? displayed;
+        return options.highlight?.(displayed, resolveCodeHighlightLanguage(detected, languageFormat)) ?? displayed;
       } catch {
         return displayed;
       }
-    }, [displayed, detected, Renderer, mounted, source]);
+    }, [displayed, detected, Renderer, mounted, source, highlighter, highlightState.result, languageFormat]);
     if (!parsed) return <pre {...props}>{children}</pre>;
     const original = (
       <pre {...props}>
-        <code className={language ? `language-${language}` : undefined}>{highlighted}</code>
+        <code
+          data-highlight-status={highlighter ? highlightState.status : options.highlight ? 'callback' : 'plain'}
+          data-highlight-language={highlighter ? highlightState.language : undefined}
+          className={language ? `language-${language}` : undefined}
+        >
+          {highlighted}
+        </code>
       </pre>
     );
     const resetKey = `${identity}:${generation}`;
@@ -169,3 +205,16 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
   return MarkdownCodeBlock;
 }
 export const MarkdownCodeBlock = createMarkdownCodeBlock();
+
+export {
+  CodeLanguageFormat,
+  resolveCodeHighlightLanguage,
+  createPierreHighlightAdapter,
+} from '@ai-markdown/core/components';
+export type {
+  CodeHighlightAdapter,
+  CodeHighlightResult,
+  CodeHighlightRequest,
+  CodeHighlightToken,
+  CodeLanguageResolver,
+} from '@ai-markdown/core/components';

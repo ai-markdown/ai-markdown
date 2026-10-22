@@ -5,7 +5,6 @@ import {
   computed,
   defineComponent,
   h,
-  onBeforeUnmount,
   onErrorCaptured,
   onMounted,
   ref,
@@ -18,14 +17,17 @@ import type { Element } from 'hast';
 import {
   extractCode,
   normalizeRenderers,
-  createCodeBlockSession,
   defaultCodeBlockLabels,
   resolveLabels,
   type CodeBlockInput,
   type CodeRendererInput,
   type CodeBlockOptions,
 } from '@ai-markdown/core/components';
-import { normalizeHighlightJsLanguage } from '@ai-markdown/code-language-detector';
+import { resolveCodeHighlightLanguage, resolveCodeBlockPolicy } from '@ai-markdown/core/components';
+import { useCodeBlock } from './useCodeBlock';
+import { useCodeHighlight } from './useCodeHighlight';
+export { useCodeBlock } from './useCodeBlock';
+export { useCodeHighlight } from './useCodeHighlight';
 export type { CodeRendererInput, CodeBlockOptions, CodeBlockLabels, LabelsOption } from '@ai-markdown/core/components';
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
   renderers?: Readonly<Record<string, Component | false>>;
@@ -48,10 +50,7 @@ export function createMarkdownCodeBlock(
   options: MarkdownCodeBlockOptions = {}
 ): DefineComponent<MarkdownComponentProps> {
   const renderers = normalizeRenderers(options.renderers ?? {});
-  const interval =
-    Number.isFinite(options.highlightIntervalMs) && options.highlightIntervalMs! >= 0
-      ? options.highlightIntervalMs!
-      : 50;
+  const config = resolveCodeBlockPolicy(options);
   return defineComponent({
     name: 'MarkdownCodeBlock',
     inheritAttrs: false,
@@ -63,28 +62,20 @@ export function createMarkdownCodeBlock(
       const language = computed(() => parsed.value?.language ?? '');
       const mounted = ref(false),
         source = ref(false),
-        expanded = ref(options.defaultExpanded ?? true),
+        expanded = ref(config.defaultExpanded),
         feedback = ref<'' | 'copied' | 'copyFailed'>('');
-      // The policy is core's session. `changes` makes the snapshot read again when a timer moves it.
-      const changes = ref(0);
-      const session = createCodeBlockSession(() => {
-        changes.value++;
-      });
       const input = computed<CodeBlockInput>(() => ({
         code: code.value,
         language: language.value,
         // Another document at the same position is another block, even when its text continues this one.
         identity: `${markdownDocument?.documentId.value ?? ''}:${props.node?.position?.start.offset ?? ''}`,
         streaming: Boolean(props.streaming),
-        autoDetect: options.autoDetectUnknownLanguage ?? true,
-        formatJson: options.formatJson ?? false,
-        expandNestedJson: options.expandNestedJson ?? false,
-        highlightIntervalMs: interval,
+        autoDetect: config.autoDetectUnknownLanguage,
+        formatJson: config.formatJson,
+        expandNestedJson: config.expandNestedJson,
+        highlightIntervalMs: config.highlightIntervalMs,
       }));
-      const block = computed(() => {
-        void changes.value;
-        return session.read(input.value);
-      });
+      const block = useCodeBlock(input);
       watch(
         () => block.value.generation,
         () => {
@@ -93,23 +84,53 @@ export function createMarkdownCodeBlock(
         },
         { flush: 'sync' }
       );
-      // Committed after the render, and only on the client: a server render starts no timer.
-      watch(
-        [input, mounted],
-        ([next, onClient]) => {
-          if (onClient) session.commit(next);
-        },
-        { flush: 'post' }
-      );
-      onBeforeUnmount(() => session.dispose());
       onMounted(() => {
         mounted.value = true;
       });
       const detected = computed(() => block.value.language);
       const formatted = computed(() => block.value.text);
+      const scheme = computed(() =>
+        typeof options.colorScheme === 'function' ? options.colorScheme() : (options.colorScheme ?? 'light')
+      );
+      const { result: highlightState } = useCodeHighlight(
+        computed(() => ({
+          adapter: options.highlighter,
+          streaming: Boolean(props.streaming),
+          code: formatted.value,
+          language: detected.value,
+          colorScheme: scheme.value,
+          generation: block.value.generation,
+          active: !(renderers[language.value] && mounted.value && !source.value),
+        }))
+      );
       const highlighted = computed(() => {
+        if (options.highlighter) {
+          const result = highlightState.value.result;
+          if (!result) return formatted.value;
+          if ('html' in result) return h('span', { innerHTML: result.html });
+          return result.tokens.map((token) =>
+            h(
+              'span',
+              {
+                style: {
+                  color: token.color,
+                  backgroundColor: token.backgroundColor,
+                  fontStyle: (token.fontStyle ?? 0) & 1 ? 'italic' : undefined,
+                  fontWeight: (token.fontStyle ?? 0) & 2 ? 'bold' : undefined,
+                  textDecoration: (token.fontStyle ?? 0) & 4 ? 'underline' : undefined,
+                },
+              },
+              token.text
+            )
+          );
+        }
         try {
-          return options.highlight?.(formatted.value, normalizeHighlightJsLanguage(detected.value)) ?? formatted.value;
+          return (
+            options.highlight?.(
+              formatted.value,
+              resolveCodeHighlightLanguage(detected.value, options.languageFormat)
+            ) ?? formatted.value
+          );
         } catch {
           return formatted.value;
         }
@@ -131,7 +152,19 @@ export function createMarkdownCodeBlock(
           typeof options.colorScheme === 'function' ? options.colorScheme() : (options.colorScheme ?? 'light');
         const original = () =>
           h('pre', attrs, [
-            h('code', { class: language.value ? `language-${language.value}` : undefined }, highlighted.value),
+            h(
+              'code',
+              {
+                'data-highlight-status': options.highlighter
+                  ? highlightState.value.status
+                  : options.highlight
+                    ? 'callback'
+                    : 'plain',
+                'data-highlight-language': options.highlighter ? highlightState.value.language : undefined,
+                class: language.value ? `language-${language.value}` : undefined,
+              },
+              highlighted.value
+            ),
           ]);
         const resetKey = `${props.node?.position?.start.offset ?? ''}:${language.value}:${block.value.generation}`;
         return h('section', { class: 'aimd-code', 'data-language': language.value, 'data-color-scheme': colorScheme }, [
@@ -200,3 +233,16 @@ export function createMarkdownCodeBlock(
   }) as DefineComponent<MarkdownComponentProps>;
 }
 export const MarkdownCodeBlock = createMarkdownCodeBlock();
+
+export {
+  CodeLanguageFormat,
+  resolveCodeHighlightLanguage,
+  createPierreHighlightAdapter,
+} from '@ai-markdown/core/components';
+export type {
+  CodeHighlightAdapter,
+  CodeHighlightResult,
+  CodeHighlightRequest,
+  CodeHighlightToken,
+  CodeLanguageResolver,
+} from '@ai-markdown/core/components';

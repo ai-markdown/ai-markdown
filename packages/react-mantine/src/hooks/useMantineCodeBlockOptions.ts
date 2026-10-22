@@ -1,3 +1,4 @@
+import { resolveCodeBlockPolicy } from '@ai-markdown/core/components';
 /**
  * Narrow hook for the mantine `codeBlock` behavior group.
  *
@@ -50,16 +51,15 @@ export function useMantineCodeBlockOptions(
       const value = overrides?.[key] ?? group?.[key];
       if (value !== undefined) (resolved as Record<string, unknown>)[key] = value;
     }
-    if (!Number.isFinite(resolved.highlightIntervalMs) || resolved.highlightIntervalMs < 0) {
-      resolved.highlightIntervalMs = defaultMantineCodeBlockOptions.highlightIntervalMs!;
-    }
+    Object.assign(resolved, resolveCodeBlockPolicy(overrides, group, defaultMantineCodeBlockOptions));
     if (!Number.isFinite(resolved.mermaidIntervalMs) || resolved.mermaidIntervalMs < 0) {
       resolved.mermaidIntervalMs = defaultMantineCodeBlockOptions.mermaidIntervalMs!;
     }
-    if (!LANGUAGE_FORMATS.has(resolved.languageFormat)) {
+    if (typeof resolved.languageFormat !== 'function' && !LANGUAGE_FORMATS.has(resolved.languageFormat)) {
       resolved.languageFormat = defaultMantineCodeBlockOptions.languageFormat!;
     }
     // No defaults here: each component merges its own label defaults at render time.
+    resolved.highlighter = overrides?.highlighter ?? group?.highlighter;
     resolved.labels = overrides?.labels ?? group?.labels;
     resolved.mermaidLabels = overrides?.mermaidLabels ?? group?.mermaidLabels;
     return resolved;

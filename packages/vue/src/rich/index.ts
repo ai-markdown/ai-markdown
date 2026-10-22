@@ -18,3 +18,16 @@ export type {
 export { MarkdownTable, createMarkdownTable } from './table';
 export type { MarkdownTableOptions, TableLabels } from './table';
 export type { MarkdownComponentProps } from './types';
+
+export {
+  CodeLanguageFormat,
+  resolveCodeHighlightLanguage,
+  createPierreHighlightAdapter,
+} from '@ai-markdown/core/components';
+export type {
+  CodeHighlightAdapter,
+  CodeHighlightResult,
+  CodeHighlightRequest,
+  CodeHighlightToken,
+  CodeLanguageResolver,
+} from '@ai-markdown/core/components';

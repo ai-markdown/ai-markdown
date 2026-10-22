@@ -4,7 +4,8 @@ import { CodeBlockLabels, CodeBlockOptions, CodeRendererInput, LabelsOption } fr
 import { DiagramLabels, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock, preloadCodeAssets } from "../code-chunk.js";
 import { ImageIconName, ImageLabels, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImagePreviewOptions, createMarkdownImage } from "../image-chunk.js";
 import { MarkdownTable, MarkdownTableOptions, TableLabels, createMarkdownTable } from "./table.js";
-export { type CodeBlockLabels, type CodeBlockOptions, type CodeRendererInput, type DiagramLabels, type ImageIconName, type ImageLabels, type LabelsOption, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownComponentProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImagePreviewOptions, MarkdownTable, type MarkdownTableOptions, type TableLabels, createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable, preloadCodeAssets };
+import { CodeHighlightAdapter, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, createPierreHighlightAdapter, resolveCodeHighlightLanguage } from "@ai-markdown/core/components";
+export { type CodeBlockLabels, type CodeBlockOptions, type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type CodeRendererInput, type DiagramLabels, type ImageIconName, type ImageLabels, type LabelsOption, MarkdownCodeBlock, type MarkdownCodeBlockOptions, type MarkdownComponentProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImagePreviewOptions, MarkdownTable, type MarkdownTableOptions, type TableLabels, createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable, createPierreHighlightAdapter, preloadCodeAssets, resolveCodeHighlightLanguage };
 
 // Relative declaration: dist/types-chunk.d.ts
 import { Element } from "hast";
@@ -16,8 +17,13 @@ export interface MarkdownComponentProps {
 
 // Relative declaration: dist/code-plain-chunk.d.ts
 import { MarkdownComponentProps } from "./types-chunk.js";
-import { Component, DefineComponent, VNodeChild } from "vue";
-import { CodeBlockLabels, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
+import { Component, ComputedRef, DefineComponent, VNodeChild } from "vue";
+import { CodeBlockInput, CodeBlockLabels, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeHighlightAdapter, CodeHighlightInput, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, CodeRendererInput, LabelsOption as LabelsOption$1, createPierreHighlightAdapter, resolveCodeHighlightLanguage as resolveCodeHighlightLanguage$1 } from "@ai-markdown/core/components";
+export declare function useCodeBlock(input: ComputedRef<CodeBlockInput>): ComputedRef<import("@ai-markdown/core/components").CodeBlockSnapshot>;
+export declare function useCodeHighlight(input: ComputedRef<CodeHighlightInput>): {
+    result: ComputedRef<import("@ai-markdown/core/components").CodeHighlightSnapshot>;
+    retry: () => void;
+};
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, Component | false>>;
     colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
@@ -25,20 +31,20 @@ export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
 }
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
 export declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
-export type { CodeBlockLabels, CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput, LabelsOption$1 as LabelsOption };
+export { type CodeBlockLabels, type CodeBlockOptions$1 as CodeBlockOptions, type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type CodeRendererInput, type LabelsOption$1 as LabelsOption, createPierreHighlightAdapter, resolveCodeHighlightLanguage$1 as resolveCodeHighlightLanguage };
 
 // Relative declaration: dist/code-chunk.d.ts
 import { MarkdownComponentProps } from "./types-chunk.js";
 import { MarkdownCodeBlockOptions as MarkdownCodeBlockOptions$1 } from "./code-plain-chunk.js";
 import "vue";
-import { DiagramLabels, DiagramLabels as DiagramLabels$1, LabelsOption } from "@ai-markdown/core/components";
+import { CodeHighlightAdapter, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, DiagramLabels, DiagramLabels as DiagramLabels$1, LabelsOption, createPierreHighlightAdapter, resolveCodeHighlightLanguage as resolveCodeHighlightLanguage$1 } from "@ai-markdown/core/components";
 export declare function preloadCodeAssets(): Promise<void>;
 export interface MarkdownCodeBlockOptions extends MarkdownCodeBlockOptions$1 {
     diagramLabels?: LabelsOption<DiagramLabels>;
 }
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): import("vue").DefineComponent<MarkdownComponentProps>;
 export declare const MarkdownCodeBlock: import("vue").DefineComponent<MarkdownComponentProps>;
-export type { DiagramLabels$1 as DiagramLabels };
+export { type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type DiagramLabels$1 as DiagramLabels, createPierreHighlightAdapter, resolveCodeHighlightLanguage$1 as resolveCodeHighlightLanguage };
 
 // Relative declaration: dist/image-chunk.d.ts
 import { MarkdownComponentProps } from "./types-chunk.js";

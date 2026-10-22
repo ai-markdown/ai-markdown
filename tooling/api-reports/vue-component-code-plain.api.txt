@@ -1,11 +1,16 @@
 // Generated from the built public declaration. Review changes before updating.
-import { CodeBlockLabels, CodeBlockOptions, CodeRendererInput, LabelsOption, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock } from "../../code-plain-chunk.js";
-export { type CodeBlockLabels, type CodeBlockOptions, type CodeRendererInput, type LabelsOption, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock };
+import { CodeBlockLabels, CodeBlockOptions, CodeHighlightAdapter, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, CodeRendererInput, LabelsOption, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock, createPierreHighlightAdapter, resolveCodeHighlightLanguage, useCodeBlock, useCodeHighlight } from "../../code-plain-chunk.js";
+export { type CodeBlockLabels, type CodeBlockOptions, type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type CodeRendererInput, type LabelsOption, MarkdownCodeBlock, MarkdownCodeBlockOptions, createMarkdownCodeBlock, createPierreHighlightAdapter, resolveCodeHighlightLanguage, useCodeBlock, useCodeHighlight };
 
 // Relative declaration: dist/code-plain-chunk.d.ts
 import { MarkdownComponentProps } from "./types-chunk.js";
-import { Component, DefineComponent, VNodeChild } from "vue";
-import { CodeBlockLabels, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeRendererInput, LabelsOption as LabelsOption$1 } from "@ai-markdown/core/components";
+import { Component, ComputedRef, DefineComponent, VNodeChild } from "vue";
+import { CodeBlockInput, CodeBlockLabels, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeHighlightAdapter, CodeHighlightInput, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, CodeRendererInput, LabelsOption as LabelsOption$1, createPierreHighlightAdapter, resolveCodeHighlightLanguage as resolveCodeHighlightLanguage$1 } from "@ai-markdown/core/components";
+export declare function useCodeBlock(input: ComputedRef<CodeBlockInput>): ComputedRef<import("@ai-markdown/core/components").CodeBlockSnapshot>;
+export declare function useCodeHighlight(input: ComputedRef<CodeHighlightInput>): {
+    result: ComputedRef<import("@ai-markdown/core/components").CodeHighlightSnapshot>;
+    retry: () => void;
+};
 export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
     renderers?: Readonly<Record<string, Component | false>>;
     colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
@@ -13,7 +18,7 @@ export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
 }
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
 export declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
-export type { CodeBlockLabels, CodeBlockOptions$1 as CodeBlockOptions, CodeRendererInput, LabelsOption$1 as LabelsOption };
+export { type CodeBlockLabels, type CodeBlockOptions$1 as CodeBlockOptions, type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type CodeRendererInput, type LabelsOption$1 as LabelsOption, createPierreHighlightAdapter, resolveCodeHighlightLanguage$1 as resolveCodeHighlightLanguage };
 
 // Relative declaration: dist/types-chunk.d.ts
 import { Element } from "hast";

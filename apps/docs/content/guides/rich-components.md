@@ -394,3 +394,112 @@ mermaidRenderQueue.cancel(owner);
 - `ensureMermaidInitialized` keeps the configuration the application passed to `mermaid.initialize`, raises `loose`, `antiscript` or an unset `securityLevel` to `strict`, leaves `sandbox` alone, and follows the color scheme only when the application has not chosen a theme. It does nothing when no key needs to change.
 - `getMermaidMaxTextSize` returns the effective `maxTextSize`. Check it before rendering: above the limit `mermaid.render` resolves with a placeholder diagram and does not reject.
 - The queue belongs to one copy of `@ai-markdown/core`. It serializes work only when the bundler resolves the components and the application to the same copy.
+
+## Shared code highlighting
+
+Code block policy lives in `@ai-markdown/core/components`: source extraction, detection, display throttling, JSON formatting, option resolution, target-language mapping and asynchronous highlighter preparation. React hooks and Vue composables bind these sessions to their framework lifecycle. Mantine reuses the React code-block hook and retains its existing highlighter Provider.
+
+Fence names, detected languages and engine language names are distinct. A renderer is selected only by the explicit fence; the label preserves the fence/detected language. Engine conversion happens last, so Shiki and Pierre receive `tsx` and `vue`, while highlight.js receives `typescript` and `xml`.
+
+Both React and Vue code factories accept `highlighter: CodeHighlightAdapter`. Import the type and `CodeLanguageFormat` from the framework's `components` or `components/code/plain` entry, or directly from `@ai-markdown/core/components`. No highlighter runtime is bundled into core.
+
+```ts
+import hljs from 'highlight.js';
+import { CodeLanguageFormat, type CodeHighlightAdapter } from '@ai-markdown/core/components';
+
+const highlighter: CodeHighlightAdapter = {
+  languageFormat: CodeLanguageFormat.HighlightJs,
+  supports: (language) => Boolean(hljs.getLanguage(language)),
+  highlight: ({ code, language }) => ({ html: hljs.highlight(code, { language }).value }),
+};
+// React and Vue: createMarkdownCodeBlock({ highlighter })
+```
+
+Only return HTML produced by a trusted, source-escaping highlighter. Alternatively return `{ tokens: [{ text, color?, backgroundColor?, fontStyle? }] }`; text tokens are rendered as framework text nodes. `fontStyle` uses Shiki's flags (italic 1, bold 2, underline 4). Tokens must preserve the complete source, including newlines.
+
+For a preloaded Shiki instance:
+
+```ts
+import { createHighlighter } from 'shiki';
+import { CodeLanguageFormat, type CodeHighlightAdapter } from '@ai-markdown/core/components';
+
+const shiki = await createHighlighter({
+  langs: ['tsx', 'typescript', 'vue'],
+  themes: ['github-light-high-contrast', 'github-dark-high-contrast'],
+});
+const highlighter: CodeHighlightAdapter = {
+  languageFormat: CodeLanguageFormat.Shiki,
+  supports: (language) => shiki.getLoadedLanguages().includes(language),
+  highlight: ({ code, language, colorScheme }) => ({
+    tokens: shiki
+      .codeToTokens(code, {
+        lang: language as 'tsx' | 'typescript' | 'vue',
+        theme: colorScheme === 'dark' ? 'github-dark-high-contrast' : 'github-light-high-contrast',
+      })
+      .tokens.flatMap((line, index) => [
+        ...(index ? [{ text: '\n' }] : []),
+        ...line.map(({ content, color, fontStyle }) => ({ text: content, color, fontStyle })),
+      ]),
+  }),
+};
+```
+
+### Pierre Highlights
+
+Install `@pierre/highlights` in the application. The shared adapter supports its 0.2 token API; core has no runtime dependency on it. React and Vue also re-export `createPierreHighlightAdapter` from their component entries.
+
+```ts
+import { createPierreHighlightAdapter } from '@ai-markdown/core/components';
+
+// Keep this instance stable and share it across code blocks.
+const highlighter = createPierreHighlightAdapter({
+  load: async () => {
+    const [runtime, light, dark] = await Promise.all([
+      import('@pierre/highlights'),
+      import('@pierre/highlights/themes/github-light-high-contrast'),
+      import('@pierre/highlights/themes/github-dark-high-contrast'),
+    ]);
+    return { ...runtime, themes: { light: light.default, dark: dark.default } };
+  },
+});
+// React / Vue: createMarkdownCodeBlock({ highlighter })
+```
+
+The adapter deduplicates initialization across blocks, supports retry after a failed import, selects the supplied light/dark theme and checks the runtime's language support. Unsupported languages render plain source. Tokens use UTF-16 offsets to preserve original newlines and Unicode text, and render as escaped text nodes. Initialization starts after mounting, so SSR displays source without initializing WASM. While `streaming` is true, the adapter uses Pierre's native `LiveTokenizer`: it updates only the appended suffix, retains lexer state and caches unchanged lines' themed tokens. Markdown's synthetic trailing newline is replaced as part of that suffix edit, so mid-line frames such as `ab\n → abc\n` keep the same native instance. The last incomplete line is highlighted immediately. Source replacement, language/theme changes and document generations reset the instance. Completion, switching from source to a custom preview, and unmounting release its WASM state. Static blocks use full-frame tokenization without allocating a live instance. `streaming` is the document streaming flag: even a closed fence can retain its live instance until the document finishes or the block is suspended/unmounted. Set the flag to false when generation finishes. The shared display throttle still applies.
+
+For Mantine, pass the same adapter as `<MantineAIMarkdown codeBlock={{ highlighter }} ... />` or `createMarkdownCodeBlock({ highlighter })`. It uses the React highlighting hook for per-block ownership and paints the result with Mantine controls. Language mapping follows the injected adapter automatically. Existing Mantine Provider integrations remain supported when no neutral adapter is supplied.
+
+Set `incremental: false` in `createPierreHighlightAdapter` to use full-frame highlighting. Loaders that omit `LiveTokenizer` also fall back to full-frame highlighting. Custom headless consumers must pass `streaming: true` in `CodeHighlightInput` to activate incremental updates and set it to false on completion.
+
+The reproducible benchmark `node scripts/bench-pierre-highlight.mjs` compares repeated 40-character appends after building core, including the synthetic newline present in real Markdown code frames. It asserts that each incremental run creates exactly one native instance. It includes lexer and token conversion costs, excluding framework/DOM work. Total rendering still traverses the displayed tokens; an append to one very long line must re-tokenize that line. The Storybook engine selector includes **Pierre (full frame)** for comparison.
+
+### Preparation and lifecycle
+
+| Adapter member       | Contract                                                                                  |
+| -------------------- | ----------------------------------------------------------------------------------------- |
+| `languageFormat`     | `CodeLanguageFormat.HighlightJs`, `.Shiki`, `.Pierre`, or a custom name resolver          |
+| `supports(language)` | Optional; return false for unsupported languages, not merely unloaded ones                |
+| `isReady(request)`   | Optional synchronous readiness check, including language and theme                        |
+| `prepare(request)`   | Optional async initialization/language/theme loading, started after commit                |
+| `createSession()`    | Optional per-block mutable backend with `highlight` and `dispose`; used only after commit |
+| `highlight(request)` | Synchronous, pure highlighting after readiness; return undefined for plaintext            |
+
+Keep adapter identity stable. Replace the adapter when changing its engine or theme configuration; do not mutate cached configuration in place. Preparation is keyed by adapter, target language and color scheme, and must not depend on the code text. Share/deduplicate expensive engine initialization inside the adapter when several blocks use it. The application owns shared engine initialization and any shared engine disposal. Each code-block session owns the backend returned by `createSession()` and calls its `dispose()` on invalidation, suspension, retry or unmount. Backends must not share mutable lexer state across blocks, and `dispose()` must release their resources synchronously. Cleanup errors are contained so a faulty backend cannot interrupt replacement or framework unmount.
+
+Pending and failed preparation display escaped source. Errors are contained; failed preparation is not retried on every render. Exceptions during commit-time language resolution or readiness checks also invalidate pending work, release the old backend and publish an error snapshot. The same failed input does not trigger a render loop; explicit retry or a new input can recover. Custom integrations can use `useCodeHighlight` from `components/code/plain` (React hook / Vue composable) and its `retry` method; replacing the adapter also retries. Late preparation never publishes an older text result. Theme changes and block generations invalidate highlight output. `active: false` suspends the headless highlighter while a custom preview is visible.
+
+SSR runs no preparation or timers: synchronous/preloaded adapters can highlight on the server; adapters still requiring preparation render source and load after mounting. Frameworks submit complete display frames; an incremental backend derives edits from those frames. Backends are created and mutated only on commit, including React layout effects, so abandoned renders allocate no WASM instances. During SSR, adapters with mutable backends render plain source.
+
+### Compatibility and Mantine
+
+The existing `highlight(code, language)` callback remains supported. Its default names remain highlight.js-compatible. Set `languageFormat: CodeLanguageFormat.Shiki` to receive Shiki names, or pass a custom resolver. When `highlighter` is configured, it takes precedence over the legacy callback; callback failures and undefined results still fall back to source.
+
+Mantine keeps `CodeHighlightAdapterProvider` as the owner of engine and grammar loading. Set `codeBlock.languageFormat` to match its adapter. `MantineLanguageFormat` remains an alias of the shared `CodeLanguageFormat`. Mantine also accepts a custom language resolver. Its custom-renderer source view now uses that same Provider. An explicit neutral `highlighter` takes precedence and uses the React session instead. Its local Provider only displays the prepared result; it does not run a second preparation pipeline. The same precedence applies to custom-renderer source views.
+
+### Storybook coverage
+
+React and Vue expose **Customization / Code Highlighting**; Mantine exposes **Mantine / Code Highlighting**. Each has nine shared scenarios: engines, language mapping, streaming, asynchronous loading, failure/retry, theme changes, code behaviors, custom renderers, and legacy callback/Provider compatibility. Shared fixtures include TSX/JSX/Vue/Svelte/Objective-C, plaintext, unknown and unlabelled code. The demos expose engine/language selectors, stream controls, document replacement, theme switching and reload. Loading/error scenarios deliberately delay or fail preparation; reload replaces the adapter with a healthy one. Status badges are demo diagnostics, not shipped code-block controls.
+
+Mantine also includes **Native Shiki Provider**, which uses Mantine’s own `createShikiAdapter` with on-demand language loading and a theme switch.
+
+All three showcases offer highlight.js, Shiki and Pierre in every engine selector. Dedicated **Pierre Languages**, **Pierre Streaming**, **Pierre Loading**, **Pierre Theme** and **Pierre Failure Retry** stories exercise the real WASM runtime, source preservation and recovery.

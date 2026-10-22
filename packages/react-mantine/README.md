@@ -80,3 +80,24 @@ The independent site owns the detailed API and guides. This README provides the 
 ## License
 
 MIT
+
+### Shared highlighting policy
+
+Code-block option resolution and language mapping now come from core; Mantine
+continues to use React's `useCodeBlock` and the consumer's
+`CodeHighlightAdapterProvider`. `MantineLanguageFormat` remains available as an
+alias of core's `CodeLanguageFormat`; custom language resolvers are also accepted.
+Custom renderer source previews use the same Provider, including asynchronous
+language loading. For shared adapters such as Pierre, pass `codeBlock={{ highlighter }}` or the
+`highlighter` factory option. This takes precedence and reuses the React per-block
+session, including native incremental highlighting while streaming. See [the shared architecture](../../apps/docs/content/guides/rich-components.md#shared-code-highlighting)
+and Storybook **Mantine / Code Highlighting** for the nine scenario groups.
+
+For Pierre, create a shared `createPierreHighlightAdapter({ load })` from
+`@ai-markdown/core/components`, then pass `codeBlock={{ highlighter }}` to
+`MantineAIMarkdown`. The explicit adapter takes precedence over the consumer
+Provider and owns its language mapping; `languageFormat` need not be set.
+Incremental state is isolated per block through the React hook. Mark the document
+`streaming={false}` when it finishes to release live WASM instances. Existing
+Provider adapters remain unchanged when `highlighter` is omitted.
+See [the Pierre setup example](../../apps/docs/content/guides/rich-components.md#pierre-highlights).

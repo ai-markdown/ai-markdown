@@ -106,3 +106,172 @@ describe('unlabelled code block language', () => {
     expect(view.label()).toBe('python');
   });
 });
+
+describe('shared highlighting adapters', () => {
+  test('Shiki receives TSX without lossy highlight.js conversion; the new adapter wins over legacy', async () => {
+    const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+    const languages: string[] = [];
+    const Block = createMarkdownCodeBlock({
+      highlighter: {
+        languageFormat: CodeLanguageFormat.Shiki,
+        highlight: ({ code, language }) => {
+          languages.push(language);
+          return { tokens: [{ text: code, color: '#ff0000' }] };
+        },
+      },
+      highlight: () => {
+        throw new Error('legacy must not execute');
+      },
+    });
+    await mount(Block).render('```tsx\nconst view = <Widget />;\n```');
+    expect(languages).toContain('tsx');
+    expect(container?.querySelector('code span')?.textContent).toContain('<Widget />');
+    expect(container?.querySelector('Widget')).toBeNull();
+  });
+  test('async preparation renders latest source and falls back after failure', async () => {
+    const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+    let done!: () => void;
+    const Block = createMarkdownCodeBlock({
+      highlightIntervalMs: 0,
+      highlighter: {
+        languageFormat: CodeLanguageFormat.Shiki,
+        prepare: () =>
+          new Promise<void>((resolve) => {
+            done = resolve;
+          }),
+        highlight: ({ code }) => ({ tokens: [{ text: code }] }),
+      },
+    });
+    const view = mount(Block);
+    await view.render('```tsx\nconst old = <Old />;\n```');
+    expect(container?.querySelector('code')?.getAttribute('data-highlight-status')).toBe('loading');
+    await view.render('```tsx\nconst latest = <Latest />;\n```');
+    await act(async () => {
+      done();
+    });
+    expect(container?.querySelector('code')?.getAttribute('data-highlight-status')).toBe('ready');
+    expect(container?.querySelector('code')?.textContent).toContain('<Latest />');
+  });
+  test('legacy callbacks keep their default names but may explicitly select Shiki', async () => {
+    const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+    const names: string[] = [];
+    const Block = createMarkdownCodeBlock({
+      languageFormat: CodeLanguageFormat.Shiki,
+      highlight: (code, language) => {
+        names.push(language);
+        return code;
+      },
+    });
+    await mount(Block).render('```vue\n<template>Hello</template>\n```');
+    expect(names).toContain('vue');
+  });
+});
+
+test('server rendering never prepares async engines and escapes plaintext fallback', async () => {
+  const { renderToString } = await import('react-dom/server');
+  const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+  let prepared = 0;
+  const pre = createMarkdownCodeBlock({
+    highlighter: {
+      languageFormat: CodeLanguageFormat.Shiki,
+      prepare: async () => {
+        prepared++;
+      },
+      highlight: ({ code }) => ({ tokens: [{ text: code }] }),
+    },
+  });
+  const html = renderToString(
+    <AIMarkdown content={'```tsx\n<script>unsafe</script>\n```'} customComponents={{ pre }} />
+  );
+  expect(html).toContain('&lt;script&gt;');
+  expect(html).toContain('data-highlight-status="loading"');
+  expect(prepared).toBe(0);
+});
+
+test('incremental sessions survive StrictMode and release every allocated backend', async () => {
+  const { StrictMode } = await import('react');
+  const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+  const disposed = new Set<number>();
+  let created = 0;
+  const Block = createMarkdownCodeBlock({
+    highlightIntervalMs: 0,
+    highlighter: {
+      languageFormat: CodeLanguageFormat.Pierre,
+      highlight: () => {
+        throw new Error('stateless path must not run');
+      },
+      createSession: () => {
+        const id = ++created;
+        return {
+          highlight: ({ code }) => ({ tokens: [{ text: code, color: '#123456' }] }),
+          dispose: () => {
+            disposed.add(id);
+          },
+        };
+      },
+    },
+  });
+  container = document.createElement('div');
+  document.body.append(container);
+  root = createRoot(container);
+  for (const code of ['const first = 1;', 'const first = 1;\nconst second = 2;']) {
+    await act(async () =>
+      root!.render(
+        <StrictMode>
+          <AIMarkdown content={'```ts\n' + code} streaming customComponents={{ pre: Block }} />
+        </StrictMode>
+      )
+    );
+    expect(container.querySelector('code')?.textContent).toContain(code);
+    expect(container.querySelector('code')?.getAttribute('data-highlight-status')).toBe('ready');
+  }
+  await act(async () => root!.unmount());
+  root = undefined;
+  expect(created).toBeGreaterThan(0);
+  expect(disposed.size).toBe(created);
+});
+
+test('hydrates a preloaded mutable adapter without allocating on the server or resetting for Markdown appends', async () => {
+  const { renderToString } = await import('react-dom/server');
+  const { hydrateRoot } = await import('react-dom/client');
+  const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+  let created = 0;
+  const codes: string[] = [],
+    recoveries: unknown[] = [];
+  const pre = createMarkdownCodeBlock({
+    highlightIntervalMs: 0,
+    highlighter: {
+      languageFormat: CodeLanguageFormat.Pierre,
+      isReady: () => true,
+      highlight: () => {
+        throw new Error('render must not mutate the engine');
+      },
+      createSession: () => {
+        created++;
+        return {
+          highlight: ({ code }) => {
+            codes.push(code);
+            return { tokens: [{ text: code, color: '#123456' }] };
+          },
+          dispose() {},
+        };
+      },
+    },
+  });
+  const view = (body: string, streaming = false) => (
+    <AIMarkdown content={'```tsx\n' + body} streaming={streaming} streamingCursor={false} customComponents={{ pre }} />
+  );
+  container = document.createElement('div');
+  container.innerHTML = renderToString(view('a'));
+  document.body.append(container);
+  expect(created).toBe(0);
+  await act(async () => {
+    root = hydrateRoot(container!, view('a'), { onRecoverableError: (error) => recoveries.push(error) });
+  });
+  for (const body of ['ab', 'abc', 'abc\nnext']) await act(async () => root!.render(view(body, true)));
+  expect(recoveries).toEqual([]);
+  expect(created).toBe(1);
+  expect(codes).toContain('ab\n');
+  expect(codes).toContain('abc\n');
+  expect(container.querySelector('code')?.textContent).toBe('abc\nnext\n');
+});

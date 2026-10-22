@@ -13,6 +13,7 @@
     "./vue/*": "./vue/*.ts"
   },
   "devDependencies": {
+    "@ai-markdown/core": "workspace:*",
     "@bench/corpus": "workspace:*",
     "@storybook/addon-docs": "10.6.1",
     "@storybook/react-vite": "10.6.1",
@@ -22,7 +23,9 @@
     "react-dom": "^19",
     "react-scan": "^0.5.7",
     "remark-gfm": "4.0.1",
+    "shiki": "^4.5.0",
     "storybook": "10.6.1",
-    "vue": "^3.5.0"
+    "vue": "^3.5.0",
+    "@pierre/highlights": "^0.2.0"
   }
 }

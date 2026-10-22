@@ -61,3 +61,24 @@ The independent site owns the detailed API and guides. This README provides the 
 ## License
 
 MIT
+
+### Shared syntax highlighters
+
+`createMarkdownCodeBlock({ highlighter })` accepts the framework-independent
+`CodeHighlightAdapter` from `@ai-markdown/core/components` (also re-exported by
+`@ai-markdown/vue/components`). Core owns language conversion, readiness and
+stale-load handling; Vue composables bind lifecycle and render tokens or trusted
+HTML. `highlighter` takes precedence over the existing `highlight` callback.
+Legacy callbacks still receive highlight.js names by default; use
+`languageFormat: CodeLanguageFormat.Shiki` for Shiki names without losing TSX/Vue
+information. See [the shared contract and examples](../../apps/docs/content/guides/rich-components.md#shared-code-highlighting)
+and Storybook **Customization / Code Highlighting**.
+
+Pierre is available through `createPierreHighlightAdapter({ load })`. Return the
+`@pierre/highlights` module (including `LiveTokenizer`) and `themes: { light, dark }`
+from the loader. The adapter defaults to native incremental highlighting while
+`streaming` is true, with isolated state for each code block. Set `streaming` to
+false when the document finishes to release live WASM instances. Use
+`incremental: false` for full-frame highlighting or comparison. Static blocks do
+not allocate live tokenizers; SSR renders source and initializes after mounting.
+See [the Pierre setup example](../../apps/docs/content/guides/rich-components.md#pierre-highlights).

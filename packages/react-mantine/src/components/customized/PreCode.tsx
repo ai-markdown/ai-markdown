@@ -6,16 +6,12 @@ import { useAIMarkdownDocument, useAIMarkdownState, useAIMarkdownTheme } from '@
 // The frame throttle, language detection and JSON helpers are the shared headless ones.
 // This file adds the Mantine presentation.
 import { useCodeBlock } from '@ai-markdown/react/components/code/plain';
-import { normalizeHighlightJsLanguage, normalizeShikiLanguage } from '@ai-markdown/code-language-detector';
+import { resolveCodeHighlightLanguage } from '@ai-markdown/core/components';
 import { useMantineCodeBlockOptions } from '../../hooks/useMantineCodeBlockOptions';
+import { InjectedCodeHighlight } from './InjectedCodeHighlight';
 import MantineAIMMermaidCode from './MermaidCode';
 import { CopyButton } from '@mantine/core';
-import {
-  defaultMantineCodeBlockLabels,
-  MantineLanguageFormat,
-  type MantineCodeBlockLabels,
-  type MantineCodeBlockOptions,
-} from '../../defs';
+import { defaultMantineCodeBlockLabels, type MantineCodeBlockLabels, type MantineCodeBlockOptions } from '../../defs';
 import { resolveLabels } from '@ai-markdown/core/components';
 
 /**
@@ -77,14 +73,15 @@ function RawCodeCopy() {
  * memoizes `highlight()` on code, language, color scheme and the
  * language-loaded flag, so an extra single-entry cache bought nothing.
  *
- * It also must NOT sit under its own `CodeHighlightAdapterProvider`. An
+ * Without an explicit neutral highlighter, it reads the consumer Provider. An
  * earlier version wrapped these components in a nested provider whose
  * adapter exposed only `getHighlighter`. `CodeHighlight` reads
  * `useLoadLanguage()` / `useIsLanguageLoaded()` from the NEAREST provider,
  * so the consumer's adapter was never asked to load a grammar and adapters
  * that load languages on demand (Mantine's `createShikiAdapter`) rendered
  * every block as plain text. The components now read the consumer's
- * provider directly.
+ * provider directly. With an explicit neutral adapter, InjectedCodeHighlight
+ * owns the React session and its local Provider only paints the prepared result.
  */
 const OrdinaryCodeHighlight = memo(function OrdinaryCodeHighlight({
   code,
@@ -190,12 +187,13 @@ const MantineAIMPreCode = memo(
       disableSpecial?: boolean;
     }
   ) => {
-    const { fontSize } = useAIMarkdownTheme();
+    const { fontSize, colorScheme } = useAIMarkdownTheme();
     const { streaming } = useAIMarkdownState();
     const { documentId } = useAIMarkdownDocument();
     const {
       autoDetectUnknownLanguage,
       languageFormat,
+      highlighter,
       defaultExpanded,
       formatJson,
       expandNestedJson,
@@ -238,9 +236,7 @@ const MantineAIMPreCode = memo(
     // language at all.
     const [usedCodeLanguage, usedFileName] = useMemo(() => {
       if (!codeLanguage) return ['plaintext', 'unknown'];
-      const normalize =
-        languageFormat === MantineLanguageFormat.Shiki ? normalizeShikiLanguage : normalizeHighlightJsLanguage;
-      return [normalize(codeLanguage), codeLanguage];
+      return [resolveCodeHighlightLanguage(codeLanguage, languageFormat), codeLanguage];
     }, [codeLanguage, languageFormat]);
 
     const specialCodeBlockContent = useMemo(() => {
@@ -252,20 +248,38 @@ const MantineAIMPreCode = memo(
       }
     }, [codeLanguage, props.codeText, props.options]);
 
+    const ordinary = (
+      <OrdinaryCodeHighlight
+        code={block.text}
+        language={usedCodeLanguage}
+        fileName={usedFileName}
+        fontSize={fontSize}
+        defaultExpanded={defaultExpanded}
+        expandLabel={labels.expand}
+        collapseLabel={labels.collapse}
+      />
+    );
     return isSpecialCodeBlock ? (
       specialCodeBlockContent
     ) : (
       <RawCodeContext.Provider value={props.codeText}>
         <LabelsContext.Provider value={labels}>
-          <OrdinaryCodeHighlight
-            code={block.text}
-            language={usedCodeLanguage}
-            fileName={usedFileName}
-            fontSize={fontSize}
-            defaultExpanded={defaultExpanded}
-            expandLabel={labels.expand}
-            collapseLabel={labels.collapse}
-          />
+          {highlighter ? (
+            <InjectedCodeHighlight
+              input={{
+                adapter: highlighter,
+                code: block.text,
+                language: codeLanguage,
+                colorScheme: colorScheme === 'dark' ? 'dark' : 'light',
+                generation: block.generation,
+                streaming,
+              }}
+            >
+              {ordinary}
+            </InjectedCodeHighlight>
+          ) : (
+            ordinary
+          )}
         </LabelsContext.Provider>
       </RawCodeContext.Provider>
     );

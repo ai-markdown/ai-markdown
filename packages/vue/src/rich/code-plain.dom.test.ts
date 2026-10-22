@@ -136,3 +136,146 @@ describe('unlabelled code block language', () => {
     expect(view.label()).toBe('python');
   });
 });
+
+describe('shared highlighting adapters', () => {
+  test('Shiki receives TSX without lossy conversion; adapter wins over legacy', async () => {
+    const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+    const names: string[] = [];
+    const Block = createMarkdownCodeBlock({
+      highlighter: {
+        languageFormat: CodeLanguageFormat.Shiki,
+        highlight: ({ code, language }) => {
+          names.push(language);
+          return { tokens: [{ text: code, color: '#ff0000' }] };
+        },
+      },
+      highlight: () => {
+        throw new Error('legacy must not execute');
+      },
+    });
+    await mount(Block).render('```tsx\nconst view = <Widget />;\n```');
+    expect(names).toContain('tsx');
+    expect(container?.querySelector('code span')?.textContent).toContain('<Widget />');
+    expect(container?.querySelector('Widget')).toBeNull();
+  });
+  test('async preparation renders latest source', async () => {
+    const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+    let done!: () => void;
+    const Block = createMarkdownCodeBlock({
+      highlightIntervalMs: 0,
+      highlighter: {
+        languageFormat: CodeLanguageFormat.Shiki,
+        prepare: () =>
+          new Promise<void>((resolve) => {
+            done = resolve;
+          }),
+        highlight: ({ code }) => ({ tokens: [{ text: code }] }),
+      },
+    });
+    const view = mount(Block);
+    await view.render('```tsx\nconst old = <Old />;\n```');
+    await wait(0);
+    expect(container?.querySelector('code')?.getAttribute('data-highlight-status')).toBe('loading');
+    await view.render('```tsx\nconst latest = <Latest />;\n```');
+    done();
+    await wait(0);
+    expect(container?.querySelector('code')?.getAttribute('data-highlight-status')).toBe('ready');
+    expect(container?.querySelector('code')?.textContent).toContain('<Latest />');
+  });
+  test('legacy callbacks can explicitly select Shiki names', async () => {
+    const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+    const names: string[] = [];
+    await mount(
+      createMarkdownCodeBlock({
+        languageFormat: CodeLanguageFormat.Shiki,
+        highlight: (code, language) => {
+          names.push(language);
+          return code;
+        },
+      })
+    ).render('```vue\n<template>Hello</template>\n```');
+    expect(names).toContain('vue');
+  });
+});
+
+test('server rendering never prepares async engines and escapes plaintext fallback', async () => {
+  const { createSSRApp } = await import('vue');
+  const { renderToString } = await import('@vue/server-renderer');
+  const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+  let prepared = 0;
+  const pre = createMarkdownCodeBlock({
+    highlighter: {
+      languageFormat: CodeLanguageFormat.Shiki,
+      prepare: async () => {
+        prepared++;
+      },
+      highlight: ({ code }) => ({ tokens: [{ text: code }] }),
+    },
+  });
+  const html = await renderToString(
+    createSSRApp({
+      render: () => h(AIMarkdown, { content: '```tsx\n<script>unsafe</script>\n```', components: { pre } }),
+    })
+  );
+  expect(html).toContain('&lt;script&gt;');
+  expect(html).toContain('data-highlight-status="loading"');
+  expect(prepared).toBe(0);
+});
+
+test('hydrates a preloaded mutable adapter and preserves its session across Markdown appends', async () => {
+  const { createSSRApp } = await import('vue');
+  const { renderToString } = await import('@vue/server-renderer');
+  const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+  let created = 0;
+  const warnings: string[] = [],
+    codes: string[] = [];
+  const pre = createMarkdownCodeBlock({
+    highlightIntervalMs: 0,
+    highlighter: {
+      languageFormat: CodeLanguageFormat.Pierre,
+      isReady: () => true,
+      highlight: () => {
+        throw new Error('render must not mutate the engine');
+      },
+      createSession: () => {
+        created++;
+        return {
+          highlight: ({ code }) => {
+            codes.push(code);
+            return { tokens: [{ text: code, color: '#123456' }] };
+          },
+          dispose() {},
+        };
+      },
+    },
+  });
+  const body = ref('a'),
+    streaming = ref(false);
+  const host = {
+    render: () =>
+      h(AIMarkdown, {
+        content: '```tsx\n' + body.value,
+        streaming: streaming.value,
+        streamingCursor: false,
+        components: { pre },
+      }),
+  };
+  container = document.createElement('div');
+  container.innerHTML = await renderToString(createSSRApp(host));
+  document.body.append(container);
+  expect(created).toBe(0);
+  app = createSSRApp(host);
+  app.config.warnHandler = (message) => warnings.push(message);
+  app.mount(container);
+  await nextTick();
+  streaming.value = true;
+  for (const next of ['ab', 'abc', 'abc\nnext']) {
+    body.value = next;
+    await nextTick();
+  }
+  expect(warnings.filter((message) => /hydration/i.test(message))).toEqual([]);
+  expect(created).toBe(1);
+  expect(codes).toContain('ab\n');
+  expect(codes).toContain('abc\n');
+  expect(container.querySelector('code')?.textContent).toBe('abc\nnext\n');
+});

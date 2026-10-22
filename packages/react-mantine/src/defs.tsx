@@ -10,6 +10,8 @@ import {
   defaultCodeBlockLabels,
   defaultDiagramLabels,
   type CodeBlockLabels,
+  type CodeBlockOptions,
+  type CodeLanguageResolver,
   type DiagramLabels,
   type LabelsOption,
 } from '@ai-markdown/core/components';
@@ -21,16 +23,8 @@ import {
  * for some languages, and the renderer cannot see which adapter the
  * `CodeHighlightAdapterProvider` holds, so the `codeBlock` group says it.
  */
-export enum MantineLanguageFormat {
-  /**
-   * highlight.js names, for `createHighlightJsAdapter`: `objectivec`,
-   * `vbnet`, `x86asm`, and `xml` for HTML, Vue and Svelte (its xml grammar
-   * highlights `<script>` and `<style>` blocks as sub-languages).
-   */
-  HighlightJs = 'highlight-js',
-  /** Shiki language names, for `createShikiAdapter`: `objective-c`, `make`, `text` for plain text. */
-  Shiki = 'shiki',
-}
+export { CodeLanguageFormat as MantineLanguageFormat } from '@ai-markdown/core/components';
+import { CodeLanguageFormat as MantineLanguageFormat } from '@ai-markdown/core/components';
 
 /**
  * Code block rendering options (the mantine `codeBlock` behavior group).
@@ -40,7 +34,7 @@ export enum MantineLanguageFormat {
  * `useMantineCodeBlockOptions()`, which applies the defaults below inside
  * the hook — the single place defaults live at read time.
  */
-export interface MantineCodeBlockOptions {
+export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'> {
   /**
    * Whether code blocks start in their expanded state.
    * When `false`, long code blocks are collapsed with an expand button.
@@ -70,7 +64,7 @@ export interface MantineCodeBlockOptions {
    *
    * @default MantineLanguageFormat.HighlightJs
    */
-  languageFormat?: MantineLanguageFormat;
+  languageFormat?: CodeLanguageResolver;
   /** Format JSON for display without changing numeric literals. @default true */
   formatJson?: boolean;
   /** Expand string values containing JSON objects/arrays for display. @default true */
@@ -145,8 +139,10 @@ export const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels> = Objec
 });
 
 /** {@link MantineCodeBlockOptions} with every default applied; the label overrides stay as given. */
-export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>> &
-  Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>;
+export type ResolvedMantineCodeBlockOptions = Required<
+  Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>
+> &
+  Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>;
 
 /** Shipped defaults for the `codeBlock` behavior group. */
 export const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions> = Object.freeze({

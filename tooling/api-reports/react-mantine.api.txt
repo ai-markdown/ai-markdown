@@ -20,15 +20,11 @@ export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type Mant
 
 // Relative declaration: dist/defs-chunk.d.ts
 import { AIMarkdownMetadata } from "@ai-markdown/react";
-import { CodeBlockLabels, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
-export declare enum MantineLanguageFormat {
-    HighlightJs = "highlight-js",
-    Shiki = "shiki"
-}
-export interface MantineCodeBlockOptions {
+import { CodeBlockLabels, CodeBlockOptions, CodeLanguageFormat as MantineLanguageFormat, CodeLanguageResolver, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
+export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'> {
     defaultExpanded: boolean;
     autoDetectUnknownLanguage: boolean;
-    languageFormat?: MantineLanguageFormat;
+    languageFormat?: CodeLanguageResolver;
     formatJson?: boolean;
     expandNestedJson?: boolean;
     highlightIntervalMs?: number;
@@ -57,7 +53,8 @@ export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed'
     collapse: string;
 }
 export declare const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels>;
-export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels'>;
+export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>;
 export declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
 export interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
 }
+export { MantineLanguageFormat };

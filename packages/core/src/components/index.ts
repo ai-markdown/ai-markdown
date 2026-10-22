@@ -1,5 +1,22 @@
+export { defaultCodeBlockPolicy, resolveCodeBlockPolicy } from './codeBlockOptions';
+export type { CodeBlockPolicy } from './codeBlockOptions';
+export {
+  CodeLanguageFormat,
+  resolveCodeHighlightLanguage,
+  resolveCodeHighlightInterval,
+  createCodeHighlightSession,
+} from './codeHighlight';
+export type {
+  CodeLanguageResolver,
+  CodeHighlightToken,
+  CodeHighlightResult,
+  CodeHighlightRequest,
+  CodeHighlightAdapter,
+  CodeHighlightBackend,
+  CodeHighlightInput,
+  CodeHighlightSnapshot,
+} from './codeHighlight';
 /** Framework-independent contracts for the opt-in Markdown components. */
-import type { CodeBlockLabels, LabelsOption } from './labels';
 export { extractCode, normalizeRenderers, projectTable, serializeTable } from './nodes';
 export type { CodeSource, TableProjection } from './nodes';
 export { extendsCode } from './codeText';
@@ -26,16 +43,7 @@ export interface CodeRendererInput {
   /** Changes on source replacement or identity change; append preserves it. */
   resetKey: string;
 }
-export interface CodeBlockOptions {
-  defaultExpanded?: boolean;
-  autoDetectUnknownLanguage?: boolean;
-  formatJson?: boolean;
-  expandNestedJson?: boolean;
-  highlightIntervalMs?: number;
-  mermaidIntervalMs?: number;
-  /** Text of the code block, as overrides of the English defaults. A function is called on every render. */
-  labels?: LabelsOption<CodeBlockLabels>;
-}
+export type { CodeBlockOptions } from './codeBlockOptions';
 export { createDiagramController, diagramErrorText } from './diagram';
 export type { DiagramEngine, DiagramState, DiagramRequest, DiagramView, DiagramError } from './diagram';
 export {
@@ -74,3 +82,6 @@ export {
   imagePinchCenter,
 } from './imageTransform';
 export type { ImageTransform, ImageGeometry } from './imageTransform';
+
+export { createPierreHighlightAdapter } from './pierreHighlight';
+export type { PierreHighlightRuntime, PierreLiveTokenizer, PierreHighlightToken } from './pierreHighlight';

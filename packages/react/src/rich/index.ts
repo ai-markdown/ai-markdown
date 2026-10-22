@@ -21,3 +21,16 @@ export type {
 } from './image';
 export { MarkdownTable, createMarkdownTable } from './table';
 export type { MarkdownTableProps, MarkdownTableOptions, TableLabels } from './table';
+
+export {
+  CodeLanguageFormat,
+  resolveCodeHighlightLanguage,
+  createPierreHighlightAdapter,
+} from '@ai-markdown/core/components';
+export type {
+  CodeHighlightAdapter,
+  CodeHighlightResult,
+  CodeHighlightRequest,
+  CodeHighlightToken,
+  CodeLanguageResolver,
+} from '@ai-markdown/core/components';
