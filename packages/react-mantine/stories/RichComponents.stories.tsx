@@ -23,9 +23,14 @@ const meta: MantineMeta = {
 export default meta;
 export const DirectRegistration: MantineStory = {
   play: async ({ canvasElement }) => {
-    await waitFor(() => expect(canvasElement.querySelector('.aim-mantine-mermaid-code pre svg')).not.toBeNull(), {
-      timeout: 15000,
-    });
+    await waitFor(
+      () =>
+        expect(canvasElement.querySelector('.aim-mantine-mermaid-code .aimd-diagram-viewport > svg')).not.toBeNull(),
+      {
+        timeout: 15000,
+      }
+    );
+    expect(getComputedStyle(canvasElement.querySelector('.aimd-diagram-viewport')!).alignItems).toBe('center');
     expect(canvasElement.querySelector('.aimd-image')).not.toBeNull();
     expect(canvasElement.querySelector('.aimd-table table')).not.toBeNull();
   },

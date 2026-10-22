@@ -42,7 +42,10 @@ const meta: MantineMeta = {
     if (import.meta.env.MODE !== 'test') return;
     const expected = (args.content?.match(/^```mermaid$/gm) ?? []).length;
     await waitFor(
-      () => expect(canvasElement.querySelectorAll('.aim-mantine-mermaid-code > pre > svg')).toHaveLength(expected),
+      () =>
+        expect(canvasElement.querySelectorAll('.aim-mantine-mermaid-code .aimd-diagram-viewport > svg')).toHaveLength(
+          expected
+        ),
       { timeout: 15000 }
     );
   },
