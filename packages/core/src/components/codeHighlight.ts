@@ -76,6 +76,7 @@ export interface CodeHighlightSnapshot {
 }
 /** Per-block cache and async preparation. A late preparation never publishes an old code result. */
 export function createCodeHighlightSession(onChange: () => void) {
+  let committed = false;
   let prepared:
     | {
         adapter: CodeHighlightAdapter;
@@ -151,6 +152,9 @@ export function createCodeHighlightSession(onChange: () => void) {
     read(input: CodeHighlightInput): CodeHighlightSnapshot {
       const adapter = input.adapter;
       if (!adapter || input.active === false) return { language: input.language, status: 'plain' };
+      // Shared adapters may finish loading between SSR and hydration. The
+      // first render must be independent of that shared mutable readiness.
+      if (adapter.prepare && !committed) return { language: input.language, status: 'loading' };
       if (fault && sameInput(fault.input, input))
         return { language: input.language, status: 'error', error: fault.error };
       let request: CodeHighlightRequest;
@@ -176,6 +180,8 @@ export function createCodeHighlightSession(onChange: () => void) {
       }
     },
     commit(input: CodeHighlightInput) {
+      const firstCommit = !committed;
+      committed = true;
       if (input.adapter && input.active !== false && fault && sameInput(fault.input, input)) return;
       fault = undefined;
       const adapter = input.adapter;
@@ -200,6 +206,7 @@ export function createCodeHighlightSession(onChange: () => void) {
           cached = undefined;
         }
         if (adapter.supports?.(request.language) === false) {
+          if (firstCommit && adapter.prepare) onChange();
           epoch++;
           prepared = undefined;
           cached = undefined;
@@ -214,6 +221,7 @@ export function createCodeHighlightSession(onChange: () => void) {
         const ticket = ++epoch;
         prepared = { adapter, language: request.language, colorScheme: request.colorScheme };
         if (!adapter.prepare || adapter.isReady?.(request)) {
+          if (firstCommit && adapter.prepare && !adapter.createSession) onChange();
           commitHighlight(input, request);
           return;
         }
@@ -254,6 +262,7 @@ export function createCodeHighlightSession(onChange: () => void) {
       onChange();
     },
     dispose() {
+      committed = false;
       fault = undefined;
       release();
       epoch++;

@@ -3,7 +3,7 @@ import type { CodeBlockLabels, LabelsOption } from './labels';
 export interface CodeBlockOptions {
   /** Legacy callbacks default to highlight.js names. Adapters own their language format. */
   languageFormat?: import('./codeHighlight').CodeLanguageResolver;
-  /** Takes precedence over the legacy framework highlight callback. */
+  /** Takes precedence over the legacy framework highlight callback. Keep adapter identity stable. */
   highlighter?: import('./codeHighlight').CodeHighlightAdapter;
   defaultExpanded?: boolean;
   autoDetectUnknownLanguage?: boolean;

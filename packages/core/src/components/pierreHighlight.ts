@@ -53,7 +53,8 @@ export function createPierreHighlightAdapter<Language extends string, Theme>(opt
   const adapter: CodeHighlightAdapter = {
     languageFormat: CodeLanguageFormat.Pierre,
     supports: (language) =>
-      !['plain', 'plaintext', 'text', 'txt'].includes(language) && (!runtime || runtime.isSupportedLanguage(language)),
+      !['', 'plain', 'plaintext', 'text', 'txt'].includes(language) &&
+      (!runtime || runtime.isSupportedLanguage(language)),
     isReady: () => Boolean(runtime),
     prepare: () => {
       if (runtime) return;

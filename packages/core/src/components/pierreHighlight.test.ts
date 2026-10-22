@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createPierreHighlightAdapter } from './pierreHighlight';
-import { CodeLanguageFormat, resolveCodeHighlightLanguage } from './codeHighlight';
+import { CodeLanguageFormat, createCodeHighlightSession, resolveCodeHighlightLanguage } from './codeHighlight';
 
 const request = { code: '😀\r\nconst 中文 = 1;\r\n\r\n', language: 'typescript', colorScheme: 'light' as const };
 function runtime() {
@@ -150,4 +150,16 @@ it.each(['\n', '\r\n'])('keeps one native instance for Markdown frames ending wi
   expect(edits.mock.calls[0][0][0].newText).toBe('b' + newline);
   expect(edits.mock.calls[2][0][0].range.start).toEqual({ line: 1, character: 1 });
   backend.dispose();
+});
+
+it('does not download WASM while an unfenced language remains undetected', async () => {
+  const load = vi.fn(async () => runtime());
+  const adapter = createPierreHighlightAdapter({ load });
+  const session = createCodeHighlightSession(() => {});
+  const input = { adapter, code: 'some plain prose', language: '', colorScheme: 'light' as const, generation: 0 };
+  session.commit(input);
+  await Promise.resolve();
+  expect(load).not.toHaveBeenCalled();
+  expect(session.read(input).status).toBe('plain');
+  session.dispose();
 });

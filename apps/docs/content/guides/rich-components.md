@@ -469,6 +469,8 @@ The adapter deduplicates initialization across blocks, supports retry after a fa
 
 For Mantine, pass the same adapter as `<MantineAIMarkdown codeBlock={{ highlighter }} ... />` or `createMarkdownCodeBlock({ highlighter })`. It uses the React highlighting hook for per-block ownership and paints the result with Mantine controls. Language mapping follows the injected adapter automatically. Existing Mantine Provider integrations remain supported when no neutral adapter is supplied.
 
+Streaming is currently document-wide: each mounted code block can retain its own live WASM instance until the document finishes or that block is released. For documents with many code blocks, use full-frame mode to avoid retaining those instances.
+
 Set `incremental: false` in `createPierreHighlightAdapter` to use full-frame highlighting. Loaders that omit `LiveTokenizer` also fall back to full-frame highlighting. Custom headless consumers must pass `streaming: true` in `CodeHighlightInput` to activate incremental updates and set it to false on completion.
 
 The reproducible benchmark `node scripts/bench-pierre-highlight.mjs` compares repeated 40-character appends after building core, including the synthetic newline present in real Markdown code frames. It asserts that each incremental run creates exactly one native instance. It includes lexer and token conversion costs, excluding framework/DOM work. Total rendering still traverses the displayed tokens; an append to one very long line must re-tokenize that line. The Storybook engine selector includes **Pierre (full frame)** for comparison.
@@ -483,6 +485,10 @@ The reproducible benchmark `node scripts/bench-pierre-highlight.mjs` compares re
 | `prepare(request)`   | Optional async initialization/language/theme loading, started after commit                |
 | `createSession()`    | Optional per-block mutable backend with `highlight` and `dispose`; used only after commit |
 | `highlight(request)` | Synchronous, pure highlighting after readiness; return undefined for plaintext            |
+
+Async adapters render a loading/plain-source snapshot on the server and the first hydration render, even if another block has already preloaded the shared runtime. Highlighting starts after that block commits.
+
+A resolved `highlighter` takes precedence over the legacy `highlight` callback, including when inherited from the document behavior group.
 
 Keep adapter identity stable. Replace the adapter when changing its engine or theme configuration; do not mutate cached configuration in place. Preparation is keyed by adapter, target language and color scheme, and must not depend on the code text. Share/deduplicate expensive engine initialization inside the adapter when several blocks use it. The application owns shared engine initialization and any shared engine disposal. Each code-block session owns the backend returned by `createSession()` and calls its `dispose()` on invalidation, suspension, retry or unmount. Backends must not share mutable lexer state across blocks, and `dispose()` must release their resources synchronously. Cleanup errors are contained so a faulty backend cannot interrupt replacement or framework unmount.
 
@@ -540,7 +546,8 @@ through `codeBlock={{ mermaidEngine: pele }}` or its code block factory.
   diagram support table and no multi-engine retry chain.
 - Engine-specific parameters stay with their adapter and never flow into the fallback.
 - Create loaders once, outside rendering. They share successful imports; failed imports
-  can retry. `preloadCodeAssets(loader)` loads only, without rendering or changing themes.
+  can retry. Wrap custom loaders with `createCachedDiagramLoader` when initialization
+  should be shared across render attempts. `preloadCodeAssets(loader)` loads only, without rendering or changing themes.
   Mantine's legacy `preloadMantineCodeAssets` still swallows loading failures.
 
 For Ondine, applications own WASM deployment:

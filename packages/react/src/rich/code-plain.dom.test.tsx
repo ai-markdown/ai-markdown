@@ -280,3 +280,35 @@ test('hydrates a preloaded mutable adapter without allocating on the server or r
   expect(codes).toContain('abc\n');
   expect(container.querySelector('code')?.textContent).toBe('abc\nnext\n');
 });
+
+test.each([true, false])(
+  'hydrates an asynchronously prepared stateless adapter after preload (supported=%s)',
+  async (supported) => {
+    const { renderToString } = await import('react-dom/server');
+    const { hydrateRoot } = await import('react-dom/client');
+    const { CodeLanguageFormat } = await import('@ai-markdown/core/components');
+    let ready = false;
+    const recoveries: unknown[] = [];
+    const pre = createMarkdownCodeBlock({
+      highlighter: {
+        languageFormat: CodeLanguageFormat.Shiki,
+        supports: () => !ready || supported,
+        isReady: () => ready,
+        prepare: async () => {
+          ready = true;
+        },
+        highlight: ({ code }) => ({ tokens: [{ text: code, color: '#123456' }] }),
+      },
+    });
+    const view = <AIMarkdown content={'```ts\nconst a = 1;\n```'} customComponents={{ pre }} />;
+    container = document.createElement('div');
+    container.innerHTML = renderToString(view);
+    document.body.append(container);
+    ready = true;
+    await act(async () => {
+      root = hydrateRoot(container!, view, { onRecoverableError: (error) => recoveries.push(error) });
+    });
+    expect(recoveries).toEqual([]);
+    expect(container.querySelector('code')?.getAttribute('data-highlight-status')).toBe(supported ? 'ready' : 'plain');
+  }
+);

@@ -26,8 +26,12 @@ Add Mantine presentation to the React Markdown renderer: themed typography, high
 ```bash
 pnpm add @ai-markdown/react-mantine @ai-markdown/react \
   react@^19 react-dom@^19 @mantine/core@^9 @mantine/code-highlight@^9 \
-  highlight.js@^11.11.2 katex
+  highlight.js@^11.11.2 katex mermaid@^11.17.2
 ```
+
+Mermaid is now an optional peer. Existing applications using the default entry or
+Mermaid fallback must install it explicitly when upgrading. Applications using only
+the independent entry with another engine can omit it.
 
 ## Quick Start
 
