@@ -109,7 +109,7 @@
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-react-hooks": "^7.0.1",
-    "katex": "^0.17.0",
+    "katex": "^0.18.2",
     "playwright": "^1.63.0",
     "postcss": "^8.5.29",
     "postcss-cli": "^11.0.1",
