@@ -12,7 +12,7 @@
     "@storybook/addon-a11y": "10.6.1",
     "vue": "^3.5.0",
     "@ai-markdown/vue": "workspace:*",
-    "katex": "^0.17.0",
+    "katex": "^0.18.2",
     "typescript": "^6.0.3",
     "react": "^19",
     "react-dom": "^19"
