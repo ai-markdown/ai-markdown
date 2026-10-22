@@ -20,7 +20,12 @@ const publishedCss: Plugin = {
 };
 
 export default defineConfig({
-  entry: { index: 'src/index.tsx', components: 'src/components.tsx' },
+  entry: {
+    independent: 'src/independent.tsx',
+    index: 'src/index.tsx',
+    components: 'src/components.tsx',
+    'components/code/independent': 'src/rich/code-independent.tsx',
+  },
   dts: true,
   format: ['cjs', 'esm'],
   sourcemap: true,

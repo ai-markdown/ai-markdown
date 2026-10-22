@@ -1,0 +1,55 @@
+// Generated from the built public declaration. Review changes before updating.
+import { CodeRendererInput, MantineMarkdownCodeBlockOptions, MarkdownCodeBlockProps, createMarkdownCodeBlock } from "../../codeFactory-chunk.js";
+import { DiagramEngineLoader, createOndineLoader, createPeleLoader, preloadDiagramEngine } from "@ai-markdown/core/components";
+export { type CodeRendererInput, type DiagramEngineLoader, type MantineMarkdownCodeBlockOptions, type MarkdownCodeBlockProps, createMarkdownCodeBlock, createOndineLoader, createPeleLoader, preloadDiagramEngine };
+
+// Relative declaration: dist/codeFactory-chunk.d.ts
+import { AIMarkdownMetadata } from "@ai-markdown/react";
+import { CodeBlockLabels, CodeBlockOptions, CodeLanguageFormat as MantineLanguageFormat, CodeLanguageResolver, DiagramEngineLoader, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
+import { CodeRendererInput, MarkdownCodeBlockOptions, MarkdownCodeBlockProps, MarkdownCodeBlockProps as MarkdownCodeBlockProps$1 } from "@ai-markdown/react/components/code/plain";
+export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'> {
+    defaultExpanded: boolean;
+    autoDetectUnknownLanguage: boolean;
+    languageFormat?: CodeLanguageResolver;
+    formatJson?: boolean;
+    expandNestedJson?: boolean;
+    highlightIntervalMs?: number;
+    mermaidIntervalMs?: number;
+    mermaidEngine?: DiagramEngineLoader | false;
+    mermaidFallback?: boolean;
+    labels?: LabelsOption<MantineCodeBlockLabels>;
+    mermaidLabels?: LabelsOption<MantineMermaidLabels>;
+}
+export interface MantineCodeBlockLabels extends CodeBlockLabels {
+    copyTooltip: string;
+    copiedTooltip: string;
+}
+export declare const defaultMantineCodeBlockLabels: Readonly<MantineCodeBlockLabels>;
+export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed' | 'tooLarge'> {
+    loadFailed?: string;
+    retry?: string;
+    errorTitle: string;
+    render: string;
+    renderTooltip: string;
+    openInNewWindow: string;
+    openInNewWindowTooltip: string;
+    showCode: string;
+    showCodeTooltip: string;
+    copy: string;
+    copied: string;
+    copyTooltip: string;
+    copiedTooltip: string;
+    expand: string;
+    collapse: string;
+}
+export declare const defaultMantineMermaidLabels: Readonly<Required<MantineMermaidLabels>>;
+export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>;
+export declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
+export interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
+}
+export interface MantineMarkdownCodeBlockOptions extends Omit<MarkdownCodeBlockOptions, 'highlight' | 'highlighter' | 'languageFormat' | 'labels'>, Partial<MantineCodeBlockOptions> {
+}
+declare function createMarkdownCodeBlock$1(options: MantineMarkdownCodeBlockOptions & {
+    mermaidEngine: import('@ai-markdown/core/components').DiagramEngineLoader | false;
+}): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
+export { type CodeRendererInput, MantineLanguageFormat, type MarkdownCodeBlockProps$1 as MarkdownCodeBlockProps, createMarkdownCodeBlock$1 as createMarkdownCodeBlock };

@@ -47,7 +47,8 @@
   "types": "./dist/index.d.ts",
   "files": [
     "dist",
-    "components"
+    "components",
+    "independent"
   ],
   "exports": {
     ".": {
@@ -67,6 +68,22 @@
       },
       "import": "./dist/components.js",
       "require": "./dist/components.cjs"
+    },
+    "./components/code/independent": {
+      "types": {
+        "import": "./dist/components/code/independent.d.ts",
+        "require": "./dist/components/code/independent.d.cts"
+      },
+      "import": "./dist/components/code/independent.js",
+      "require": "./dist/components/code/independent.cjs"
+    },
+    "./independent": {
+      "types": {
+        "import": "./dist/independent.d.ts",
+        "require": "./dist/independent.d.cts"
+      },
+      "import": "./dist/independent.js",
+      "require": "./dist/independent.cjs"
     }
   },
   "scripts": {
@@ -80,17 +97,20 @@
     "@mantine/core": "^9.0.0",
     "highlight.js": "^11.11.2",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "mermaid": "^11.17.2"
   },
   "peerDependenciesMeta": {
     "highlight.js": {
+      "optional": true
+    },
+    "mermaid": {
       "optional": true
     }
   },
   "dependencies": {
     "@ai-markdown/code-language-detector": "workspace:^",
-    "@ai-markdown/core": "workspace:*",
-    "mermaid": "^11.17.2"
+    "@ai-markdown/core": "workspace:*"
   },
   "devDependencies": {
     "@ai-markdown/react": "workspace:*",
@@ -103,12 +123,19 @@
     "autoprefixer": "^10.6.1",
     "highlight.js": "^11.11.2",
     "postcss": "^8.5.29",
-    "sass-embedded": "^1.105.1"
+    "sass-embedded": "^1.105.1",
+    "mermaid": "^11.17.2"
   },
   "typesVersions": {
     "*": {
       "components": [
         "./dist/components.d.ts"
+      ],
+      "components/code/independent": [
+        "./dist/components/code/independent.d.ts"
+      ],
+      "independent": [
+        "./dist/independent.d.ts"
       ]
     }
   }

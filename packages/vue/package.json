@@ -72,7 +72,23 @@
       "import": "./dist/components/table.js",
       "require": "./dist/components/table.cjs"
     },
-    "./components/styles.css": "./dist/components/styles.css"
+    "./components/styles.css": "./dist/components/styles.css",
+    "./components/diagram": {
+      "types": {
+        "import": "./dist/components/diagram.d.ts",
+        "require": "./dist/components/diagram.d.cts"
+      },
+      "import": "./dist/components/diagram.js",
+      "require": "./dist/components/diagram.cjs"
+    },
+    "./components/code/independent": {
+      "types": {
+        "import": "./dist/components/code/independent.d.ts",
+        "require": "./dist/components/code/independent.d.cts"
+      },
+      "import": "./dist/components/code/independent.js",
+      "require": "./dist/components/code/independent.cjs"
+    }
   },
   "scripts": {
     "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsdown && node ../../scripts/strip-declaration-map-comments.mjs && node scripts/assert-dist.mjs && node ../../scripts/copy-component-styles.mjs",
@@ -139,6 +155,12 @@
       ],
       "components/table": [
         "./dist/components/table.d.ts"
+      ],
+      "components/diagram": [
+        "./dist/components/diagram.d.ts"
+      ],
+      "components/code/independent": [
+        "./dist/components/code/independent.d.ts"
       ]
     }
   }

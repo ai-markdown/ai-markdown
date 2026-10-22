@@ -86,6 +86,8 @@ export default defineConfig([
     entry: {
       index: 'src/index.tsx',
       'plugins/index': 'src/plugins/index.ts',
+      'components/diagram': 'src/rich/diagram.tsx',
+      'components/code/independent': 'src/rich/code-independent.ts',
       'components/index': 'src/rich/index.ts',
       'components/code': 'src/rich/code.ts',
       'components/code/plain': 'src/rich/code-plain.tsx',

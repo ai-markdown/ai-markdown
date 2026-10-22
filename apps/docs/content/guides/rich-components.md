@@ -503,3 +503,129 @@ React and Vue expose **Customization / Code Highlighting**; Mantine exposes **Ma
 Mantine also includes **Native Shiki Provider**, which uses Mantine’s own `createShikiAdapter` with on-demand language loading and a theme switch.
 
 All three showcases offer highlight.js, Shiki and Pierre in every engine selector. Dedicated **Pierre Languages**, **Pierre Streaming**, **Pierre Loading**, **Pierre Theme** and **Pierre Failure Retry** stories exercise the real WASM runtime, source preservation and recovery.
+
+## Mermaid, Pele and Ondine
+
+Diagram integration follows `core → React / Vue → Mantine`. Core owns rendering policy,
+queueing, streaming corrections, limits and retry. Framework hooks own committed lifecycle
+and SVG installation. Mantine consumes the React hook and viewport, adding its controls.
+
+### Choose an engine
+
+The normal code entry still defaults to Mermaid. Install its optional `mermaid` peer when
+using that default or automatic fallback. Install `pele` or `ondine` only when choosing it.
+
+```tsx
+import { createMarkdownCodeBlock, createPeleLoader } from '@ai-markdown/react/components/code';
+
+const pele = createPeleLoader(() => import('pele'), {
+  renderOptions: { fontSize: 16, padding: 12 },
+});
+const CodeBlock = createMarkdownCodeBlock({
+  mermaidEngine: pele,
+  mermaidFallback: true,
+  mermaidIntervalMs: 300,
+});
+```
+
+Register `CodeBlock` as the React `pre` component. Vue has the same factory at
+`@ai-markdown/vue/components/code`. Mantine accepts the same engine and policy fields
+through `codeBlock={{ mermaidEngine: pele }}` or its code block factory.
+
+- Omit `mermaidEngine` to keep Mermaid.
+- Set `mermaidEngine: false` to show source with normal code controls; no diagram is loaded.
+- `mermaidFallback` defaults to `true` in normal entries. Only an **identified unavailable
+  diagram type** can try Mermaid. Unknown/incomplete prefixes, syntax errors, limits,
+  download errors and internal exceptions never trigger it. There is no maintained
+  diagram support table and no multi-engine retry chain.
+- Engine-specific parameters stay with their adapter and never flow into the fallback.
+- Create loaders once, outside rendering. They share successful imports; failed imports
+  can retry. `preloadCodeAssets(loader)` loads only, without rendering or changing themes.
+  Mantine's legacy `preloadMantineCodeAssets` still swallows loading failures.
+
+For Ondine, applications own WASM deployment:
+
+```ts
+const ondine = createOndineLoader(async () => {
+  const [{ create }, { wasm }] = await Promise.all([
+    import('ondine/compiler/wasm'),
+    import('ondine/compiler/wasm/all'),
+  ]);
+  return create({ modules: { all: wasm } });
+});
+```
+
+Alternatively load an external WASM asset or selected diagram modules. A missing module
+can produce the known unsupported-type signal. A WASM download failure cannot.
+Pele lazy loading must run its own type loader before deciding a type is unavailable;
+`supports() === false` alone is not enough to request fallback.
+
+### No Mermaid dependency
+
+The normal entry deliberately contains a Mermaid import. To remove that dependency
+entirely, use `@ai-markdown/react/components/code/independent` or
+`@ai-markdown/vue/components/code/independent`. Their `createMarkdownCodeBlock` requires
+`mermaidEngine` and never enables an implicit fallback.
+
+Mantine also has an independent whole-document factory:
+
+```tsx
+import { createMantineAIMarkdown, createPeleLoader } from '@ai-markdown/react-mantine/independent';
+const Markdown = createMantineAIMarkdown({
+  mermaidEngine: createPeleLoader(() => import('pele')),
+});
+// <Markdown content={content} />
+```
+
+These entries share the same implementation, not a separate rendering pipeline.
+`mermaidFallback` cannot conjure a default engine in an independent entry. For a custom
+headless integration, an explicit `fallback` loader is available on the diagram input.
+
+### Custom UI and lifecycle
+
+`@ai-markdown/react/components/diagram` exports `useDiagram` and `DiagramViewport`,
+without any engine imports:
+
+```tsx
+const { state, retry } = useDiagram({
+  code,
+  colorScheme,
+  streaming,
+  active,
+  resetKey,
+  intervalMs: 300,
+  load: pele,
+});
+// Render your own status/retry UI and <DiagramViewport view={state.view} />.
+```
+
+Vue exports the equivalent composable and viewport from its `components/diagram` entry.
+The composable takes a computed input and returns a computed `state` plus `retry`.
+
+A changed `resetKey`, loader or fallback identity creates a fresh session. Its first state
+is source, so an old document does not flash. Appends, theme changes and source-view toggles
+update the current session. SSR does not load an engine. React abandoned renders do no work;
+StrictMode cleanup can resume. Unmount releases a session, not a shared engine.
+
+The viewport owns its child SVG; applications own the outer container. Replacing/unmounting
+runs a binding's returned cleanup if present, then removes its content. Existing void
+bindings remain valid. A binding exception clears partial markup and reports a diagram
+failure through the controller, preserving streaming failure policy.
+
+### Theme and support boundaries
+
+Mermaid keeps its existing safe initialization and host-theme protection. Pele/Ondine get
+basic light/dark palettes in the viewport; native `--pele-*` / `--ondine-*` variables on the
+SVG or ancestors take precedence when installed. Resolved palette values travel with the
+SVG when Mantine opens it in a separate window. Theme changes reapply the palette; external
+CSS-only changes after installation may require a render. Font changes can require layout
+recalculation, not only CSS replacement.
+
+The three engines retain different layouts and syntax details. The integration uses their
+SVG renderers, not Pele's mount/zoom API or Ondine's build-time compiler. It does not render
+SVG during SSR and does not enable JavaScript click callbacks. Diagrams are not guaranteed
+to have identical appearance or full feature equivalence across engines.
+
+Storybook's **Diagram Engines** groups in React, Vue and Mantine demonstrate real engines,
+streaming, type-limited WASM fallback, failure/retry, disabling, theme changes and document
+switching. Tests cover lifecycle and binding behavior separately from engine layout.

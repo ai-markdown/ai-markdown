@@ -12,21 +12,7 @@ import { InjectedCodeHighlight } from './InjectedCodeHighlight';
 import MantineAIMMermaidCode from './MermaidCode';
 import { CopyButton } from '@mantine/core';
 import { defaultMantineCodeBlockLabels, type MantineCodeBlockLabels, type MantineCodeBlockOptions } from '../../defs';
-import { resolveLabels } from '@ai-markdown/core/components';
-
-/**
- * Loads mermaid ahead of time. It is otherwise loaded on demand by the
- * diagram renderer (the first diagram pays the download); an app that would
- * rather take that cost at startup — a documentation page whose first screen
- * shows a diagram, say — calls this once at boot. Safe to call repeatedly;
- * failures are swallowed (the renderer will simply load lazily later).
- */
-export function preloadMantineCodeAssets(): Promise<void> {
-  return import('mermaid').then(
-    () => undefined,
-    () => undefined
-  );
-}
+import { resolveLabels, type DiagramEngineLoader } from '@ai-markdown/core/components';
 
 const RawCodeContext = createContext('');
 const LabelsContext = createContext<MantineCodeBlockLabels>(defaultMantineCodeBlockLabels);
@@ -185,6 +171,7 @@ const MantineAIMPreCode = memo(
       existLanguage?: string;
       options?: Partial<MantineCodeBlockOptions>;
       disableSpecial?: boolean;
+      defaultEngine?: DiagramEngineLoader;
     }
   ) => {
     const { fontSize, colorScheme } = useAIMarkdownTheme();
@@ -198,6 +185,7 @@ const MantineAIMPreCode = memo(
       formatJson,
       expandNestedJson,
       highlightIntervalMs,
+      mermaidEngine,
       labels: configuredLabels,
     } = useMantineCodeBlockOptions(props.options);
     const labels = resolveLabels(defaultMantineCodeBlockLabels, configuredLabels);
@@ -208,7 +196,11 @@ const MantineAIMPreCode = memo(
     // (2026-08 project review, pkg-small-08 — the mermaid check was
     // case-sensitive while the JSON check was not).
     const fenceLanguage = props.existLanguage ? props.existLanguage.toLowerCase() : '';
-    const isSpecialCodeBlock = Boolean(fenceLanguage) && !props.disableSpecial && SPECIAL_LANGUAGES.has(fenceLanguage);
+    const isSpecialCodeBlock =
+      Boolean(fenceLanguage) &&
+      !props.disableSpecial &&
+      mermaidEngine !== false &&
+      SPECIAL_LANGUAGES.has(fenceLanguage);
 
     // Core's code block session: appended code is coalesced before it is
     // scanned, formatted and highlighted, an unlabelled block is detected,
@@ -242,11 +234,13 @@ const MantineAIMPreCode = memo(
     const specialCodeBlockContent = useMemo(() => {
       switch (codeLanguage) {
         case SpecialCodeLanguage.Mermaid:
-          return <MantineAIMMermaidCode code={props.codeText} options={props.options} />;
+          return (
+            <MantineAIMMermaidCode code={props.codeText} options={props.options} defaultEngine={props.defaultEngine} />
+          );
         default:
           return null;
       }
-    }, [codeLanguage, props.codeText, props.options]);
+    }, [codeLanguage, props.codeText, props.options, props.defaultEngine]);
 
     const ordinary = (
       <OrdinaryCodeHighlight

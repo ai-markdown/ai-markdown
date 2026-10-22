@@ -1,0 +1,8 @@
+{
+  "name": "@ai-markdown/react-mantine/independent",
+  "private": true,
+  "main": "../dist/independent.cjs",
+  "module": "../dist/independent.js",
+  "types": "../dist/independent.d.ts",
+  "sideEffects": false
+}

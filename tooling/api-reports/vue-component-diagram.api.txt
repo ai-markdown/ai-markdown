@@ -1,0 +1,21 @@
+// Generated from the built public declaration. Review changes before updating.
+import { ComputedRef, PropType } from "vue";
+import { DiagramEngineLoader, DiagramInput, DiagramInput as DiagramInput$1, DiagramState, DiagramState as DiagramState$1, DiagramView, DiagramView as DiagramView$1, createOndineLoader, createPeleLoader, preloadDiagramEngine } from "@ai-markdown/core/components";
+export declare function useDiagram(input: ComputedRef<DiagramInput$1>): {
+    state: ComputedRef<DiagramState$1>;
+    retry: () => void;
+};
+export declare const DiagramViewport: import("vue").DefineComponent<import("vue").ExtractPropTypes<{
+    view: {
+        type: PropType<DiagramView$1>;
+        required: true;
+    };
+}>, () => import("vue").VNode<import("vue").RendererNode, import("vue").RendererElement, {
+    [key: string]: any;
+}>, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {}, string, import("vue").PublicProps, Readonly<import("vue").ExtractPropTypes<{
+    view: {
+        type: PropType<DiagramView$1>;
+        required: true;
+    };
+}>> & Readonly<{}>, {}, {}, {}, {}, string, import("vue").ComponentProvideOptions, true, {}, any>;
+export { type DiagramEngineLoader, type DiagramInput, type DiagramState, type DiagramView, createOndineLoader, createPeleLoader, preloadDiagramEngine };

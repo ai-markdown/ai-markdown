@@ -1,26 +1,23 @@
 // Generated from the built public declaration. Review changes before updating.
-import { MantineAIMarkdownMetadata, MantineCodeBlockLabels, MantineCodeBlockOptions, MantineLanguageFormat, MantineMermaidLabels, ResolvedMantineCodeBlockOptions, defaultMantineCodeBlockLabels, defaultMantineCodeBlockOptions, defaultMantineMermaidLabels } from "./defs-chunk.js";
-import "react";
-import { AIMarkdownBehaviorProps, AIMarkdownExtraStylesComponent, AIMarkdownProps, AIMarkdownTypographyProps } from "@ai-markdown/react";
-interface MantineAIMarkdownProps<TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata> extends AIMarkdownProps<TMetadata> {
-    codeBlock?: Partial<MantineCodeBlockOptions>;
-}
-declare const MantineAIMarkdownComponent: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>({ Typography, ExtraStyles, customComponents, colorScheme, codeBlock, ...props }: MantineAIMarkdownProps<TMetadata>) => import("react").JSX.Element;
-declare const _default: typeof MantineAIMarkdownComponent;
+import { MantineAIMarkdownMetadata, MantineCodeBlockLabels, MantineCodeBlockOptions, MantineLanguageFormat, MantineMermaidLabels, ResolvedMantineCodeBlockOptions, defaultMantineCodeBlockLabels, defaultMantineCodeBlockOptions, defaultMantineMermaidLabels } from "./codeFactory-chunk.js";
+import { preloadMantineCodeAssets } from "./code-chunk.js";
+import { MantineAIMarkdownProps } from "./createMantineMarkdown-chunk.js";
+import { AIMarkdownBehaviorProps, AIMarkdownExtraStylesComponent, AIMarkdownTypographyProps } from "@ai-markdown/react";
+declare const MantineAIMarkdown: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>({ Typography, ExtraStyles, customComponents, colorScheme, codeBlock, ...props }: MantineAIMarkdownProps<TMetadata>) => import("react").JSX.Element;
 declare const MantineAIMarkdownTypography: import("react").MemoExoticComponent<({ children, fontSize, style }: AIMarkdownTypographyProps) => import("react").JSX.Element>;
 declare const MantineAIMDefaultExtraStyles: AIMarkdownExtraStylesComponent;
 export declare function useMantineCodeBlockOptions(overrides?: Partial<MantineCodeBlockOptions>): ResolvedMantineCodeBlockOptions;
-export declare function preloadMantineCodeAssets(): Promise<void>;
 interface MantineBehaviorProps extends AIMarkdownBehaviorProps {
     codeBlock?: Partial<MantineCodeBlockOptions>;
 }
 export declare function defineMantineBehaviors(values: MantineBehaviorProps): Readonly<MantineBehaviorProps>;
 export declare const useMantineAIMarkdownMetadata: <TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata>() => TMetadata | undefined;
-export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, type MantineCodeBlockLabels, type MantineCodeBlockOptions, MantineLanguageFormat, type MantineMermaidLabels, type ResolvedMantineCodeBlockOptions, _default as default, defaultMantineCodeBlockLabels, defaultMantineCodeBlockOptions, defaultMantineMermaidLabels };
+export { MantineAIMDefaultExtraStyles, type MantineAIMarkdownMetadata, type MantineAIMarkdownProps, MantineAIMarkdownTypography, type MantineBehaviorProps, type MantineCodeBlockLabels, type MantineCodeBlockOptions, MantineLanguageFormat, type MantineMermaidLabels, type ResolvedMantineCodeBlockOptions, MantineAIMarkdown as default, defaultMantineCodeBlockLabels, defaultMantineCodeBlockOptions, defaultMantineMermaidLabels, preloadMantineCodeAssets };
 
-// Relative declaration: dist/defs-chunk.d.ts
+// Relative declaration: dist/codeFactory-chunk.d.ts
 import { AIMarkdownMetadata } from "@ai-markdown/react";
-import { CodeBlockLabels, CodeBlockOptions, CodeLanguageFormat as MantineLanguageFormat, CodeLanguageResolver, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
+import { CodeBlockLabels, CodeBlockOptions, CodeLanguageFormat as MantineLanguageFormat, CodeLanguageResolver, DiagramEngineLoader, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
+import { CodeRendererInput, MarkdownCodeBlockOptions, MarkdownCodeBlockProps, MarkdownCodeBlockProps as MarkdownCodeBlockProps$1 } from "@ai-markdown/react/components/code/plain";
 export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'> {
     defaultExpanded: boolean;
     autoDetectUnknownLanguage: boolean;
@@ -29,6 +26,8 @@ export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'
     expandNestedJson?: boolean;
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
+    mermaidEngine?: DiagramEngineLoader | false;
+    mermaidFallback?: boolean;
     labels?: LabelsOption<MantineCodeBlockLabels>;
     mermaidLabels?: LabelsOption<MantineMermaidLabels>;
 }
@@ -38,6 +37,8 @@ export interface MantineCodeBlockLabels extends CodeBlockLabels {
 }
 export declare const defaultMantineCodeBlockLabels: Readonly<MantineCodeBlockLabels>;
 export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed' | 'tooLarge'> {
+    loadFailed?: string;
+    retry?: string;
     errorTitle: string;
     render: string;
     renderTooltip: string;
@@ -52,9 +53,29 @@ export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed'
     expand: string;
     collapse: string;
 }
-export declare const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels>;
-export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>;
+export declare const defaultMantineMermaidLabels: Readonly<Required<MantineMermaidLabels>>;
+export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>;
 export declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
 export interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
 }
-export { MantineLanguageFormat };
+export interface MantineMarkdownCodeBlockOptions extends Omit<MarkdownCodeBlockOptions, 'highlight' | 'highlighter' | 'languageFormat' | 'labels'>, Partial<MantineCodeBlockOptions> {
+}
+declare function createMarkdownCodeBlock$1(options: MantineMarkdownCodeBlockOptions & {
+    mermaidEngine: import('@ai-markdown/core/components').DiagramEngineLoader | false;
+}): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
+export { type CodeRendererInput, MantineLanguageFormat, type MarkdownCodeBlockProps$1 as MarkdownCodeBlockProps, createMarkdownCodeBlock$1 as createMarkdownCodeBlock };
+
+// Relative declaration: dist/code-chunk.d.ts
+import { MantineMarkdownCodeBlockOptions } from "./codeFactory-chunk.js";
+export declare function createMarkdownCodeBlock(options?: MantineMarkdownCodeBlockOptions): ({ node, children, ...props }: import("@ai-markdown/react/components/code").MarkdownCodeBlockProps) => import("react").JSX.Element;
+export declare const MarkdownCodeBlock: ({ node, children, ...props }: import("@ai-markdown/react/components/code").MarkdownCodeBlockProps) => import("react").JSX.Element;
+export declare function preloadMantineCodeAssets(load?: import("@ai-markdown/core/components").DiagramEngineLoader): Promise<void>;
+
+// Relative declaration: dist/createMantineMarkdown-chunk.d.ts
+import { MantineAIMarkdownMetadata, MantineCodeBlockOptions } from "./codeFactory-chunk.js";
+import "react";
+import { AIMarkdownProps } from "@ai-markdown/react";
+import { MarkdownCodeBlockProps } from "@ai-markdown/react/components/code/plain";
+export interface MantineAIMarkdownProps<TMetadata extends MantineAIMarkdownMetadata = MantineAIMarkdownMetadata> extends AIMarkdownProps<TMetadata> {
+    codeBlock?: Partial<MantineCodeBlockOptions>;
+}

@@ -53,7 +53,7 @@ export { defaultMantineCodeBlockOptions, defaultMantineCodeBlockLabels, defaultM
 export { useMantineCodeBlockOptions } from './hooks/useMantineCodeBlockOptions';
 
 /** Optional eager loading of the on-demand mermaid module. */
-export { preloadMantineCodeAssets } from './components/customized/PreCode';
+export { preloadMantineCodeAssets } from './rich/code';
 
 /** Widened behaviors factory (core fields + mantine's `codeBlock` group). */
 export { defineMantineBehaviors } from './define';

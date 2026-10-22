@@ -55,23 +55,15 @@ The independent site owns the detailed API and guides. This README provides the 
 
 MIT
 
-### Shared syntax highlighters
+### Optional diagram engines
 
-`createMarkdownCodeBlock({ highlighter })` accepts the framework-independent
-`CodeHighlightAdapter` from `@ai-markdown/core/components` (also re-exported by
-`@ai-markdown/react/components`). Core owns language conversion, readiness and
-stale-load handling; React binds lifecycle and renders tokens or trusted HTML.
-`highlighter` takes precedence over the existing `highlight` callback. Legacy
-callbacks still receive highlight.js names by default; use
-`languageFormat: CodeLanguageFormat.Shiki` for Shiki names without losing TSX/Vue
-information. See [the shared contract and examples](../../apps/docs/content/guides/rich-components.md#shared-code-highlighting)
-and Storybook **Customization / Code Highlighting**.
+Mermaid remains the default; Pele and Ondine are optional adapters. Set `mermaidEngine`
+to a loader or `false` to disable diagrams. Normal entries default to Mermaid fallback
+only for an identified unsupported type; `mermaidFallback: false` disables it.
+Engine-specific options belong to `createPeleLoader` / `createOndineLoader`.
 
-Pierre is available through `createPierreHighlightAdapter({ load })`. Return the
-`@pierre/highlights` module (including `LiveTokenizer`) and `themes: { light, dark }`
-from the loader. The adapter defaults to native incremental highlighting while
-`streaming` is true, with isolated state for each code block. Set `streaming` to
-false when the document finishes to release live WASM instances. Use
-`incremental: false` for full-frame highlighting or comparison. Static blocks do
-not allocate live tokenizers; SSR renders source and initializes after mounting.
-See [the Pierre setup example](../../apps/docs/content/guides/rich-components.md#pierre-highlights).
+Use `components/code/independent` to supply an engine without importing Mermaid.
+React/Vue expose `useDiagram` and `DiagramViewport` at `components/diagram`.
+Mantine's `independent` entry exports `createMantineAIMarkdown` for the same dependency isolation.
+See the [complete guide](../../apps/docs/content/guides/rich-components.md#mermaid-pele-and-ondine)
+for setup, themes, lifetime contracts and support boundaries.

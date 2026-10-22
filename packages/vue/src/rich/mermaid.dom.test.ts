@@ -2,7 +2,7 @@
 import { afterEach, expect, test, vi } from 'vitest';
 import { createApp, h, nextTick, ref, type App } from 'vue';
 import { AIMarkdown } from '../AIMarkdown';
-import { createMarkdownCodeBlock } from './code';
+import { createMarkdownCodeBlock, createPeleLoader } from './code';
 
 const mermaidMock = vi.hoisted(() => ({
   renders: [] as string[],
@@ -45,13 +45,13 @@ const fence = (body: string) => `\`\`\`mermaid\n${body}`;
 const settle = async () => {
   for (let i = 0; i < 8; i++) await nextTick().then(() => Promise.resolve());
 };
-const mount = async (content: string, streaming: boolean) => {
+const mount = async (content: string, streaming: boolean, block = Block) => {
   const scope = (container = document.createElement('div'));
   document.body.append(scope);
   const props = ref({ content, streaming });
   // The cursor needs ResizeObserver, which jsdom does not have.
   app = createApp({
-    render: () => h(AIMarkdown, { ...props.value, streamingCursor: false, components: { pre: Block } }),
+    render: () => h(AIMarkdown, { ...props.value, streamingCursor: false, components: { pre: block } }),
   });
   app.mount(scope);
   await settle();
@@ -92,4 +92,20 @@ test('a static failure offers a retry, and the same source is not rendered twice
   expect(view.diagram()).toBe('1');
   await view.render(fence('graph TD;\nA-->B;'), false);
   expect(mermaidMock.renders).toHaveLength(1);
+});
+
+test('uses an optional engine without rendering through Mermaid', async () => {
+  const render = vi.fn(() => ({ svg: '<svg data-mock-diagram="pele"></svg>', type: 'flowchart' }));
+  const block = createMarkdownCodeBlock({ mermaidEngine: createPeleLoader(async () => ({ render })) });
+  const view = await mount(fence('graph LR; A-->B;'), false, block);
+  expect(view.diagram()).toBe('pele');
+  expect(render).toHaveBeenCalledOnce();
+  expect(mermaidMock.renders).toEqual([]);
+});
+
+test('false disables the diagram and leaves ordinary source controls', async () => {
+  await mount(fence('graph LR; A-->B;'), false, createMarkdownCodeBlock({ mermaidEngine: false }));
+  expect(container?.querySelector('.aimd-diagram')).toBeNull();
+  expect(container?.querySelector('code')?.textContent).toContain('A-->B');
+  expect(mermaidMock.renders).toEqual([]);
 });

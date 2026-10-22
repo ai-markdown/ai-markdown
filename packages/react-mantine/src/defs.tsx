@@ -13,6 +13,7 @@ import {
   type CodeBlockOptions,
   type CodeLanguageResolver,
   type DiagramLabels,
+  type DiagramEngineLoader,
   type LabelsOption,
 } from '@ai-markdown/core/components';
 
@@ -80,6 +81,10 @@ export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'
    * most streamed prefixes fail to parse anyway, so a much longer interval
    * is appropriate. Set 0 to attempt every update. @default 300 */
   mermaidIntervalMs?: number;
+  /** Optional renderer loader; omission keeps Mermaid. */
+  mermaidEngine?: DiagramEngineLoader | false;
+  /** Fall back only for a known unsupported diagram type. */
+  mermaidFallback?: boolean;
   /** Text of the code block, as overrides of the English defaults. A function
    * is read on every render, so it can follow the application's own i18n. */
   labels?: LabelsOption<MantineCodeBlockLabels>;
@@ -104,6 +109,9 @@ export const defaultMantineCodeBlockLabels: Readonly<MantineCodeBlockLabels> = O
 
 /** Text of the Mantine Mermaid block. A tooltip and the accessible name of its button are separate entries. */
 export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed' | 'tooLarge'> {
+  /** Optional additions preserve existing complete label objects. */
+  loadFailed?: string;
+  retry?: string;
   /** Tab title of the source shown with an error. */
   errorTitle: string;
   render: string;
@@ -120,7 +128,9 @@ export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed'
   expand: string;
   collapse: string;
 }
-export const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels> = Object.freeze({
+export const defaultMantineMermaidLabels: Readonly<Required<MantineMermaidLabels>> = Object.freeze({
+  loadFailed: defaultDiagramLabels.loadFailed,
+  retry: defaultDiagramLabels.retry,
   renderFailed: defaultDiagramLabels.renderFailed,
   tooLarge: defaultDiagramLabels.tooLarge,
   errorTitle: 'Mermaid Render Error',
@@ -140,9 +150,9 @@ export const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels> = Objec
 
 /** {@link MantineCodeBlockOptions} with every default applied; the label overrides stay as given. */
 export type ResolvedMantineCodeBlockOptions = Required<
-  Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>
+  Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>
 > &
-  Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>;
+  Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>;
 
 /** Shipped defaults for the `codeBlock` behavior group. */
 export const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions> = Object.freeze({
@@ -153,6 +163,7 @@ export const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions> =
   expandNestedJson: true,
   highlightIntervalMs: 50,
   mermaidIntervalMs: 300,
+  mermaidFallback: true,
 });
 
 /**

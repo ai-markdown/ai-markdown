@@ -33,11 +33,23 @@ const surfaces = [
     entry: 'src/components.tsx',
     declaration: 'dist/components.d.ts',
   },
+  {
+    name: 'mantine-independent',
+    directory: 'react-mantine',
+    entry: 'src/independent.tsx',
+    declaration: 'dist/independent.d.ts',
+  },
+  {
+    name: 'mantine-code-independent',
+    directory: 'react-mantine',
+    entry: 'src/rich/code-independent.tsx',
+    declaration: 'dist/components/code/independent.d.ts',
+  },
   ...['react', 'vue'].flatMap((directory) =>
-    ['code/plain', 'image', 'table'].map((subpath) => ({
+    ['code/plain', 'code/independent', 'diagram', 'image', 'table'].map((subpath) => ({
       name: `${directory}-component-${subpath.replace('/', '-')}`,
       directory,
-      entry: `src/rich/${subpath === 'code/plain' ? 'code-plain' : subpath}.${directory === 'react' ? 'tsx' : 'ts'}`,
+      entry: `src/rich/${subpath === 'code/plain' ? 'code-plain' : subpath === 'code/independent' ? 'code-independent' : subpath}.${directory === 'react' && subpath !== 'code/independent' ? 'tsx' : 'ts'}`,
       declaration: `dist/components/${subpath}.d.ts`,
     }))
   ),

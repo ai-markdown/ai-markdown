@@ -1,76 +1,19 @@
 'use client';
 
-import {
-  createDiagramController,
-  diagramErrorText,
-  resolveLabels,
-  type DiagramError,
-  type DiagramView,
-} from '@ai-markdown/core/components';
+import { diagramErrorText, resolveLabels, type DiagramEngineLoader } from '@ai-markdown/core/components';
 
-import React, { memo, useEffect, useRef, useState, useCallback } from 'react';
+import React, { memo, useRef, useState, useCallback } from 'react';
 import { CodeHighlightControl, CodeHighlightTabs } from '@mantine/code-highlight';
 import { ActionIcon, CopyButton, Flex, Text, Tooltip } from '@mantine/core';
-import type mermaidModule from 'mermaid';
+import { useDiagram, DiagramViewport } from '@ai-markdown/react/components/diagram';
 import { CheckIcon, CodeIcon, DiagramIcon } from './icons';
-import { useAIMarkdownState, useAIMarkdownTheme } from '@ai-markdown/react';
+import { useAIMarkdownState, useAIMarkdownTheme, useAIMarkdownDocument } from '@ai-markdown/react';
 import { defaultMantineMermaidLabels, type MantineCodeBlockOptions } from '../../../defs';
 import { useMantineCodeBlockOptions } from '../../../hooks/useMantineCodeBlockOptions';
 import './styles.scss';
 
 /** Static `<pre>` style for the mermaid container. */
 const PRE_STYLE = { cursor: 'pointer', overflow: 'auto', width: '100%', padding: '0.5rem' } as const;
-
-/**
- * What the component currently shows. One value instead of separate
- * `hasRendered`/`renderError`/`chartType` fields whose combinations had to
- * be kept coherent by hand:
- * - `source`: warm-up / SSR fallback — raw code as a plain code block
- *   (nothing rendered yet this generation).
- * - `diagram`: the last successful SVG is up.
- * - `error`: the error tab — only a post-stream corrective failure or a
- *   never-rendered static failure can enter this state.
- *
- * The user's source toggle (`showOriginalCode`) is deliberately NOT a
- * phase: it overlays any view and flipping it back must restore the prior
- * one unchanged.
- */
-type MermaidView = { kind: 'source' } | { kind: 'diagram'; chartType: string } | DiagramError;
-
-/** Equality used to skip no-op view updates — repeat mid-stream successes
- *  of the same chart type must not re-render the host per chunk. */
-const toMermaidView = (view: DiagramView): MermaidView =>
-  view.kind === 'diagram' ? { kind: 'diagram', chartType: view.chartType } : view;
-
-const sameView = (a: MermaidView, b: MermaidView): boolean => {
-  if (a.kind === 'diagram' && b.kind === 'diagram') return a.chartType === b.chartType;
-  // Core publishes an error only when it differs from the one before it.
-  if (a.kind === 'error' && b.kind === 'error') return a === b;
-  return a.kind === b.kind;
-};
-
-type Mermaid = typeof mermaidModule;
-
-/**
- * mermaid is loaded on demand — the FIRST diagram that actually renders
- * pays the import; an app whose content never contains a mermaid fence
- * never downloads the ~1.5 MB module (2026-08 project review,
- * pkg-small-03: the static import sat on the default `pre` component's
- * import chain, so every consumer's main bundle carried it). The promise is
- * cached module-wide; the source-view warm-up covers the loading window.
- */
-let mermaidPromise: Promise<Mermaid> | null = null;
-const loadMermaid = (): Promise<Mermaid> => {
-  // A rejected load is not cached — the next render attempt retries.
-  mermaidPromise ??= import('mermaid').then(
-    (m) => m.default,
-    (err: unknown) => {
-      mermaidPromise = null;
-      throw err;
-    }
-  );
-  return mermaidPromise;
-};
 
 /**
  * Open the rendered mermaid SVG in a new browser window.
@@ -142,239 +85,233 @@ const handleViewSVGInNewWindow = (svgElement: SVGElement | null | undefined, isD
  *
  * @param props.code - Raw mermaid diagram source code to render.
  */
-const MantineAIMMermaidCode = memo((props: { code: string; options?: Partial<MantineCodeBlockOptions> }) => {
-  const { colorScheme, fontSize } = useAIMarkdownTheme();
-  const { streaming } = useAIMarkdownState();
-  const {
-    defaultExpanded,
-    mermaidIntervalMs,
-    mermaidLabels: configuredLabels,
-  } = useMantineCodeBlockOptions(props.options);
-  const labels = resolveLabels(defaultMantineMermaidLabels, configuredLabels);
-  const isDark = colorScheme === 'dark';
-  const ref = useRef<HTMLPreElement>(null);
-  const [view, setViewState] = useState<MermaidView>({ kind: 'source' });
-  const [showOriginalCode, setShowOriginalCode] = useState(false);
-  // The controller is created in an effect, because what it publishes is drawn
-  // into the host element. The SVG goes straight into the host, and React state
-  // keeps only what the chrome needs, so a repeat success of the same chart type
-  // does not re-render it.
-  const [machine] = useState<{ controller?: ReturnType<typeof createDiagramController> }>(() => ({}));
-  useEffect(() => {
-    machine.controller ??= createDiagramController(loadMermaid, ({ view: next }) => {
-      const host = ref.current;
-      if (host) {
-        if (next.kind === 'diagram') {
-          host.innerHTML = next.svg;
-          next.bind?.(host);
-        } else if (next.kind === 'source') {
-          host.innerHTML = '';
-        }
-      }
-      const shown = toMermaidView(next);
-      setViewState((prev) => (sameView(prev, shown) ? prev : shown));
-    });
-    // The source view suspends attempts; coming back with the same source and theme renders nothing.
-    machine.controller.update({
+const MantineAIMMermaidCode = memo(
+  (props: { code: string; options?: Partial<MantineCodeBlockOptions>; defaultEngine?: DiagramEngineLoader }) => {
+    const { colorScheme, fontSize } = useAIMarkdownTheme();
+    const { streaming } = useAIMarkdownState();
+    const {
+      defaultExpanded,
+      mermaidIntervalMs,
+      mermaidEngine,
+      mermaidFallback,
+      mermaidLabels: configuredLabels,
+    } = useMantineCodeBlockOptions(props.options);
+    const labels = resolveLabels(defaultMantineMermaidLabels, configuredLabels);
+    const isDark = colorScheme === 'dark';
+    const ref = useRef<HTMLDivElement>(null);
+    const { documentId } = useAIMarkdownDocument();
+    const [showOriginalCode, setShowOriginalCode] = useState(false);
+    const load = mermaidEngine || props.defaultEngine;
+    if (!load) throw new Error('An explicit diagram engine is required');
+    const { state, retry } = useDiagram({
       code: props.code,
-      dark: isDark,
+      colorScheme: isDark ? 'dark' : 'light',
       streaming,
       active: !showOriginalCode,
-      interval: mermaidIntervalMs,
+      resetKey: documentId,
+      intervalMs: mermaidIntervalMs,
+      load,
+      fallback: mermaidFallback !== false && load !== props.defaultEngine ? props.defaultEngine : undefined,
     });
-  }, [machine, props.code, isDark, streaming, showOriginalCode, mermaidIntervalMs]);
-  useEffect(() => () => machine.controller?.dispose(), [machine]);
+    const { view, loadFailed } = state;
 
-  const viewSvgInNewWindow = useCallback(() => {
-    handleViewSVGInNewWindow(ref.current?.querySelector('svg'), isDark);
-  }, [isDark]);
+    const viewSvgInNewWindow = useCallback(() => {
+      handleViewSVGInNewWindow(ref.current?.querySelector('svg'), isDark);
+    }, [isDark]);
 
-  // Show the raw source instead of the diagram container when the user asked
-  // for it, when the (post-stream) render failed, or before the first
-  // successful render (SSR output and the streaming warm-up phase). The
-  // diagram container below stays MOUNTED throughout — merely hidden — so
-  // `ref` is always available for mermaid to render into; unmounting it would
-  // make the effect's `!ref.current` guard bail forever.
-  const showSourceFallback = showOriginalCode || view.kind !== 'diagram';
+    // Show the raw source instead of the diagram container when the user asked
+    // for it, when the (post-stream) render failed, or before the first
+    // successful render (SSR output and the streaming warm-up phase). The
+    // diagram container stays mounted while hidden, preserving its SVG binding
+    // until the shared viewport replaces it or this block unmounts.
+    const showSourceFallback = showOriginalCode || view.kind !== 'diagram';
 
-  return (
-    <>
-      {showSourceFallback && (
-        <CodeHighlightTabs
-          mb={15}
-          fz={fontSize}
-          w="100%"
-          code={[
-            {
-              fileName: view.kind === 'error' ? labels.errorTitle : 'mermaid',
-              code: props.code,
-              language: 'mermaid',
-            },
-          ]}
-          defaultExpanded={defaultExpanded}
-          expandCodeLabel={labels.expand}
-          collapseCodeLabel={labels.collapse}
-          maxCollapsedHeight="320px"
-          styles={{
-            filesScrollarea: {
-              right: '90px',
-            },
-          }}
-          controls={
-            // The "Render Mermaid" control only makes sense as the way back
-            // from the user-toggled source view. In the error and warm-up
-            // fallbacks `showOriginalCode` is already false, so the control
-            // would be a no-op — hide it there. (No view-kind conjunct: the
-            // toggle is only reachable from the visible diagram view, and
-            // while the source view is open the effect early-returns, so
-            // showOriginalCode && view.kind === 'error' is unreachable.)
-            showOriginalCode
-              ? [
-                  <CodeHighlightControl
-                    tooltipLabel={labels.renderTooltip}
-                    aria-label={labels.render}
-                    key="gpt"
-                    onClick={() => {
-                      setShowOriginalCode(false);
-                    }}
-                  >
-                    <DiagramIcon size={16} />
-                  </CodeHighlightControl>,
-                ]
-              : []
+    return (
+      <>
+        {showSourceFallback && (
+          <CodeHighlightTabs
+            mb={15}
+            fz={fontSize}
+            w="100%"
+            code={[
+              {
+                fileName: view.kind === 'error' ? labels.errorTitle : 'mermaid',
+                code: props.code,
+                language: 'mermaid',
+              },
+            ]}
+            defaultExpanded={defaultExpanded}
+            expandCodeLabel={labels.expand}
+            collapseCodeLabel={labels.collapse}
+            maxCollapsedHeight="320px"
+            styles={{
+              filesScrollarea: {
+                right: '90px',
+              },
+            }}
+            controls={
+              // The "Render Mermaid" control only makes sense as the way back
+              // from the user-toggled source view. In the error and warm-up
+              // fallbacks `showOriginalCode` is already false, so the control
+              // would be a no-op — hide it there. (No view-kind conjunct: the
+              // toggle is only reachable from the visible diagram view, and
+              // while the source view is open the effect early-returns, so
+              // showOriginalCode && view.kind === 'error' is unreachable.)
+              showOriginalCode
+                ? [
+                    <CodeHighlightControl
+                      tooltipLabel={labels.renderTooltip}
+                      aria-label={labels.render}
+                      key="gpt"
+                      onClick={() => {
+                        setShowOriginalCode(false);
+                      }}
+                    >
+                      <DiagramIcon size={16} />
+                    </CodeHighlightControl>,
+                  ]
+                : []
+            }
+            withBorder
+            withExpandButton
+          />
+        )}
+        {(view.kind === 'error' || loadFailed) && !showOriginalCode && (
+          // The reason, as a text node only: React escapes it, and nothing here
+          // goes through innerHTML. `pre-wrap` keeps mermaid's line/column
+          // pointer lines aligned so the failing line can be found.
+          <Text
+            component="pre"
+            role="status"
+            className="aim-mantine-mermaid-error"
+            fz="xs"
+            c={isDark ? '#ffa8a8' : '#c92a2a'}
+            mt={-10}
+            mb={15}
+            style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
+          >
+            {view.kind === 'error' ? diagramErrorText(view, labels) : labels.loadFailed}
+          </Text>
+        )}
+        {(view.kind === 'error' || loadFailed) && !showOriginalCode && (
+          <button type="button" onClick={retry}>
+            {labels.retry}
+          </button>
+        )}
+        <div
+          className={`aim-mantine-mermaid-code ${isDark ? 'dark' : ''}`}
+          style={
+            showSourceFallback
+              ? {
+                  display: 'none',
+                }
+              : {}
           }
-          withBorder
-          withExpandButton
-        />
-      )}
-      {view.kind === 'error' && !showOriginalCode && (
-        // The reason, as a text node only: React escapes it, and nothing here
-        // goes through innerHTML. `pre-wrap` keeps mermaid's line/column
-        // pointer lines aligned so the failing line can be found.
-        <Text
-          component="pre"
-          role="status"
-          className="aim-mantine-mermaid-error"
-          fz="xs"
-          c="red"
-          mt={-10}
-          mb={15}
-          style={{ whiteSpace: 'pre-wrap', fontFamily: 'inherit' }}
         >
-          {diagramErrorText(view, labels)}
-        </Text>
-      )}
-      <div
-        className={`aim-mantine-mermaid-code ${isDark ? 'dark' : ''}`}
-        style={
-          showSourceFallback
-            ? {
-                display: 'none',
-              }
-            : {}
-        }
-      >
-        <div className="chart-header">
-          <div className="chart-type-tag">{view.kind === 'diagram' ? view.chartType : 'unknown'}</div>
-          <Flex align="center" justify="flex-end" gap={0}>
-            {/* The "open in a new window" action is a real button here rather
+          <div className="chart-header">
+            <div className="chart-type-tag">{view.kind === 'diagram' ? view.chartType : 'unknown'}</div>
+            <Flex align="center" justify="flex-end" gap={0}>
+              {/* The "open in a new window" action is a real button here rather
                 than a `role="button"` on the SVG container: a button's
                 content is presentational to assistive tech, so the diagram's
                 own text and mermaid's accTitle/accDescr were unreachable, and
                 any `click … href` link mermaid emitted sat inside a button
                 (invalid, not tabbable) — 2026-08-19 review r2 P3. The
                 container below carries no role at all, for the same reason. */}
-            {/* Always rendered (also under SSR / the source warm-up, where it
+              {/* Always rendered (also under SSR / the source warm-up, where it
                 is a no-op until the SVG exists) so server and client markup
                 agree. */}
-            {
-              <Tooltip label={labels.openInNewWindowTooltip}>
+              {
+                <Tooltip label={labels.openInNewWindowTooltip}>
+                  <ActionIcon
+                    size={28}
+                    className="action-icon"
+                    variant="transparent"
+                    aria-label={labels.openInNewWindow}
+                    onClick={viewSvgInNewWindow}
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      strokeWidth="2"
+                      stroke="currentColor"
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      width="18px"
+                      height="18px"
+                      aria-hidden="true"
+                    >
+                      <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                      <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6"></path>
+                      <path d="M11 13l9 -9"></path>
+                      <path d="M15 4h5v5"></path>
+                    </svg>
+                  </ActionIcon>
+                </Tooltip>
+              }
+              <Tooltip label={labels.showCodeTooltip}>
                 <ActionIcon
                   size={28}
                   className="action-icon"
                   variant="transparent"
-                  aria-label={labels.openInNewWindow}
-                  onClick={viewSvgInNewWindow}
+                  aria-label={labels.showCode}
+                  onClick={() => {
+                    setShowOriginalCode(true);
+                  }}
                 >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 24"
-                    strokeWidth="2"
-                    stroke="currentColor"
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    width="18px"
-                    height="18px"
-                    aria-hidden="true"
-                  >
-                    <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                    <path d="M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6"></path>
-                    <path d="M11 13l9 -9"></path>
-                    <path d="M15 4h5v5"></path>
-                  </svg>
+                  <CodeIcon />
                 </ActionIcon>
               </Tooltip>
-            }
-            <Tooltip label={labels.showCodeTooltip}>
-              <ActionIcon
-                size={28}
-                className="action-icon"
-                variant="transparent"
-                aria-label={labels.showCode}
-                onClick={() => {
-                  setShowOriginalCode(true);
-                }}
-              >
-                <CodeIcon />
-              </ActionIcon>
-            </Tooltip>
-            <CopyButton value={props.code}>
-              {({ copied, copy }) => (
-                <Tooltip label={copied ? labels.copiedTooltip : labels.copyTooltip} withArrow position="right">
-                  <ActionIcon
-                    variant="transparent"
-                    size={28}
-                    className="action-icon"
-                    aria-label={copied ? labels.copied : labels.copy}
-                    onClick={copy}
-                  >
-                    {copied ? (
-                      <CheckIcon />
-                    ) : (
-                      <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 24 24"
-                        strokeWidth="2"
-                        stroke="currentColor"
-                        fill="none"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        width="18px"
-                        height="18px"
-                        aria-hidden="true"
-                      >
-                        <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                        <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"></path>
-                        <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
-                      </svg>
-                    )}
-                  </ActionIcon>
-                </Tooltip>
-              )}
-            </CopyButton>
-          </Flex>
-        </div>
-        {/* No ARIA role on the container: `role="img"` (like the old
+              <CopyButton value={props.code}>
+                {({ copied, copy }) => (
+                  <Tooltip label={copied ? labels.copiedTooltip : labels.copyTooltip} withArrow position="right">
+                    <ActionIcon
+                      variant="transparent"
+                      size={28}
+                      className="action-icon"
+                      aria-label={copied ? labels.copied : labels.copy}
+                      onClick={copy}
+                    >
+                      {copied ? (
+                        <CheckIcon />
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          viewBox="0 0 24 24"
+                          strokeWidth="2"
+                          stroke="currentColor"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          width="18px"
+                          height="18px"
+                          aria-hidden="true"
+                        >
+                          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+                          <path d="M8 8m0 2a2 2 0 0 1 2 -2h8a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-8a2 2 0 0 1 -2 -2z"></path>
+                          <path d="M16 8v-2a2 2 0 0 0 -2 -2h-8a2 2 0 0 0 -2 2v8a2 2 0 0 0 2 2h2"></path>
+                        </svg>
+                      )}
+                    </ActionIcon>
+                  </Tooltip>
+                )}
+              </CopyButton>
+            </Flex>
+          </div>
+          {/* No ARIA role on the container: `role="img"` (like the old
             `role="button"`) makes its children presentational and hides the
             SVG's own `role="graphics-document"` + accTitle/accDescr that
             mermaid emits — the SVG names itself. Click-to-open stays as a
             pointer convenience; the keyboard/AT path is the header button. */}
-        <pre ref={ref} style={PRE_STYLE} onClick={viewSvgInNewWindow} />
-      </div>
-    </>
-  );
-});
+          <div ref={ref} style={PRE_STYLE} onClick={viewSvgInNewWindow}>
+            <DiagramViewport className="aimd-diagram-viewport" view={view} />
+          </div>
+        </div>
+      </>
+    );
+  }
+);
 
 MantineAIMMermaidCode.displayName = 'MantineAIMMermaidCode';
 

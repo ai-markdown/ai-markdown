@@ -88,7 +88,8 @@ export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) 
       setSource(false);
       setFeedback('');
     }
-    const Renderer = renderers[language];
+    const Renderer =
+      language === 'mermaid' && (options.mermaidEngine ?? group?.mermaidEngine) === false ? false : renderers[language];
     const highlighter = options.highlighter ?? group?.highlighter;
     const languageFormat = options.languageFormat ?? group?.languageFormat;
     const highlightState = useCodeHighlight({

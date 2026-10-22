@@ -18,6 +18,7 @@
     "typecheck:packages": "pnpm -r typecheck",
     "typecheck:storybook": "tsc --noEmit -p tsconfig.storybook.json",
     "check:overrides": "node scripts/assert-overrides-in-sync.mjs",
+    "check:diagram-boundaries": "node scripts/check-diagram-boundaries.mjs",
     "check:public-api": "node scripts/check-public-api.mjs",
     "check:soak-coverage": "node scripts/soak/assert-coverage-map.mjs",
     "check:soak-impact": "node scripts/soak/impact.mjs",

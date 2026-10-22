@@ -11,6 +11,10 @@ export interface CodeBlockOptions {
   expandNestedJson?: boolean;
   highlightIntervalMs?: number;
   mermaidIntervalMs?: number;
+  /** Optional renderer loader. Omit to use Mermaid. Keep its identity stable. */
+  mermaidEngine?: import('./diagram').DiagramEngineLoader | false;
+  /** Standard entry only: fall back to Mermaid for a known unavailable type. Default true. */
+  mermaidFallback?: boolean;
   /** Text of the code block, as overrides of the English defaults. A function is called on every render. */
   labels?: LabelsOption<CodeBlockLabels>;
 }

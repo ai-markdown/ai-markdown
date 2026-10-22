@@ -1,5 +1,5 @@
 // Generated from the built public declaration. Review changes before updating.
-import { Component, ComputedRef, DefineComponent, VNodeChild } from "vue";
+import { Component, ComputedRef, DefineComponent, PropType, VNodeChild } from "vue";
 import { AIMDContentPreprocessor, AIMDContentPreprocessor as AIMDContentPreprocessor$1, AIMarkdownEnginePlugin, AIMarkdownEnginePlugin as AIMarkdownEnginePlugin$1, SanitizeSchema, SanitizeSchema as SanitizeSchema$1, SmoothStreamPacing, SmoothStreamPacing as SmoothStreamPacing$1, UrlTransform, UrlTransform as UrlTransform$1, createRemendPreprocessor, defaultEnginePlugins, defaultUrlTransform, definitionList, extendSanitizeSchema, highlight, pangu, preprocessLaTeX, removeComments, smartypants } from "@ai-markdown/engine";
 import "@ai-markdown/core";
 import { Element } from "hast";

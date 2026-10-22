@@ -1,0 +1,8 @@
+{
+  "name": "@ai-markdown/vue/components/diagram",
+  "private": true,
+  "main": "../../dist/components/diagram.cjs",
+  "module": "../../dist/components/diagram.js",
+  "types": "../../dist/components/diagram.d.ts",
+  "sideEffects": false
+}

@@ -1,0 +1,12 @@
+// Generated from the built public declaration. Review changes before updating.
+import { HTMLAttributes } from "react";
+import { DiagramEngineLoader, DiagramInput, DiagramInput as DiagramInput$1, DiagramState, DiagramState as DiagramState$1, DiagramView, DiagramView as DiagramView$1, createOndineLoader, createPeleLoader, preloadDiagramEngine } from "@ai-markdown/core/components";
+export declare function useDiagram(input: DiagramInput$1): {
+    state: DiagramState$1;
+    retry: () => void;
+};
+export interface DiagramViewportProps extends Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'dangerouslySetInnerHTML'> {
+    view: DiagramView$1;
+}
+export declare function DiagramViewport({ view, ...props }: DiagramViewportProps): import("react").JSX.Element;
+export { type DiagramEngineLoader, type DiagramInput, type DiagramState, type DiagramView, createOndineLoader, createPeleLoader, preloadDiagramEngine };

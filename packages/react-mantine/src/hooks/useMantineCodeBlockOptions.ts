@@ -12,6 +12,7 @@ import { resolveCodeBlockPolicy } from '@ai-markdown/core/components';
  * @module hooks/useMantineCodeBlockOptions
  */
 
+import { resolveDiagramInterval } from '@ai-markdown/core/components';
 import { useMemo } from 'react';
 import { useAIMarkdownBehaviors } from '@ai-markdown/react';
 import {
@@ -52,14 +53,13 @@ export function useMantineCodeBlockOptions(
       if (value !== undefined) (resolved as Record<string, unknown>)[key] = value;
     }
     Object.assign(resolved, resolveCodeBlockPolicy(overrides, group, defaultMantineCodeBlockOptions));
-    if (!Number.isFinite(resolved.mermaidIntervalMs) || resolved.mermaidIntervalMs < 0) {
-      resolved.mermaidIntervalMs = defaultMantineCodeBlockOptions.mermaidIntervalMs!;
-    }
+    resolved.mermaidIntervalMs = resolveDiagramInterval(resolved.mermaidIntervalMs);
     if (typeof resolved.languageFormat !== 'function' && !LANGUAGE_FORMATS.has(resolved.languageFormat)) {
       resolved.languageFormat = defaultMantineCodeBlockOptions.languageFormat!;
     }
     // No defaults here: each component merges its own label defaults at render time.
     resolved.highlighter = overrides?.highlighter ?? group?.highlighter;
+    resolved.mermaidEngine = overrides?.mermaidEngine ?? group?.mermaidEngine;
     resolved.labels = overrides?.labels ?? group?.labels;
     resolved.mermaidLabels = overrides?.mermaidLabels ?? group?.mermaidLabels;
     return resolved;

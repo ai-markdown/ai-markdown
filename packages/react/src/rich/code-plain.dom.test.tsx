@@ -259,7 +259,12 @@ test('hydrates a preloaded mutable adapter without allocating on the server or r
     },
   });
   const view = (body: string, streaming = false) => (
-    <AIMarkdown content={'```tsx\n' + body} streaming={streaming} streamingCursor={false} customComponents={{ pre }} />
+    <AIMarkdown
+      content={'```tsx\n' + body}
+      streaming={streaming}
+      streamingCursor={() => null}
+      customComponents={{ pre }}
+    />
   );
   container = document.createElement('div');
   container.innerHTML = renderToString(view('a'));

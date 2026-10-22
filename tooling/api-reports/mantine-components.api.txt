@@ -1,17 +1,14 @@
 // Generated from the built public declaration. Review changes before updating.
-import { MantineCodeBlockOptions } from "./defs-chunk.js";
-import { CodeRendererInput, MarkdownCodeBlockOptions, MarkdownCodeBlockProps, MarkdownCodeBlockProps as MarkdownCodeBlockProps$1 } from "@ai-markdown/react/components/code/plain";
+import { CodeRendererInput, MantineMarkdownCodeBlockOptions, MarkdownCodeBlockProps } from "./codeFactory-chunk.js";
+import { MarkdownCodeBlock, createMarkdownCodeBlock } from "./code-chunk.js";
 import { ImageIconName, ImageIconProps, ImageLabels, MarkdownImage, MarkdownImageIcon, MarkdownImageOptions, MarkdownImagePreviewOptions, createMarkdownImage } from "@ai-markdown/react/components/image";
 import { MarkdownTable, MarkdownTableOptions, TableLabels, createMarkdownTable } from "@ai-markdown/react/components/table";
-interface MantineMarkdownCodeBlockOptions extends Omit<MarkdownCodeBlockOptions, 'highlight' | 'highlighter' | 'languageFormat' | 'labels'>, Partial<MantineCodeBlockOptions> {
-}
-export declare function createMarkdownCodeBlock(options?: MantineMarkdownCodeBlockOptions): ({ node, children, ...props }: MarkdownCodeBlockProps$1) => import("react").JSX.Element;
-export declare const MarkdownCodeBlock: ({ node, children, ...props }: MarkdownCodeBlockProps$1) => import("react").JSX.Element;
-export { type CodeRendererInput, type ImageIconName, type ImageIconProps, type ImageLabels, type MantineMarkdownCodeBlockOptions, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImagePreviewOptions, MarkdownTable, type MarkdownTableOptions, type TableLabels, createMarkdownImage, createMarkdownTable };
+export { type CodeRendererInput, type ImageIconName, type ImageIconProps, type ImageLabels, type MantineMarkdownCodeBlockOptions, MarkdownCodeBlock, type MarkdownCodeBlockProps, MarkdownImage, type MarkdownImageIcon, type MarkdownImageOptions, type MarkdownImagePreviewOptions, MarkdownTable, type MarkdownTableOptions, type TableLabels, createMarkdownCodeBlock, createMarkdownImage, createMarkdownTable };
 
-// Relative declaration: dist/defs-chunk.d.ts
+// Relative declaration: dist/codeFactory-chunk.d.ts
 import { AIMarkdownMetadata } from "@ai-markdown/react";
-import { CodeBlockLabels, CodeBlockOptions, CodeLanguageFormat as MantineLanguageFormat, CodeLanguageResolver, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
+import { CodeBlockLabels, CodeBlockOptions, CodeLanguageFormat as MantineLanguageFormat, CodeLanguageResolver, DiagramEngineLoader, DiagramLabels, LabelsOption } from "@ai-markdown/core/components";
+import { CodeRendererInput, MarkdownCodeBlockOptions, MarkdownCodeBlockProps, MarkdownCodeBlockProps as MarkdownCodeBlockProps$1 } from "@ai-markdown/react/components/code/plain";
 export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'> {
     defaultExpanded: boolean;
     autoDetectUnknownLanguage: boolean;
@@ -20,6 +17,8 @@ export interface MantineCodeBlockOptions extends Omit<CodeBlockOptions, 'labels'
     expandNestedJson?: boolean;
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
+    mermaidEngine?: DiagramEngineLoader | false;
+    mermaidFallback?: boolean;
     labels?: LabelsOption<MantineCodeBlockLabels>;
     mermaidLabels?: LabelsOption<MantineMermaidLabels>;
 }
@@ -29,6 +28,8 @@ export interface MantineCodeBlockLabels extends CodeBlockLabels {
 }
 export declare const defaultMantineCodeBlockLabels: Readonly<MantineCodeBlockLabels>;
 export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed' | 'tooLarge'> {
+    loadFailed?: string;
+    retry?: string;
     errorTitle: string;
     render: string;
     renderTooltip: string;
@@ -43,9 +44,20 @@ export interface MantineMermaidLabels extends Pick<DiagramLabels, 'renderFailed'
     expand: string;
     collapse: string;
 }
-export declare const defaultMantineMermaidLabels: Readonly<MantineMermaidLabels>;
-export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'highlighter'>;
+export declare const defaultMantineMermaidLabels: Readonly<Required<MantineMermaidLabels>>;
+export type ResolvedMantineCodeBlockOptions = Required<Omit<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>> & Pick<MantineCodeBlockOptions, 'labels' | 'mermaidLabels' | 'mermaidEngine' | 'highlighter'>;
 export declare const defaultMantineCodeBlockOptions: Readonly<MantineCodeBlockOptions>;
 export interface MantineAIMarkdownMetadata extends AIMarkdownMetadata {
 }
-export { MantineLanguageFormat };
+export interface MantineMarkdownCodeBlockOptions extends Omit<MarkdownCodeBlockOptions, 'highlight' | 'highlighter' | 'languageFormat' | 'labels'>, Partial<MantineCodeBlockOptions> {
+}
+declare function createMarkdownCodeBlock$1(options: MantineMarkdownCodeBlockOptions & {
+    mermaidEngine: import('@ai-markdown/core/components').DiagramEngineLoader | false;
+}): ({ node, children, ...props }: MarkdownCodeBlockProps) => import("react").JSX.Element;
+export { type CodeRendererInput, MantineLanguageFormat, type MarkdownCodeBlockProps$1 as MarkdownCodeBlockProps, createMarkdownCodeBlock$1 as createMarkdownCodeBlock };
+
+// Relative declaration: dist/code-chunk.d.ts
+import { MantineMarkdownCodeBlockOptions } from "./codeFactory-chunk.js";
+export declare function createMarkdownCodeBlock(options?: MantineMarkdownCodeBlockOptions): ({ node, children, ...props }: import("@ai-markdown/react/components/code").MarkdownCodeBlockProps) => import("react").JSX.Element;
+export declare const MarkdownCodeBlock: ({ node, children, ...props }: import("@ai-markdown/react/components/code").MarkdownCodeBlockProps) => import("react").JSX.Element;
+export declare function preloadMantineCodeAssets(load?: import("@ai-markdown/core/components").DiagramEngineLoader): Promise<void>;

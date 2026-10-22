@@ -1,0 +1,37 @@
+// Generated from the built public declaration. Review changes before updating.
+import { MarkdownComponentProps } from "../../types-chunk.js";
+import { MarkdownCodeBlockOptions as MarkdownCodeBlockOptions$1 } from "../../code-plain-chunk.js";
+import { DiagramEngineLoader, DiagramEngineLoader as DiagramEngineLoader$1, DiagramLabels, LabelsOption, createOndineLoader, createPeleLoader, preloadDiagramEngine } from "@ai-markdown/core/components";
+interface MarkdownCodeBlockOptions extends MarkdownCodeBlockOptions$1 {
+    diagramLabels?: LabelsOption<DiagramLabels>;
+}
+export declare function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions & {
+    mermaidEngine: DiagramEngineLoader$1 | false;
+}): import("vue").DefineComponent<MarkdownComponentProps>;
+export { type DiagramEngineLoader, type MarkdownCodeBlockOptions, createOndineLoader, createPeleLoader, preloadDiagramEngine };
+
+// Relative declaration: dist/types-chunk.d.ts
+import { Element } from "hast";
+export interface MarkdownComponentProps {
+    node?: Element;
+    streaming?: boolean;
+    metadata?: unknown;
+}
+
+// Relative declaration: dist/code-plain-chunk.d.ts
+import { MarkdownComponentProps } from "./types-chunk.js";
+import { Component, ComputedRef, DefineComponent, VNodeChild } from "vue";
+import { CodeBlockInput, CodeBlockLabels, CodeBlockOptions, CodeBlockOptions as CodeBlockOptions$1, CodeHighlightAdapter, CodeHighlightInput, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, CodeRendererInput, LabelsOption as LabelsOption$1, createPierreHighlightAdapter, resolveCodeHighlightLanguage as resolveCodeHighlightLanguage$1 } from "@ai-markdown/core/components";
+export declare function useCodeBlock(input: ComputedRef<CodeBlockInput>): ComputedRef<import("@ai-markdown/core/components").CodeBlockSnapshot>;
+export declare function useCodeHighlight(input: ComputedRef<CodeHighlightInput>): {
+    result: ComputedRef<import("@ai-markdown/core/components").CodeHighlightSnapshot>;
+    retry: () => void;
+};
+export interface MarkdownCodeBlockOptions extends CodeBlockOptions {
+    renderers?: Readonly<Record<string, Component | false>>;
+    colorScheme?: 'light' | 'dark' | (() => 'light' | 'dark');
+    highlight?: (code: string, language: string) => VNodeChild;
+}
+export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): DefineComponent<MarkdownComponentProps>;
+export declare const MarkdownCodeBlock: DefineComponent<MarkdownComponentProps>;
+export { type CodeBlockLabels, type CodeBlockOptions$1 as CodeBlockOptions, type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type CodeRendererInput, type LabelsOption$1 as LabelsOption, createPierreHighlightAdapter, resolveCodeHighlightLanguage$1 as resolveCodeHighlightLanguage };

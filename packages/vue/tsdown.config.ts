@@ -54,6 +54,8 @@ export default defineConfig([
     ...shared,
     entry: {
       index: 'src/index.ts',
+      'components/diagram': 'src/rich/diagram.ts',
+      'components/code/independent': 'src/rich/code-independent.ts',
       'components/index': 'src/rich/index.ts',
       'components/code': 'src/rich/code.ts',
       'components/code/plain': 'src/rich/code-plain.ts',

@@ -1,10 +1,8 @@
 'use client';
-import { normalizeRenderers, type DiagramLabels, type LabelsOption } from '@ai-markdown/core/components';
-import {
-  createMarkdownCodeBlock as createPlain,
-  type MarkdownCodeBlockOptions as PlainCodeBlockOptions,
-} from './code-plain';
-import { createMermaidRenderer } from './mermaid';
+import { type DiagramLabels, type LabelsOption } from '@ai-markdown/core/components';
+import { type MarkdownCodeBlockOptions as PlainCodeBlockOptions } from './code-plain';
+import { loadMermaid } from './mermaid';
+import { createConfiguredCodeBlock } from './codeFactory';
 export type {
   MarkdownCodeBlockProps,
   CodeRendererInput,
@@ -17,17 +15,15 @@ export interface MarkdownCodeBlockOptions extends PlainCodeBlockOptions {
   /** Text of the built-in Mermaid renderer, as overrides of the English defaults. */
   diagramLabels?: LabelsOption<DiagramLabels>;
 }
-export { preloadCodeAssets } from './mermaid';
+export { preloadCodeAssets, loadMermaid } from './mermaid';
 export function createMarkdownCodeBlock(options: MarkdownCodeBlockOptions = {}) {
-  return createPlain({
-    ...options,
-    renderers: {
-      mermaid: createMermaidRenderer(options.mermaidIntervalMs, options.diagramLabels),
-      ...normalizeRenderers(options.renderers ?? {}),
-    },
-  });
+  return createConfiguredCodeBlock(options, loadMermaid);
 }
+
 export const MarkdownCodeBlock = createMarkdownCodeBlock();
+
+export { createPeleLoader, createOndineLoader } from '@ai-markdown/core/components';
+export type { DiagramEngineLoader } from '@ai-markdown/core/components';
 
 export {
   CodeLanguageFormat,

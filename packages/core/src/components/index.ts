@@ -83,5 +83,18 @@ export {
 } from './imageTransform';
 export type { ImageTransform, ImageGeometry } from './imageTransform';
 
+export { createPeleLoader, createOndineLoader } from './diagramEngines';
+export type { SvgRendererModule } from './diagramEngines';
+export type { SvgDiagramEngine, DiagramEngineLoader } from './diagram';
+
 export { createPierreHighlightAdapter } from './pierreHighlight';
 export type { PierreHighlightRuntime, PierreLiveTokenizer, PierreHighlightToken } from './pierreHighlight';
+
+export {
+  createCachedDiagramLoader,
+  preloadDiagramEngine,
+  resolveDiagramInterval,
+  UnsupportedDiagramError,
+} from './diagramPolicy';
+export type { DiagramInput } from './diagramPolicy';
+export type { DiagramAdapterOptions } from './diagramEngines';

@@ -81,23 +81,15 @@ The independent site owns the detailed API and guides. This README provides the 
 
 MIT
 
-### Shared highlighting policy
+### Optional diagram engines
 
-Code-block option resolution and language mapping now come from core; Mantine
-continues to use React's `useCodeBlock` and the consumer's
-`CodeHighlightAdapterProvider`. `MantineLanguageFormat` remains available as an
-alias of core's `CodeLanguageFormat`; custom language resolvers are also accepted.
-Custom renderer source previews use the same Provider, including asynchronous
-language loading. For shared adapters such as Pierre, pass `codeBlock={{ highlighter }}` or the
-`highlighter` factory option. This takes precedence and reuses the React per-block
-session, including native incremental highlighting while streaming. See [the shared architecture](../../apps/docs/content/guides/rich-components.md#shared-code-highlighting)
-and Storybook **Mantine / Code Highlighting** for the nine scenario groups.
+Mermaid remains the default; Pele and Ondine are optional adapters. Set `mermaidEngine`
+to a loader or `false` to disable diagrams. Normal entries default to Mermaid fallback
+only for an identified unsupported type; `mermaidFallback: false` disables it.
+Engine-specific options belong to `createPeleLoader` / `createOndineLoader`.
 
-For Pierre, create a shared `createPierreHighlightAdapter({ load })` from
-`@ai-markdown/core/components`, then pass `codeBlock={{ highlighter }}` to
-`MantineAIMarkdown`. The explicit adapter takes precedence over the consumer
-Provider and owns its language mapping; `languageFormat` need not be set.
-Incremental state is isolated per block through the React hook. Mark the document
-`streaming={false}` when it finishes to release live WASM instances. Existing
-Provider adapters remain unchanged when `highlighter` is omitted.
-See [the Pierre setup example](../../apps/docs/content/guides/rich-components.md#pierre-highlights).
+Use `components/code/independent` to supply an engine without importing Mermaid.
+React/Vue expose `useDiagram` and `DiagramViewport` at `components/diagram`.
+Mantine's `independent` entry exports `createMantineAIMarkdown` for the same dependency isolation.
+See the [complete guide](../../apps/docs/content/guides/rich-components.md#mermaid-pele-and-ondine)
+for setup, themes, lifetime contracts and support boundaries.

@@ -59,6 +59,23 @@ export declare function createCodeHighlightSession(onChange: () => void): {
     retry(): void;
     dispose(): void;
 };
+type MermaidConfig = {
+    theme?: string;
+    securityLevel?: string;
+    darkMode?: boolean;
+    suppressErrorRendering?: boolean;
+    maxTextSize?: number;
+    themeVariables?: unknown;
+};
+type MermaidInitTarget = {
+    initialize(config: MermaidConfig): void;
+    mermaidAPI?: {
+        getSiteConfig?: () => MermaidConfig;
+        getConfig?: () => MermaidConfig;
+    };
+};
+export declare const getMermaidMaxTextSize: (mermaid: MermaidInitTarget) => number;
+export declare const ensureMermaidInitialized: (mermaid: MermaidInitTarget, isDark: boolean) => void;
 type ImageActionIconName = 'rotateLeft' | 'rotateRight' | 'zoomIn' | 'zoomOut' | 'close' | 'prev' | 'next' | 'flipX' | 'flipY';
 type ImageIconName = 'placeholder' | 'error' | 'preview' | 'gallery' | ImageActionIconName;
 type ImageLoadStatus = 'loading' | 'ready' | 'error';
@@ -120,6 +137,64 @@ interface TableLabels extends Record<TableExportReason, string> {
     scrollRegion: string;
 }
 export declare const defaultTableLabels: Readonly<TableLabels>;
+interface DiagramEngine extends MermaidInitTarget {
+    kind?: 'mermaid';
+    parse(code: string): Promise<unknown>;
+    render(id: string, code: string): Promise<{
+        svg: string;
+        diagramType?: string;
+        bindFunctions?(element: object): void;
+    }>;
+}
+interface SvgDiagramEngine {
+    palette?: 'pele' | 'ondine';
+    kind: 'svg';
+    maxTextSize?: number;
+    render(id: string, code: string, dark: boolean): Promise<{
+        svg: string;
+        diagramType?: string;
+        bindFunctions?(element: object): void | (() => void);
+    }>;
+}
+type DiagramEngineLoader = () => Promise<DiagramEngine | SvgDiagramEngine>;
+type DiagramView = {
+    kind: 'source';
+} | {
+    kind: 'diagram';
+    svg: string;
+    chartType: string;
+    palette?: 'pele' | 'ondine';
+    dark?: boolean;
+    onBindError?: (error: unknown) => void;
+    bind?: (element: object) => void | (() => void);
+} | DiagramError;
+type DiagramError = {
+    kind: 'error';
+    reason: 'tooLarge';
+    length: number;
+    limit: number;
+} | {
+    kind: 'error';
+    reason: 'parse' | 'render';
+    message: string;
+};
+export declare function diagramErrorText(error: DiagramError, labels: Pick<DiagramLabels, 'tooLarge' | 'renderFailed'>): string;
+interface DiagramState {
+    view: DiagramView;
+    loadFailed: boolean;
+}
+interface DiagramRequest {
+    code: string;
+    dark: boolean;
+    streaming: boolean;
+    active: boolean;
+    interval: number;
+}
+export declare function createDiagramController(load: DiagramEngineLoader, publish: (state: DiagramState) => void, fallback?: DiagramEngineLoader): {
+    update(next: DiagramRequest): void;
+    retry(): void;
+    dispose(): void;
+};
 interface CodeBlockOptions {
     languageFormat?: CodeLanguageResolver;
     highlighter?: CodeHighlightAdapter;
@@ -129,6 +204,8 @@ interface CodeBlockOptions {
     expandNestedJson?: boolean;
     highlightIntervalMs?: number;
     mermaidIntervalMs?: number;
+    mermaidEngine?: DiagramEngineLoader | false;
+    mermaidFallback?: boolean;
     labels?: LabelsOption<CodeBlockLabels>;
 }
 type CodeBlockPolicy = Required<Pick<CodeBlockOptions, 'defaultExpanded' | 'autoDetectUnknownLanguage' | 'formatJson' | 'expandNestedJson' | 'highlightIntervalMs'>>;
@@ -191,66 +268,6 @@ export declare function jsonLooksComplete(text: string): boolean;
 export declare const mermaidRenderQueue: {
     enqueue(owner: object, run: () => Promise<void>): Promise<void>;
     cancel(owner: object): void;
-};
-type MermaidConfig = {
-    theme?: string;
-    securityLevel?: string;
-    darkMode?: boolean;
-    suppressErrorRendering?: boolean;
-    maxTextSize?: number;
-    themeVariables?: unknown;
-};
-type MermaidInitTarget = {
-    initialize(config: MermaidConfig): void;
-    mermaidAPI?: {
-        getSiteConfig?: () => MermaidConfig;
-        getConfig?: () => MermaidConfig;
-    };
-};
-export declare const getMermaidMaxTextSize: (mermaid: MermaidInitTarget) => number;
-export declare const ensureMermaidInitialized: (mermaid: MermaidInitTarget, isDark: boolean) => void;
-interface DiagramEngine extends MermaidInitTarget {
-    parse(code: string): Promise<unknown>;
-    render(id: string, code: string): Promise<{
-        svg: string;
-        diagramType?: string;
-        bindFunctions?(element: object): void;
-    }>;
-}
-type DiagramView = {
-    kind: 'source';
-} | {
-    kind: 'diagram';
-    svg: string;
-    chartType: string;
-    bind?: (element: object) => void;
-} | DiagramError;
-type DiagramError = {
-    kind: 'error';
-    reason: 'tooLarge';
-    length: number;
-    limit: number;
-} | {
-    kind: 'error';
-    reason: 'parse' | 'render';
-    message: string;
-};
-export declare function diagramErrorText(error: DiagramError, labels: Pick<DiagramLabels, 'tooLarge' | 'renderFailed'>): string;
-interface DiagramState {
-    view: DiagramView;
-    loadFailed: boolean;
-}
-interface DiagramRequest {
-    code: string;
-    dark: boolean;
-    streaming: boolean;
-    active: boolean;
-    interval: number;
-}
-export declare function createDiagramController(load: () => Promise<DiagramEngine>, publish: (state: DiagramState) => void): {
-    update(next: DiagramRequest): void;
-    retry(): void;
-    dispose(): void;
 };
 export declare function lockImagePreviewScroll(target: {
     style: {
@@ -375,6 +392,23 @@ export declare function createImagePreviewController(host: ImagePreviewHost, pub
     key(key: string): boolean;
     dispose(): void;
 };
+interface SvgRendererModule<Options extends object = {
+    idPrefix?: string;
+    limit?: number;
+}> {
+    render(source: string, options?: Options): {
+        svg: string;
+        type?: string;
+    } | Promise<{
+        svg: string;
+        type?: string;
+    }>;
+}
+interface DiagramAdapterOptions<Options extends object> {
+    renderOptions?: Omit<Options, 'idPrefix'>;
+}
+export declare function createPeleLoader<Options extends object>(load: () => Promise<SvgRendererModule<Options>>, options?: DiagramAdapterOptions<Options>): DiagramEngineLoader;
+export declare function createOndineLoader<Options extends object>(load: () => Promise<SvgRendererModule<Options>>, options?: DiagramAdapterOptions<Options>): DiagramEngineLoader;
 interface PierreHighlightToken {
     content: string;
     offset: number;
@@ -433,6 +467,23 @@ export declare function createPierreHighlightAdapter<Language extends string, Th
     load: () => Promise<PierreHighlightRuntime<Language, Theme>>;
     incremental?: boolean;
 }): CodeHighlightAdapter;
+export declare class UnsupportedDiagramError extends Error {
+    readonly diagramType: string;
+    constructor(diagramType: string);
+}
+export declare const resolveDiagramInterval: (value: number | undefined) => number;
+export declare function createCachedDiagramLoader(load: DiagramEngineLoader): DiagramEngineLoader;
+export declare function preloadDiagramEngine(load: DiagramEngineLoader): Promise<void>;
+interface DiagramInput {
+    code: string;
+    colorScheme: 'light' | 'dark';
+    streaming: boolean;
+    active: boolean;
+    resetKey: string;
+    intervalMs?: number;
+    load: DiagramEngineLoader;
+    fallback?: DiagramEngineLoader;
+}
 export interface CodeRendererInput {
     code: string;
     language: string;
@@ -441,4 +492,4 @@ export interface CodeRendererInput {
     active: boolean;
     resetKey: string;
 }
-export type { CodeBlockInput, CodeBlockLabels, CodeBlockOptions, CodeBlockPolicy, CodeBlockSnapshot, CodeFrame, CodeHighlightAdapter, CodeHighlightBackend, CodeHighlightInput, CodeHighlightRequest, CodeHighlightResult, CodeHighlightSnapshot, CodeHighlightToken, CodeLanguageResolver, CodeSource, DiagramEngine, DiagramError, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImagePointer, ImagePreviewAction, ImagePreviewHost, ImagePreviewOptions, ImagePreviewPhase, ImagePreviewState, ImageTransform, LabelsOption, MermaidInitTarget, PierreHighlightRuntime, PierreHighlightToken, PierreLiveTokenizer, TableExportReason, TableLabels, TableProjection };
+export type { CodeBlockInput, CodeBlockLabels, CodeBlockOptions, CodeBlockPolicy, CodeBlockSnapshot, CodeFrame, CodeHighlightAdapter, CodeHighlightBackend, CodeHighlightInput, CodeHighlightRequest, CodeHighlightResult, CodeHighlightSnapshot, CodeHighlightToken, CodeLanguageResolver, CodeSource, DiagramAdapterOptions, DiagramEngine, DiagramEngineLoader, DiagramError, DiagramInput, DiagramLabels, DiagramRequest, DiagramState, DiagramView, ImageActionIconName, ImageGallery, ImageGalleryItem, ImageGeometry, ImageIconName, ImageLabels, ImageLoadStatus, ImagePointer, ImagePreviewAction, ImagePreviewHost, ImagePreviewOptions, ImagePreviewPhase, ImagePreviewState, ImageTransform, LabelsOption, MermaidInitTarget, PierreHighlightRuntime, PierreHighlightToken, PierreLiveTokenizer, SvgDiagramEngine, SvgRendererModule, TableExportReason, TableLabels, TableProjection };

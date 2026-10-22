@@ -36,15 +36,14 @@ export { type CodeBlockLabels, type CodeBlockOptions$1 as CodeBlockOptions, type
 // Relative declaration: dist/code-chunk.d.ts
 import { MarkdownComponentProps } from "./types-chunk.js";
 import { MarkdownCodeBlockOptions as MarkdownCodeBlockOptions$1 } from "./code-plain-chunk.js";
-import "vue";
-import { CodeHighlightAdapter, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, DiagramLabels, DiagramLabels as DiagramLabels$1, LabelsOption, createPierreHighlightAdapter, resolveCodeHighlightLanguage as resolveCodeHighlightLanguage$1 } from "@ai-markdown/core/components";
-export declare function preloadCodeAssets(): Promise<void>;
+import { CodeHighlightAdapter, CodeHighlightRequest, CodeHighlightResult, CodeHighlightToken, CodeLanguageFormat, CodeLanguageResolver, DiagramEngineLoader, DiagramEngineLoader as DiagramEngineLoader$1, DiagramLabels, DiagramLabels as DiagramLabels$1, LabelsOption, createOndineLoader, createPeleLoader, createPierreHighlightAdapter, resolveCodeHighlightLanguage as resolveCodeHighlightLanguage$1 } from "@ai-markdown/core/components";
+export declare function preloadCodeAssets(load?: DiagramEngineLoader): Promise<void>;
 export interface MarkdownCodeBlockOptions extends MarkdownCodeBlockOptions$1 {
     diagramLabels?: LabelsOption<DiagramLabels>;
 }
 export declare function createMarkdownCodeBlock(options?: MarkdownCodeBlockOptions): import("vue").DefineComponent<MarkdownComponentProps>;
 export declare const MarkdownCodeBlock: import("vue").DefineComponent<MarkdownComponentProps>;
-export { type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type DiagramLabels$1 as DiagramLabels, createPierreHighlightAdapter, resolveCodeHighlightLanguage$1 as resolveCodeHighlightLanguage };
+export { type CodeHighlightAdapter, type CodeHighlightRequest, type CodeHighlightResult, type CodeHighlightToken, CodeLanguageFormat, type CodeLanguageResolver, type DiagramEngineLoader$1 as DiagramEngineLoader, type DiagramLabels$1 as DiagramLabels, createOndineLoader, createPeleLoader, createPierreHighlightAdapter, resolveCodeHighlightLanguage$1 as resolveCodeHighlightLanguage };
 
 // Relative declaration: dist/image-chunk.d.ts
 import { MarkdownComponentProps } from "./types-chunk.js";

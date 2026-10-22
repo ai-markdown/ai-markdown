@@ -4,7 +4,7 @@
 // same-input skip, the error tab and an unmount with a render in flight.
 // mermaid itself is mocked, as in streaming.dom.test.tsx; here the mock
 // also rejects parses of chosen sources and can hold a render open.
-import { afterEach, beforeAll, describe, expect, test, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, expectTypeOf, test, vi } from 'vitest';
 import { act } from 'react';
 import { createHighlightJsAdapter } from '@mantine/code-highlight';
 import hljs from 'highlight.js';
@@ -266,4 +266,66 @@ describe('unmount', () => {
     expect(document.querySelector('[data-mock-diagram]')).toBeNull();
     expect(error).not.toHaveBeenCalled();
   });
+});
+
+test('switches optional engines and back to Mermaid on the same block', async () => {
+  const { createPeleLoader } = await import('@ai-markdown/core/components');
+  const mermaidEngine = createPeleLoader(async () => ({
+    render: () => ({ svg: '<svg data-mock-diagram="pele"></svg>', type: 'flowchart' }),
+  }));
+  const container = await harness.mount(
+    <MantineAIMarkdown content={fence(BASE)} codeBlock={{ mermaidEngine }} />,
+    adapter
+  );
+  await settle();
+  expect(diagram(container)?.getAttribute('data-mock-diagram')).toBe('pele');
+  expect(mermaidMock.renders).toEqual([]);
+  await harness.update(<MantineAIMarkdown content={fence(BASE)} codeBlock={CODE_BLOCK} />);
+  await settle();
+  expect(diagram(container)?.getAttribute('data-mock-diagram')).toBe('1');
+});
+
+test('disabling diagrams keeps ordinary source without touching Mermaid', async () => {
+  const container = await harness.mount(
+    <MantineAIMarkdown content={fence(BASE)} codeBlock={{ mermaidEngine: false }} />,
+    adapter
+  );
+  await settle();
+  expect(container.querySelector('.aim-mantine-mermaid-code')).toBeNull();
+  expect(container.textContent).toContain('A-->B');
+  expect(mermaidMock.renders).toEqual([]);
+});
+
+test('load failure is visible and the current loader can be retried', async () => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  let offline = true;
+  const load = async () => {
+    if (offline) throw new Error('offline');
+    return { kind: 'svg' as const, render: async () => ({ svg: '<svg data-mock-diagram="recovered"/>' }) };
+  };
+  const container = await harness.mount(
+    <MantineAIMarkdown content={fence(BASE)} codeBlock={{ mermaidEngine: load }} />,
+    adapter
+  );
+  await settle();
+  for (let i = 0; i < 3; i++) {
+    await act(async () => {
+      vi.advanceTimersByTime(1500);
+    });
+    await settle();
+  }
+  expect(errorText(container)).toContain('load');
+  const retry = Array.from(container.querySelectorAll('button')).find(
+    (button) => button.textContent === 'Retry diagram'
+  );
+  expect(retry).toBeDefined();
+  offline = false;
+  await act(async () => retry!.click());
+  await settle();
+  expect(diagram(container)?.getAttribute('data-mock-diagram')).toBe('recovered');
+});
+
+test('legacy complete Mermaid labels remain assignable without the new retry labels', () => {
+  type Labels = import('../../../defs').MantineMermaidLabels;
+  expectTypeOf<Omit<Labels, 'loadFailed' | 'retry'>>().toExtend<Labels>();
 });

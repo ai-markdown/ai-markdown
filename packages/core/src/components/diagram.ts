@@ -1,9 +1,11 @@
 import { createCodeFrame, nextCodeFrame, type CodeFrame } from './codeFrame';
 import { mermaidRenderQueue } from './renderQueue';
 import { ensureMermaidInitialized, getMermaidMaxTextSize, type MermaidInitTarget } from './mermaid';
+import { UnsupportedDiagramError, resolveDiagramInterval } from './diagramPolicy';
 import type { DiagramLabels } from './labels';
 
 export interface DiagramEngine extends MermaidInitTarget {
+  kind?: 'mermaid';
   /** Resolves truthy for a source that parses; rejects, or resolves falsy, for one that does not. */
   parse(code: string): Promise<unknown>;
   render(
@@ -11,6 +13,24 @@ export interface DiagramEngine extends MermaidInitTarget {
     code: string
   ): Promise<{ svg: string; diagramType?: string; bindFunctions?(element: object): void }>;
 }
+
+/** A stateless SVG renderer. Output must be safe to insert into the document. */
+export interface SvgDiagramEngine {
+  /** Identifies the built-in CSS palette, not a capability registry. */
+  palette?: 'pele' | 'ondine';
+  kind: 'svg';
+  maxTextSize?: number;
+  render(
+    id: string,
+    code: string,
+    dark: boolean
+  ): Promise<{
+    svg: string;
+    diagramType?: string;
+    bindFunctions?(element: object): void | (() => void);
+  }>;
+}
+export type DiagramEngineLoader = () => Promise<DiagramEngine | SvgDiagramEngine>;
 
 /**
  * What the host shows. One value instead of separate flags whose combinations
@@ -22,7 +42,15 @@ export interface DiagramEngine extends MermaidInitTarget {
  */
 export type DiagramView =
   | { kind: 'source' }
-  | { kind: 'diagram'; svg: string; chartType: string; bind?: (element: object) => void }
+  | {
+      kind: 'diagram';
+      svg: string;
+      chartType: string;
+      palette?: 'pele' | 'ondine';
+      dark?: boolean;
+      onBindError?: (error: unknown) => void;
+      bind?: (element: object) => void | (() => void);
+    }
   | DiagramError;
 
 /**
@@ -117,7 +145,11 @@ const diagramId = () => `mermaid-${Date.now()}-${Math.random().toString(36).slic
  *   pending corrective pass, and is retried a bounded number of times.
  * - An attempt that has been superseded publishes nothing.
  */
-export function createDiagramController(load: () => Promise<DiagramEngine>, publish: (state: DiagramState) => void) {
+export function createDiagramController(
+  load: DiagramEngineLoader,
+  publish: (state: DiagramState) => void,
+  fallback?: DiagramEngineLoader
+) {
   const owner = {};
   let request: DiagramRequest | undefined;
   /** The latest source and its lineage, and the throttled frame attempts read. */
@@ -139,6 +171,7 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
   /** Inputs of the last run. A run with the same inputs does nothing. */
   let ran: { code: string; dark: boolean; active: boolean; streaming: boolean; nonce: number } | undefined;
   let epoch = 0;
+  let disposed = false;
   let retryTimer: ReturnType<typeof setTimeout> | undefined;
 
   const sameError = (a: DiagramError, b: DiagramError) =>
@@ -162,13 +195,10 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
 
   const attempt = async (code: string, dark: boolean, streaming: boolean, generation: number) => {
     const stale = () => generation !== epoch;
-    let engine: DiagramEngine;
-    try {
-      engine = await load();
-    } catch {
+    const loadFailedAttempt = () => {
       if (stale()) return;
       if (loadFailures < LOAD_RETRIES) {
-        loadFailures += 1;
+        loadFailures++;
         retryTimer = setTimeout(() => {
           retryTimer = undefined;
           nonce++;
@@ -178,34 +208,76 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
         loadFailed = true;
         emit();
       }
+    };
+    let engine: DiagramEngine | SvgDiagramEngine;
+    try {
+      engine = await load();
+    } catch {
+      loadFailedAttempt();
       return;
     }
-    loadFailures = 0;
     // Which step an exception came from. Everything but the parse itself counts as rendering.
     let reason: 'parse' | 'render' = 'render';
     try {
       if (stale()) return;
-      // Initialization, parsing and rendering share one queued task, so another
-      // diagram cannot change the theme in between.
-      ensureMermaidInitialized(engine, dark);
-      // The engine would resolve an oversized render with a placeholder diagram.
-      // The raw length is compared; the engine measures the text after stripping
-      // front matter and directives, so a source within a few bytes of the limit
-      // can be refused here that it would still have rendered.
-      const maxTextSize = getMermaidMaxTextSize(engine);
-      if (code.length > maxTextSize) {
-        throw new DiagramFailure({ kind: 'error', reason: 'tooLarge', length: code.length, limit: maxTextSize });
+      const render = async (target: DiagramEngine | SvgDiagramEngine) => {
+        if (target.kind !== 'svg') ensureMermaidInitialized(target, dark);
+        const maxTextSize = target.kind === 'svg' ? (target.maxTextSize ?? 50_000) : getMermaidMaxTextSize(target);
+        if (code.length > maxTextSize)
+          throw new DiagramFailure({ kind: 'error', reason: 'tooLarge', length: code.length, limit: maxTextSize });
+        reason = 'parse';
+        if (target.kind !== 'svg' && !(await target.parse(code)))
+          throw new DiagramFailure({ kind: 'error', reason: 'parse', message: '' });
+        reason = 'render';
+        if (stale()) return undefined;
+        return target.kind === 'svg' ? target.render(diagramId(), code, dark) : target.render(diagramId(), code);
+      };
+      let result;
+      try {
+        result = await render(engine);
+      } catch (error) {
+        // Only adapters can classify a known, unavailable diagram type. No error-message guessing.
+        if (!(error instanceof UnsupportedDiagramError) || !fallback || stale()) throw error;
+        try {
+          engine = await fallback();
+        } catch {
+          loadFailedAttempt();
+          return;
+        }
+        if (stale()) return;
+        result = await render(engine); // One fallback, never a chain.
       }
-      reason = 'parse';
-      if (!(await engine.parse(code))) throw new DiagramFailure({ kind: 'error', reason: 'parse', message: '' });
-      reason = 'render';
+      if (!result) return;
+      const { svg, bindFunctions, diagramType } = result;
       if (stale()) return;
-      const { svg, bindFunctions, diagramType } = await engine.render(diagramId(), code);
-      if (stale()) return;
+      loadFailures = 0;
+      // Keep only one rollback SVG, never a chain of closures retaining the entire stream.
+      const previousView: DiagramView = view.kind === 'diagram' ? { ...view, onBindError: undefined } : view;
+      if (previousView.kind === 'diagram') {
+        previousView.onBindError = (error) => {
+          if (disposed || view !== previousView) return;
+          lastSuccess = undefined;
+          show({ kind: 'error', reason: 'render', message: engineMessage(error) });
+        };
+      }
+      const corrective = needsCorrective;
       needsCorrective = false;
       lastSuccess = { code, dark };
       loadFailed = false;
-      show({ kind: 'diagram', svg, chartType: diagramType ?? '', bind: bindFunctions });
+      const nextView: Extract<DiagramView, { kind: 'diagram' }> = {
+        kind: 'diagram',
+        svg,
+        chartType: diagramType ?? '',
+        bind: bindFunctions,
+        ...(engine.kind === 'svg' ? { palette: engine.palette, dark } : {}),
+        onBindError(error) {
+          if (disposed || view !== nextView) return;
+          lastSuccess = undefined;
+          if (streaming || (!corrective && previousView.kind === 'diagram')) show(previousView);
+          else show({ kind: 'error', reason: 'render', message: engineMessage(error) });
+        },
+      };
+      show(nextView);
     } catch (error) {
       if (stale()) return;
       // Expected while the source is still arriving. The corrective pass reports real errors.
@@ -251,7 +323,19 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
       needsCorrective = true;
     }
     previousStreaming = streaming;
-    if (!code || !active) return;
+    if (!code) {
+      // An empty final source has no diagram. Clear both the SVG and the
+      // successful-input cache so restoring the source renders it again.
+      lastSuccess = undefined;
+      needsCorrective = false;
+      if (view.kind !== 'source' || loadFailed) {
+        view = { kind: 'source' };
+        loadFailed = false;
+        emit();
+      }
+      return;
+    }
+    if (!active) return;
     // The diagram on screen came from exactly this source and theme. That render
     // is also the verdict a pending corrective pass was waiting for.
     if (lastSuccess?.code === code && lastSuccess.dark === dark) {
@@ -264,7 +348,8 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
 
   return {
     update(next: DiagramRequest) {
-      request = next;
+      disposed = false;
+      request = { ...next, interval: resolveDiagramInterval(next.interval) };
       updating = true;
       try {
         if (!frames || !current) {
@@ -276,7 +361,7 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
         } else {
           current = nextCodeFrame(current, next.code, '');
         }
-        frames.update(current, next.streaming, next.interval);
+        frames.update(current, next.streaming, request.interval);
       } finally {
         updating = false;
       }
@@ -284,16 +369,19 @@ export function createDiagramController(load: () => Promise<DiagramEngine>, publ
     },
     /** Attempts again on unchanged inputs, with a fresh download budget. */
     retry() {
+      if (disposed) return;
       loadFailures = 0;
       if (loadFailed) {
         loadFailed = false;
         emit();
       }
+      lastSuccess = undefined;
       nonce++;
       run();
     },
     // Cancellation is reversible: the next update runs again, even on unchanged inputs.
     dispose() {
+      disposed = true;
       cancel();
       frames?.dispose();
       ran = undefined;
