@@ -95,7 +95,7 @@
     "@eslint/js": "^10.0.1",
     "@storybook/addon-a11y": "10.6.1",
     "@storybook/addon-docs": "10.6.1",
-    "@storybook/addon-vitest": "10.6.1",
+    "@storybook/addon-vitest": "10.6.2",
     "@storybook/react-vite": "10.6.1",
     "@storybook/vue3-vite": "10.6.1",
     "@types/react": "^19.2.18",
