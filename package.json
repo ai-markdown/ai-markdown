@@ -117,7 +117,7 @@
     "publint": "^0.3.25",
     "react-scan": "^0.5.7",
     "sass": "^1.105.1",
-    "storybook": "10.6.1",
+    "storybook": "10.6.2",
     "tsdown": "0.23.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.58.2",
