@@ -41,7 +41,7 @@
 npm install @ai-markdown/engine
 ```
 
-提供双格式 ESM/CJS 构建并均附带类型声明。ESM 保持流水线依赖为外部依赖。CJS 构建打包了仅提供 ESM 默认导出的插件，以便 Node 能够接收可调用的插件，且不会尝试通过 `require` 去解析仅支持 import 的 `remend` 入口。打包的第三方开源许可证位于 `dist/THIRD_PARTY_LICENSES.txt` 中。无 React 依赖。唯一的对等依赖是 `katex`（`^0.16 || ^0.17`，**可选** —— 仅在渲染数学公式时需要）。流水线还会通过 `rehype-katex` 传递引入 KaTeX。如果你的应用需要引入 KaTeX CSS 样式，请直接声明 KaTeX 依赖，以便样式导入能够独立于依赖提升进行解析。纯语法树使用方无需加载浏览器样式表。
+提供双格式 ESM/CJS 构建并均附带类型声明。ESM 保持流水线依赖为外部依赖。CJS 构建打包了仅提供 ESM 默认导出的插件，以便 Node 能够接收可调用的插件，且不会尝试通过 `require` 去解析仅支持 import 的 `remend` 入口。打包的第三方开源许可证位于 `dist/THIRD_PARTY_LICENSES.txt` 中。无 React 依赖。唯一的对等依赖是 `katex`（`^0.16 || ^0.17 || ^0.18.2`，**可选** —— 仅在渲染数学公式时需要）。流水线还会通过 `rehype-katex` 传递引入 KaTeX。如果你的应用需要引入 KaTeX CSS 样式，请直接声明 KaTeX 依赖，以便样式导入能够独立于依赖提升进行解析。纯语法树使用方无需加载浏览器样式表。
 
 <span id="example-the-latex-preprocessor-on-its own"></span>
 <span id="example-the-latex-preprocessor-on-its-own"></span>

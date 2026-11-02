@@ -69,6 +69,11 @@ updates:
         update-types:
           - version-update:semver-minor
     groups:
+      # Keep security fixes together across this shared-lockfile workspace.
+      security-updates:
+        applies-to: security-updates
+        patterns:
+          - '*'
       # Family groups come first and the dependency-type groups exclude
       # them explicitly: workspace consumers classify the same package as
       # production or development, and without the exclusions Dependabot

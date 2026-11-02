@@ -77,9 +77,12 @@ Object.assign(dependencies, {
     ])
   ),
   'highlight.js': '^11.11.2',
-  katex: '^0.17.0',
+  katex: '0.18.2',
   typescript: '^6.0.3',
 });
+// The rich browser fixture uses default code blocks, whose Mermaid renderer
+// requires the optional peer. Plain consumer checks still omit it deliberately.
+if (process.argv.includes('--browser')) dependencies.mermaid = manifestFor('react').peerDependencies.mermaid;
 // Local checks use the exact installed host versions; registry checks need no workspace build.
 if (!releaseTag) {
   for (const [dir, names] of [

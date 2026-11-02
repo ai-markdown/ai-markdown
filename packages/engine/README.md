@@ -37,7 +37,7 @@ For definition-label scanning, use `collectDefLabels(source, { math: true })` or
 npm install @ai-markdown/engine
 ```
 
-Dual ESM/CJS build with types for both. ESM keeps pipeline dependencies external. The CJS build bundles ESM-only default-export plugins so Node receives callable plugins and does not try to resolve the import-only `remend` entry through `require`. Bundled third-party licenses ship in `dist/THIRD_PARTY_LICENSES.txt`. No React dependency. The only peer is `katex` (`^0.16 || ^0.17`, **optional** — needed only if you render math). The pipeline also receives KaTeX transitively through `rehype-katex`. If your application imports KaTeX CSS, declare KaTeX directly so the import resolves independently of dependency hoisting. A tree-only consumer does not need to load a browser stylesheet.
+Dual ESM/CJS build with types for both. ESM keeps pipeline dependencies external. The CJS build bundles ESM-only default-export plugins so Node receives callable plugins and does not try to resolve the import-only `remend` entry through `require`. Bundled third-party licenses ship in `dist/THIRD_PARTY_LICENSES.txt`. No React dependency. The only peer is `katex` (`^0.16 || ^0.17 || ^0.18.2`, **optional** — needed only if you render math). The pipeline also receives KaTeX transitively through `rehype-katex`. If your application imports KaTeX CSS, declare KaTeX directly so the import resolves independently of dependency hoisting. A tree-only consumer does not need to load a browser stylesheet.
 
 ## Example: the LaTeX preprocessor on its own
 

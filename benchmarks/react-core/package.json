@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@ai-markdown/react": "workspace:*",
-    "katex": "^0.17.0",
+    "katex": "0.18.2",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -21,6 +21,6 @@
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^5.1.0",
     "typescript": "^6.0.3",
-    "vite": "^7.3.7"
+    "vite": "^8.3.5"
   }
 }
