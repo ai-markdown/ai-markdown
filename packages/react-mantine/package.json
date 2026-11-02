@@ -120,10 +120,10 @@
     "@mantine/hooks": "^9.6.3",
     "@tsdown/css": "0.23.0",
     "@types/node": "^25.9.9",
-    "autoprefixer": "^10.6.1",
+    "autoprefixer": "^10.6.2",
     "highlight.js": "^11.11.2",
-    "postcss": "^8.5.29",
-    "sass-embedded": "^1.105.1",
+    "postcss": "^8.5.32",
+    "sass-embedded": "^1.106.1",
     "mermaid": "^11.17.2"
   },
   "typesVersions": {

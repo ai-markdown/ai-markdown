@@ -119,7 +119,7 @@
     "@types/unist": "^3.0.3",
     "fast-check": "^4.10.2",
     "hast-util-sanitize": "^5.0.2",
-    "hastscript": "^9.0.1",
+    "hastscript": "^9.0.2",
     "lodash-es": "^4.18.0"
   }
 }
