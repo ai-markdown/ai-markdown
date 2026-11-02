@@ -56,10 +56,19 @@ minimumReleaseAgeExclude:
 #     below, which is what the intent was: keep TS 7 out, touch nothing else.
 overrides:
   # Security floors, including the follow-up IN_PLACE sanitization fix.
-  dompurify: ^3.4.16
+  dompurify: ^3.4.17
+  # Align rehype-katex rendering with the workspace stylesheet and patched release.
+  # Pin: 0.18.11 was deprecated upstream for accidental breaking changes.
+  katex: 0.18.2
+  source-map-js@>=1.0.0 <1.2.2: '>=1.2.2 <2'
+  vite@>=8.2.0 <8.2.4: '>=8.2.4 <9'
+  zod@>=4.0.0 <4.6.6: '>=4.6.6 <5'
+  # These tooling fixes are only available in the next major.
+  minimatch@>=10.0.0 <11.0.1: '>=11.0.1 <12'
+  glob@>=9.0.0 <14.0.2: '>=14.0.2 <15'
   uuid: ^11.1.1
   # Security fixes for comma parsing and attacker-controlled isBuffer.
-  qs@<6.16.0: '>=6.16.0 <7'
+  qs@<6.16.1: '>=6.16.1 <7'
   # Keep recursive-copy symlink handling within the patched 0.16 line.
   '@humanfs/node@>=0.16.0 <0.16.8': '>=0.16.8 <0.17'
   # Scoped CVE remediations. Bound BOTH ends: with a bare `>=x` the resolver
@@ -68,7 +77,7 @@ overrides:
   # declares.
   #
   # Include bracket-host validation and percent-encoded host normalization.
-  fast-uri@>=3.0.0 <3.1.8: '>=3.1.8 <4'
+  fast-uri@>=3.0.0 <3.1.9: '>=3.1.9 <4'
   # GHSA prototype-write / crash, vulnerable `<= 4.28.6`, patched 4.28.7.
   # Dev-only: babel's `helper-compilation-targets` (via stryker) and
   # `update-browserslist-db`. Every dependent declares `^4.24.0`, so this
@@ -86,7 +95,7 @@ overrides:
   # Include follow-up recursion and quadratic-expansion fixes.
   brace-expansion@>=3.0.0 <5.0.12: '>=5.0.12 <6'
   # Transitive security fixes within their existing major versions.
-  undici@>=8.0.0 <8.10.2: '>=8.10.2 <9'
+  undici@>=8.0.0 <8.12.2: '>=8.12.2 <9'
   devalue@>=5.0.0 <5.9.3: '>=5.9.3 <6'
   # Docs site only (Astro, Starlight, expressive-code); none of these reaches
   # a published package.

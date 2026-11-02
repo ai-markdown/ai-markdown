@@ -78,7 +78,7 @@ React 适配器将 `@ai-markdown/core` 与 `@ai-markdown/engine` 作为常规依
 {
   "react": "^19.0.0",
   "react-dom": "^19.0.0",
-  "katex": "^0.16.0 || ^0.17.0"
+  "katex": "^0.16.0 || ^0.17.0 || ^0.18.2"
 }
 ```
 

@@ -77,7 +77,7 @@ Object.assign(dependencies, {
     ])
   ),
   'highlight.js': '^11.11.2',
-  katex: '^0.17.0',
+  katex: '0.18.2',
   typescript: '^6.0.3',
 });
 // Local checks use the exact installed host versions; registry checks need no workspace build.

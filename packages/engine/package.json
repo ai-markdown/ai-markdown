@@ -74,7 +74,7 @@
     "soak:coverage": "node ../../scripts/soak/assert-coverage-map.mjs"
   },
   "peerDependencies": {
-    "katex": "^0.16.0 || ^0.17.0"
+    "katex": "^0.16.0 || ^0.17.0 || ^0.18.2"
   },
   "peerDependenciesMeta": {
     "katex": {

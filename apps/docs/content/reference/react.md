@@ -68,7 +68,7 @@ The React adapter declares both `@ai-markdown/core` and `@ai-markdown/engine` as
 {
   "react": "^19.0.0",
   "react-dom": "^19.0.0",
-  "katex": "^0.16.0 || ^0.17.0"
+  "katex": "^0.16.0 || ^0.17.0 || ^0.18.2"
 }
 ```
 
