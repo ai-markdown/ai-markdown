@@ -41,6 +41,9 @@
  * @module preprocessors/remend
  */
 
+// Keep remend pinned to 1.3.1 until incomplete-image placeholders are supported.
+// 1.4 emits streamdown:incomplete-image instead of dropping unfinished images;
+// our URL sanitizer rejects that protocol, leaving a broken image while streaming.
 import remend, { type RemendOptions } from 'remend';
 import type { AIMDContentPreprocessor } from './defs';
 
