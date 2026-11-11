@@ -6,6 +6,29 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.5.1 — Dependency maintenance and reliable browser checks
+
+### 3.5.1
+
+This patch aligns engine, core, React, Vue and Mantine at `3.5.1`. The independent highlight plugin advances to `1.0.4` for its parsing dependency updates; the code-language detector remains at `1.1.1`.
+
+#### Rendering and dependencies
+
+- Image preview buttons in React and Vue now use their visible loading or error feedback as the accessible name while disabled. Once the image loads, they expose the configured preview action again. Mantine inherits the React fix.
+- Update the parsing dependencies from PR #90: `unist-util-visit`, the CJK-friendly remark plugins, definition lists, and the highlight plugin's mdast/micromark utilities. Keep remend pinned at `1.3.1`; `1.4.0` emits unfinished-image placeholders that this renderer does not support.
+- Include the dependency security maintenance and Mantine/development tooling updates since `3.5.0`. The KaTeX peer ranges accept `0.18.2` alongside the existing supported lines; the workspace renderer and stylesheet remain aligned at `0.18.2`.
+- Preserve Vue's published `^3.5.0` peer range while testing with Vue `3.5.45`. Explicit React test dependencies keep workspace tests on one framework instance. No public component or option is removed.
+
+#### Validation infrastructure
+
+Browser checks use official Playwright containers matching the lockfile, with the visual-test image pinned by digest. The workflows no longer install browser system dependencies from Ubuntu mirrors on every run. Browser startup preflight, bounded setup times, container ownership fixes and cancellation of obsolete Pages PR checks make infrastructure failures surface promptly. Performance comparisons resolve each revision's framework consistently across its library and test harness. Existing visual snapshots remain unchanged.
+
+#### Verification
+
+The local preflight passed all 23 steps: 3,361 unit tests (one existing todo), 239 Storybook tests, builds, type checks, lint/format, public API and package checks, packed consumers, static and development Storybook acceptance, document lifetime checks, and Vue contracts in Chromium, Firefox and WebKit. The first concurrent run hit timing limits while the soak occupied the machine; the complete rerun passed with separate CPU cores and unchanged test budgets and thresholds. WebKit used additional runtime libraries in the local browser cache. PR CI also passed, including the Node consumer matrix, browser checks, performance comparisons and existing visual baselines.
+
+The fresh release-profile soak on source commit `575d41515768787b15287b2abc2adc9e20ef6fcf`, seed base `2026111200`, passed all six legs and 84/84 logical shards in 11,394 seconds (about 3 hours 10 minutes). Run `v351-release-575d415-2026111200` used 14 workers and the full release budgets. The source tree remained clean and unchanged throughout. Release evidence is validated again against the final candidate before tagging; the tagged release workflow separately verifies published artifacts.
+
 ## 3.5.0 — Shared highlighting and optional diagram engines
 
 ### 3.5.0
