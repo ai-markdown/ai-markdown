@@ -127,7 +127,7 @@
     "url": "https://github.com/ai-markdown/ai-markdown/issues"
   },
   "peerDependencies": {
-    "vue": "^3.5.44",
+    "vue": "^3.5.0",
     "katex": "^0.16 || ^0.17 || ^0.18.2",
     "mermaid": "^11.17.2"
   },

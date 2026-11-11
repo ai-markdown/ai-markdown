@@ -115,6 +115,8 @@
     "postcss-cli": "^11.0.1",
     "prettier": "^3.9.9",
     "publint": "^0.3.25",
+    "react": "19.2.8",
+    "react-dom": "19.2.8",
     "react-scan": "^0.5.7",
     "sass": "^1.106.1",
     "storybook": "10.6.5",
