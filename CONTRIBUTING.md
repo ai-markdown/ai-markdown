@@ -59,6 +59,8 @@ pnpm preflight
 
 CI runs static checks, package and browser tests, build/export validation and soak-impact reporting on every PR. See the [development command reference](https://ai-markdown.github.io/docs/guides/development-commands/) for prerequisites, focused checks and compatibility aliases. `preflight` does not run a long soak or validate release approval.
 
+Browser jobs use the official Playwright `noble` container, selected from the exact root version in `pnpm-lock.yaml` by `.github/workflows/browser-environment.yml`. Updating the lockfile updates the image automatically. Browsers and their system libraries are already installed; do not add `playwright install --with-deps` to these jobs. Package installation has a five-minute timeout, separate from each job's test budget. To check image selection locally, run `node --test scripts/ci/playwright-image.test.mjs` and `node scripts/ci/playwright-image.mjs`. Pages cancels obsolete PR runs while preserving production deployment sequencing.
+
 Vitest 5 caches transformed Node test modules on disk (`fsModuleCache`), including across soak shard processes. Tests still evaluate in isolated workers with their own seed and environment. To discard the cache, run `pnpm exec vitest --clearCache`; `--fsModuleCache=false` disables it for a diagnostic test run. Browser tests use their own Vite cache.
 
 Storybook 10.6.0's peer ranges predate Vitest 5. The workspace allows only the tested 5.0.1 combination and explicitly preserves the previous 1200×900 browser viewport. Mutation testing disables the disk module cache and carries a pnpm patch for Stryker 9.6.1: both its coverage IDs and test-name filters must use Vitest 5's `>` suite separator, otherwise mutants silently run zero tests.
