@@ -11,6 +11,7 @@ import { cpus, platform, arch } from 'node:os';
 import { chromium } from 'playwright';
 import { SCENARIOS, STEPS } from './workload.mjs';
 import { compare } from './compare.mjs';
+import { frameworkAliases } from './framework-aliases.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '../..');
@@ -53,7 +54,7 @@ const report = {
     ])
   ),
   harnessHash: hash(
-    ['workload.mjs', 'react.mjs', 'vue.mjs', 'compare.mjs', 'run.mjs']
+    ['workload.mjs', 'react.mjs', 'vue.mjs', 'compare.mjs', 'framework-aliases.mjs', 'run.mjs']
       .map((f) => readFileSync(resolve(here, f)))
       .join('\n')
   ),
@@ -96,6 +97,7 @@ try {
         target: 'es2022',
         nodePaths: [resolve(packageDir, 'node_modules')],
         alias: {
+          ...frameworkAliases(packageDir, adapter),
           [`@ai-markdown/${adapter}`]: resolve(packageDir, manifest.exports['.'].import),
           [`@ai-markdown/${adapter}/${style}`]: resolve(packageDir, `dist/${style}`),
         },

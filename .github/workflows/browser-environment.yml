@@ -1,0 +1,40 @@
+name: Browser environment
+
+on:
+  workflow_call:
+    inputs:
+      repository:
+        type: string
+        default: ''
+      ref:
+        type: string
+        default: ''
+    outputs:
+      image:
+        description: Playwright image matching the root lockfile
+        value: ${{ jobs.resolve.outputs.image }}
+      revision:
+        description: Exact source revision used to select the image
+        value: ${{ jobs.resolve.outputs.revision }}
+
+permissions:
+  contents: read
+
+jobs:
+  resolve:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      image: ${{ steps.image.outputs.image }}
+      revision: ${{ steps.revision.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ inputs.repository || github.repository }}
+          ref: ${{ inputs.ref || github.sha }}
+      - name: Test image selection
+        run: node --test scripts/ci/playwright-image.test.mjs
+      - id: image
+        run: node scripts/ci/playwright-image.mjs
+      - id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"

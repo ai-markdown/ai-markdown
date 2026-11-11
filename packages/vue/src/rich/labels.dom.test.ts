@@ -158,10 +158,12 @@ test('image: the thumbnail uses the supplied text', async () => {
     })
   );
   expect(scope.querySelector('.aimd-image-feedback')?.textContent).toBe('图片加载中…');
+  expect(scope.querySelector('button.aimd-image-trigger')?.hasAttribute('aria-label')).toBe(false);
   const [cat, dog] = scope.querySelectorAll('img');
   cat.dispatchEvent(new Event('load'));
   dog.dispatchEvent(new Event('error'));
   await settle();
   expect(scope.querySelector('button.aimd-image-trigger')?.getAttribute('aria-label')).toBe('预览图片：一只猫');
   expect(scope.querySelector('.aimd-image-feedback[role="alert"]')?.textContent).toBe('图片无法加载。 狗');
+  expect(scope.querySelectorAll('button.aimd-image-trigger')[1]?.hasAttribute('aria-label')).toBe(false);
 });
