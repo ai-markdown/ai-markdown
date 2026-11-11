@@ -6,6 +6,23 @@ Read an entry as a statement about that version. Older configuration names, depe
 
 Verification counts are historical results reported for the corresponding candidate. They are not newly executed checks for this documentation revision. Likewise, a clean fuzz or soak campaign establishes the result for its input families and configuration; later entries explain where expanding those families exposed additional defects.
 
+## 3.5.1 — Dependency maintenance and reliable browser checks
+
+### 3.5.1
+
+This patch aligns engine, core, React, Vue and Mantine at `3.5.1`. The independent highlight plugin advances to `1.0.4` for its parsing dependency updates; the code-language detector remains at `1.1.1`.
+
+#### Rendering and dependencies
+
+- Image preview buttons in React and Vue now use their visible loading or error feedback as the accessible name while disabled. Once the image loads, they expose the configured preview action again. Mantine inherits the React fix.
+- Update the parsing dependencies from PR #90: `unist-util-visit`, the CJK-friendly remark plugins, definition lists, and the highlight plugin's mdast/micromark utilities. Keep remend pinned at `1.3.1`; `1.4.0` emits unfinished-image placeholders that this renderer does not support.
+- Include the dependency security maintenance and Mantine/development tooling updates since `3.5.0`. The KaTeX peer ranges accept `0.18.2` alongside the existing supported lines; the workspace renderer and stylesheet remain aligned at `0.18.2`.
+- Preserve Vue's published `^3.5.0` peer range while testing with Vue `3.5.45`. Explicit React test dependencies keep workspace tests on one framework instance. No public component or option is removed.
+
+#### Validation infrastructure
+
+Browser checks use official Playwright containers matching the lockfile, with the visual-test image pinned by digest. The workflows no longer install browser system dependencies from Ubuntu mirrors on every run. Browser startup preflight, bounded setup times, container ownership fixes and cancellation of obsolete Pages PR checks make infrastructure failures surface promptly. Performance comparisons resolve each revision's framework consistently across its library and test harness. Existing visual snapshots remain unchanged.
+
 ## 3.5.0 — Shared highlighting and optional diagram engines
 
 ### 3.5.0
