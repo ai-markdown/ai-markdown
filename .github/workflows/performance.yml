@@ -12,6 +12,7 @@ on:
       - '.github/workflows/performance.yml'
       - '.github/workflows/browser-environment.yml'
       - 'scripts/ci/**'
+      - 'tests/visual/environment.json'
   pull_request:
     branches: [main]
     paths:
@@ -23,6 +24,7 @@ on:
       - '.github/workflows/performance.yml'
       - '.github/workflows/browser-environment.yml'
       - 'scripts/ci/**'
+      - 'tests/visual/environment.json'
 
 permissions:
   contents: read

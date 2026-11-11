@@ -49,3 +49,11 @@ test('the current lockfile produces a versioned official image', () => {
     /^mcr\.microsoft\.com\/playwright:v\d+\.\d+\.\d+-noble$/
   );
 });
+
+test('uses the reviewed image digest only for its matching Playwright version', () => {
+  const image = `mcr.microsoft.com/playwright:v1.64.1-noble@sha256:${'a'.repeat(64)}`;
+  const reviewed = { playwrightVersion: '1.64.1', image };
+  assert.equal(playwrightImage(fixture('1.64.1'), reviewed), image);
+  assert.equal(playwrightImage(fixture('1.65.0'), reviewed), 'mcr.microsoft.com/playwright:v1.65.0-noble');
+  assert.throws(() => playwrightImage(fixture('1.64.1'), { ...reviewed, image: 'untrusted:latest' }), /Invalid pinned/);
+});

@@ -263,6 +263,8 @@ jobs:
     container:
       image: ${{ needs.browser-environment.outputs.image }}
       options: --init --ipc=host
+    env:
+      AIMD_BROWSER_IMAGE: ${{ needs.browser-environment.outputs.image }}
     defaults:
       run:
         shell: bash
