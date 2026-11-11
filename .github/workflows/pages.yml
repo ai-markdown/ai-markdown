@@ -13,24 +13,49 @@ permissions:
 
 concurrency:
   group: pages-${{ github.event.pull_request.number || 'production' }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  browser-environment:
+    if: github.repository == 'ai-markdown/ai-markdown.github.io' || github.event_name == 'pull_request'
+    uses: ./.github/workflows/browser-environment.yml
+    with:
+      repository: ai-markdown/ai-markdown
+      ref: ${{ github.repository == 'ai-markdown/ai-markdown' && github.sha || 'main' }}
+
   build:
     # Only the organization site publishes content; PRs still validate builds.
     if: github.repository == 'ai-markdown/ai-markdown.github.io' || github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    needs: browser-environment
+    runs-on: ubuntu-24.04
+    container:
+      image: ${{ needs.browser-environment.outputs.image }}
+      options: --init --ipc=host
+    defaults:
+      run:
+        shell: bash
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
         with:
           repository: ai-markdown/ai-markdown
-          ref: ${{ github.repository == 'ai-markdown/ai-markdown' && github.ref || 'main' }}
+          ref: ${{ needs.browser-environment.outputs.revision }}
       - uses: pnpm/setup@v2
         with:
           runtime: node@22.23.2
           cache: true
           install: false
-      - run: pnpm install --frozen-lockfile
+      - name: Prepare container ownership
+        run: |
+          # Firefox requires HOME to belong to the running user. GitHub mounts
+          # this directory with the host uid, while the test container uses root.
+          chown "$(id -u):$(id -g)" "$HOME"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - timeout-minutes: 5
+        run: pnpm install --frozen-lockfile
+      - name: Verify browser environment
+        timeout-minutes: 2
+        run: node scripts/ci/check-browsers.mjs chromium
       - name: Read Pages URL
         id: pages
         uses: actions/configure-pages@v5
@@ -46,7 +71,6 @@ jobs:
       - run: pnpm build:docs
       - name: Build all Storybook catalogs
         run: STORYBOOK_DOCS_EXPORT=1 pnpm build:storybook
-      - run: pnpm exec playwright install chromium --with-deps
       - run: pnpm test:storybook:site
       - run: pnpm assemble:pages
       - name: Check assembled documentation and example links

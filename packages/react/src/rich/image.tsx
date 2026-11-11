@@ -208,7 +208,7 @@ export function createMarkdownImage({
               type="button"
               ref={trigger}
               disabled={status !== 'ready'}
-              aria-label={labels.open(props.alt ?? '')}
+              aria-label={mounted && status !== 'ready' ? undefined : labels.open(props.alt ?? '')}
               onClick={() => {
                 if (galleryRef.current && image.current) preview.open(galleryRef.current, image.current);
               }}

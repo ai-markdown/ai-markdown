@@ -115,16 +115,18 @@
   "devDependencies": {
     "@ai-markdown/react": "workspace:*",
     "@ai-markdown/storybook-kit": "workspace:*",
-    "@mantine/code-highlight": "^9.6.3",
-    "@mantine/core": "^9.6.3",
-    "@mantine/hooks": "^9.6.3",
+    "@mantine/code-highlight": "^9.7.4",
+    "@mantine/core": "^9.7.4",
+    "@mantine/hooks": "^9.7.4",
     "@tsdown/css": "0.23.0",
     "@types/node": "^25.9.9",
-    "autoprefixer": "^10.6.1",
+    "autoprefixer": "^10.6.2",
     "highlight.js": "^11.11.2",
-    "postcss": "^8.5.29",
-    "sass-embedded": "^1.105.1",
-    "mermaid": "^11.17.2"
+    "postcss": "^8.5.32",
+    "sass-embedded": "^1.107.1",
+    "mermaid": "^11.17.2",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
   },
   "typesVersions": {
     "*": {

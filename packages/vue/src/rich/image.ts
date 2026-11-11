@@ -231,7 +231,8 @@ export function createMarkdownImage({
                       type: 'button',
                       disabled: status.value !== 'ready',
                       class: 'aimd-image-trigger',
-                      'aria-label': labels.open(String(attrs.alt ?? '')),
+                      'aria-label':
+                        mounted.value && status.value !== 'ready' ? undefined : labels.open(String(attrs.alt ?? '')),
                       onClick: () => {
                         if (currentGallery && image.value) preview.open(currentGallery, image.value);
                       },
