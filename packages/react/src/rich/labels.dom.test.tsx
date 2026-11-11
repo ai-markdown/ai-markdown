@@ -167,6 +167,10 @@ test('image: the thumbnail and the preview dialog use the supplied text', async 
     <AIMarkdown content={'![一只猫](https://example.test/cat.png)'} customComponents={{ img: Image }} />
   );
   expect(scope.querySelector('.aimd-image-feedback')?.textContent).toBe('图片加载中…');
+  // While disabled, the visible feedback supplies the accessible name.
+  expect(scope.querySelector('button.aimd-image-trigger')?.hasAttribute('aria-label')).toBe(false);
+  await act(async () => scope.querySelector('img')!.dispatchEvent(new Event('error')));
+  expect(scope.querySelector('button.aimd-image-trigger')?.hasAttribute('aria-label')).toBe(false);
   await act(async () => scope.querySelector('img')!.dispatchEvent(new Event('load')));
   const trigger = scope.querySelector('button.aimd-image-trigger') as HTMLButtonElement;
   expect(trigger.getAttribute('aria-label')).toBe('预览图片：一只猫');
