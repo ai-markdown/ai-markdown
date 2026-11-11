@@ -45,10 +45,17 @@ jobs:
           runtime: node@22.23.2
           cache: true
           install: false
-      - name: Trust the checked-out workspace in the container
-        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+      - name: Prepare container ownership
+        run: |
+          # Firefox requires HOME to belong to the running user. GitHub mounts
+          # this directory with the host uid, while the test container uses root.
+          chown "$(id -u):$(id -g)" "$HOME"
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
       - timeout-minutes: 5
         run: pnpm install --frozen-lockfile
+      - name: Verify browser environment
+        timeout-minutes: 2
+        run: node scripts/ci/check-browsers.mjs chromium
       - name: Read Pages URL
         id: pages
         uses: actions/configure-pages@v5

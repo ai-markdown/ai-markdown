@@ -59,12 +59,16 @@ jobs:
           runtime: node@22.23.2
           cache: true
           install: false
-      - name: Trust the checked-out workspaces in the container
+      - name: Prepare container ownership
         run: |
+          chown "$(id -u):$(id -g)" "$HOME"
           git config --global --add safe.directory "$GITHUB_WORKSPACE"
           git config --global --add safe.directory "$GITHUB_WORKSPACE/.benchmark-baseline"
       - timeout-minutes: 5
         run: pnpm install --frozen-lockfile
+      - name: Verify browser environment
+        timeout-minutes: 2
+        run: node scripts/ci/check-browsers.mjs chromium
       - timeout-minutes: 5
         run: pnpm --dir .benchmark-baseline install --frozen-lockfile
       - run: pnpm test:perf-control
