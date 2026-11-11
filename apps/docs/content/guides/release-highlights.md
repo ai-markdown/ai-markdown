@@ -23,6 +23,12 @@ This patch aligns engine, core, React, Vue and Mantine at `3.5.1`. The independe
 
 Browser checks use official Playwright containers matching the lockfile, with the visual-test image pinned by digest. The workflows no longer install browser system dependencies from Ubuntu mirrors on every run. Browser startup preflight, bounded setup times, container ownership fixes and cancellation of obsolete Pages PR checks make infrastructure failures surface promptly. Performance comparisons resolve each revision's framework consistently across its library and test harness. Existing visual snapshots remain unchanged.
 
+#### Verification
+
+The local preflight passed all 23 steps: 3,361 unit tests (one existing todo), 239 Storybook tests, builds, type checks, lint/format, public API and package checks, packed consumers, static and development Storybook acceptance, document lifetime checks, and Vue contracts in Chromium, Firefox and WebKit. The first concurrent run hit timing limits while the soak occupied the machine; the complete rerun passed with separate CPU cores and unchanged test budgets and thresholds. WebKit used additional runtime libraries in the local browser cache. PR CI also passed, including the Node consumer matrix, browser checks, performance comparisons and existing visual baselines.
+
+The fresh release-profile soak on source commit `575d41515768787b15287b2abc2adc9e20ef6fcf`, seed base `2026111200`, passed all six legs and 84/84 logical shards in 11,394 seconds (about 3 hours 10 minutes). Run `v351-release-575d415-2026111200` used 14 workers and the full release budgets. The source tree remained clean and unchanged throughout. Release evidence is validated again against the final candidate before tagging; the tagged release workflow separately verifies published artifacts.
+
 ## 3.5.0 — Shared highlighting and optional diagram engines
 
 ### 3.5.0
